@@ -1,0 +1,6 @@
+/model_weights.pth
+/model.pth
+/tiny_tokenizer.model
+/tiny_tokenizer.vocab
+/tinystories.txt
+/__pycache__
