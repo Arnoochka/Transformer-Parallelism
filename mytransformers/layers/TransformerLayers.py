@@ -32,8 +32,7 @@ class TransformerDecoderLayer(Module):
     def forward(self,
                 x: Tensor,
                 encoder_output: Optional[Tensor] = None,
-                decoder_mask: Optional[Tensor] = None,
-                encoder_mask: Optional[Tensor] = None) -> Tensor:
+                decoder_mask: Optional[Tensor] = None) -> Tensor:
         
         seq_len = x.size(dim=1)
         if decoder_mask is None:
@@ -43,7 +42,7 @@ class TransformerDecoderLayer(Module):
         attn_out = self.norm_attn_1(x, self.masked_attn(x, mask=decoder_mask))
         if self.encoder_output:
             attn_out = self.norm_attn_2(
-                attn_out, self.cross_attn(attn_out, encoder_output, mask=encoder_mask)
+                attn_out, self.cross_attn(attn_out, encoder_output)
                 )
             
         logits = self.norm_logits(attn_out, self.ffn(attn_out))

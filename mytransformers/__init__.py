@@ -1,6 +1,7 @@
 from .Transformer import (TransformerDecoderModel,
                           TransformerEncoderDecoderModel,
-                          TransformerEncoderModel)
+                          TransformerEncoderModel,
+                          TransformerCore)
 
 from .ModelTrainer import ModelTrainer
 
