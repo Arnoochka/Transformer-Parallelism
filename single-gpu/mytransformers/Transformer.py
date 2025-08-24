@@ -1,33 +1,29 @@
 import torch
 import torch.nn as nn
 from torch.nn import Module, ModuleList
-from .layers import AttentionKVCacheCore
 from torch import Tensor
-from typing import Optional
+from .layers import (SelfAttention,
+                     CrossAttention,
+                     PositionalEncoding,
+                     TransformerDecoderLayer,
+                     TransformerEncoderLayer,
+                     AttentionKVCacheCore)
 
 import copy
 
 class TransformerCore(Module):
-    def __init__(self,
-                 vocab_size: int,
-                 pad_token_id: int,
-                 num_layers: int,
-                 hidden_state: int,
-                 positional_encoding_model: Module,
-                 bias: bool = False,
-                 dropout: float = 0.0
-                 ) -> None:
+    def __init__(self, config) -> None:
         super().__init__()
         
-        self.pad_token_id = pad_token_id
-        self.num_layers = num_layers
+        self.pad_token_id: int = config.pad_token_id
+        self.num_layers: int = config.num_layers
         
-        self.embedding = nn.Embedding(vocab_size, hidden_state)
-        self.pos_encoding = copy.deepcopy(positional_encoding_model)
+        self.embedding = nn.Embedding(config.vocab_size, config.hidden_state)
+        self.pos_encoding = PositionalEncoding(config)
         
-        self.dropout = nn.Dropout(dropout)
+        self.dropout = nn.Dropout(config.dropout)
             
-        self.linear = nn.Linear(hidden_state, vocab_size, bias)
+        self.linear = nn.Linear(config.hidden_state, config.vocab_size, config.bias)
         
     def generate(self, x: Tensor) -> Tensor:
         return self.forward(x)
@@ -45,32 +41,16 @@ class TransformerCore(Module):
 
     
 class TransformerEncoderDecoderModel(TransformerCore):
-    def __init__(self,
-                 vocab_size: int,
-                 pad_token_id: int,
-                 num_layers: int,
-                 hidden_state: int,
-                 positional_encoding_model: Module,
-                 encoder_layer: Module,
-                 decoder_layer: Module,
-                 bias: bool = False,
-                 dropout: float = 0.0) -> None:
-        super().__init__(
-            vocab_size=vocab_size,
-            pad_token_id=pad_token_id,
-            num_layers=num_layers,
-            hidden_state=hidden_state,
-            positional_encoding_model=positional_encoding_model,
-            bias=bias,
-            dropout=dropout)
+    def __init__(self, config) -> None:
+        super().__init__(config)
         
         self.encoder_layers = ModuleList(
-            [copy.deepcopy(encoder_layer)
-             for _ in range(num_layers)]
+            [TransformerEncoderLayer(config)
+             for _ in range(self.num_layers)]
         )
         self.decoder_layers = ModuleList(
-            [copy.deepcopy(decoder_layer)
-             for _ in range(num_layers)]
+            [TransformerDecoderLayer(config)
+             for _ in range(self.num_layers)]
         )
     
     def __get_output_encoder(self, source: Tensor, src_mask: Tensor) -> Tensor:
@@ -121,7 +101,7 @@ class TransformerEncoderDecoderModel(TransformerCore):
                  tokens: list,
                  stop_token: int,
                  max_len: int,
-                 device: str = 'cuda',) -> list:
+                 device: str = 'cuda') -> list:
         
         current_len = len(tokens)
         AttentionKVCacheCore.call_kv_cache_method(self, "enable_kv_cache")
@@ -169,27 +149,12 @@ class TransformerEncoderDecoderModel(TransformerCore):
         return next_token
     
 class TransformerDecoderModel(TransformerCore):
-    def __init__(self,
-                 vocab_size: int,
-                 pad_token_id: int,
-                 num_layers: int,
-                 hidden_state: int,
-                 positional_encoding_model: Module,
-                 decoder_model: Module,
-                 bias: bool = False,
-                 dropout: float = 0.0) -> None:
-        super().__init__(
-            vocab_size=vocab_size,
-            pad_token_id=pad_token_id,
-            num_layers=num_layers,
-            hidden_state=hidden_state,
-            positional_encoding_model=positional_encoding_model,
-            bias=bias,
-            dropout=dropout)
-        
+    def __init__(self, config) -> None:
+        super().__init__(config)
+
         self.decoder_layers = ModuleList(
-            [copy.deepcopy(decoder_model)
-             for _ in range(num_layers)]
+            [TransformerDecoderLayer(config)
+             for _ in range(self.num_layers)]
         )
     
     def forward(self, target: Tensor) -> Tensor:
@@ -222,7 +187,7 @@ class TransformerDecoderModel(TransformerCore):
             tokens.append(next_token)
             current_len += 1
             
-            while current_len < max_len & next_token != stop_token:
+            while current_len < max_len and next_token != stop_token:
                 next_token = self.__get_next_token([next_token], device=device)
                 tokens.append(next_token)
                 
@@ -240,27 +205,12 @@ class TransformerDecoderModel(TransformerCore):
     
     
 class TransformerEncoderModel(TransformerCore):
-    def __init__(self,
-                 vocab_size: int,
-                 pad_token_id: int,
-                 num_layers: int,
-                 hidden_state: int,
-                 positional_encoding_model: Module,
-                 encoder_model: Module,
-                 bias: bool = False,
-                 dropout: float = 0.0) -> None:
-        super().__init__(
-            vocab_size=vocab_size,
-            pad_token_id=pad_token_id,
-            num_layers=num_layers,
-            hidden_state=hidden_state,
-            positional_encoding_model=positional_encoding_model,
-            bias=bias,
-            dropout=dropout)
+    def __init__(self, config) -> None:
+        super().__init__(config)
         
         self.encoder_layers = ModuleList(
-            [copy.deepcopy(encoder_model)
-             for _ in range(num_layers)]
+            [TransformerEncoderLayer(config)
+             for _ in range(self.num_layers)]
         )
     
     def forward(self, source: Tensor) -> Tensor:

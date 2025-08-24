@@ -6,28 +6,22 @@ from torch.nn import Module
 import copy
 
 class GroupedQueryAttention(Module):
-    def __init__(self,
-                 hidden_state: int,
-                 qk_dim: int,
-                 v_dim: int,
-                 num_query_heads: int,
-                 num_kv_heads: int,
-                 dropout: float = 0.0):
+    def __init__(self, config):
         super().__init__()
         
-        self.qk_dim = qk_dim
-        self.v_dim = v_dim
-        self.num_query_heads = num_query_heads
-        self.num_kv_heads = num_kv_heads
-        assert num_query_heads % num_kv_heads == 0, \
+        self.qk_dim = config.qk_dim
+        self.v_dim = config.v_dim
+        self.num_query_heads = config.num_query_heads
+        self.num_kv_heads = config.num_kv_heads
+        assert self.num_query_heads % self.num_kv_heads == 0, \
             "num_query_heads must be divisible by num_kv_heads"
-        self.query_in_group = num_query_heads // num_kv_heads
+        self.query_in_group = self.num_query_heads // self.num_kv_heads
         
-        self.scale = 1.0 / (qk_dim ** 0.5)
+        self.scale = 1.0 / (self.qk_dim ** 0.5)
         self.softmax = nn.Softmax(dim=-1)
-        self.dropout = nn.Dropout(dropout)
+        self.dropout = nn.Dropout(config.dropout)
         
-        self.out_proj = nn.Linear(self.num_query_heads * self.v_dim, hidden_state)
+        self.out_proj = nn.Linear(self.num_query_heads * self.v_dim, config.hidden_state)
         
     def forward(self,
                 Q: Tensor,
@@ -71,29 +65,16 @@ class GroupedQueryAttention(Module):
         
         
 class AttentionKVCacheCore(Module):
-    def __init__(self,
-                 hidden_state: int,
-                 num_query_heads: int,
-                 num_kv_heads: int, 
-                 qk_dim: int,
-                 v_dim: int,
-                 bias: bool = True,
-                 dropout: float = 0.0) -> None:
+    def __init__(self, config) -> None:
         super().__init__()
         
-        self.hidden_state = hidden_state
-        self.num_query_heads = num_query_heads
-        self.num_kv_heads = num_kv_heads
-        self.qk_dim = qk_dim
-        self.v_dim = v_dim
+        self.hidden_state = config.hidden_state
+        self.num_query_heads = config.num_query_heads
+        self.num_kv_heads = config.num_kv_heads
+        self.qk_dim = config.qk_dim
+        self.v_dim = config.v_dim
         
-        self.attention = GroupedQueryAttention(
-            hidden_state=hidden_state,
-            qk_dim=qk_dim,
-            v_dim=v_dim,
-            num_query_heads=num_query_heads,
-            num_kv_heads=num_kv_heads,
-            dropout=dropout)
+        self.attention = GroupedQueryAttention(config)
         
         self.use_kv_cache = False
         self.register_buffer('k_cache', None, persistent=True)
@@ -124,29 +105,16 @@ class AttentionKVCacheCore(Module):
         model.apply(call_method)
 
 class SelfAttention(AttentionKVCacheCore):
-    def __init__(self,
-                 hidden_state: int,
-                 num_query_heads: int,
-                 num_kv_heads: int, 
-                 qk_dim: int,
-                 v_dim: int,
-                 bias: bool = False,
-                 dropout: float = 0.0) -> None:
-        super().__init__(
-            hidden_state=hidden_state,
-            num_query_heads=num_query_heads,
-            num_kv_heads=num_kv_heads,
-            qk_dim=qk_dim,
-            v_dim=v_dim,
-            bias=bias,
-            dropout=dropout)
+    def __init__(self, config) -> None:
+        super().__init__(config)
         """
         Groupted-query self-attention 
         """
         
-        self.query_key_value = nn.Linear(hidden_state,
-                                         num_query_heads * qk_dim + num_kv_heads * (qk_dim + v_dim),
-                                         bias=bias)
+        self.query_key_value = nn.Linear(self.hidden_state,
+                                         self.num_query_heads * self.qk_dim \
+                                             + self.num_kv_heads * (self.qk_dim + self.v_dim),
+                                         bias=config.bias)
         
         
         
@@ -182,34 +150,18 @@ class SelfAttention(AttentionKVCacheCore):
         return self.attention(Q, K, V, mask=mask)
     
 class CrossAttention(AttentionKVCacheCore):
-    def __init__(self,
-                 hidden_state: int,
-                 num_query_heads: int,
-                 num_kv_heads: int, 
-                 qk_dim: int,
-                 v_dim: int,
-                 bias: bool = False,
-                 dropout: float = 0.0,
-                 dtype: torch.dtype | None = None) -> None:
-        super().__init__(
-            hidden_state=hidden_state,
-            num_query_heads=num_query_heads,
-            num_kv_heads=num_kv_heads,
-            qk_dim=qk_dim,
-            v_dim=v_dim,
-            bias=bias,
-            dropout=dropout)
+    def __init__(self, config) -> None:
+        super().__init__(config)
         """
         Groupted-query cross-attention 
         """
         
-        self.query = nn.Linear(hidden_state,
-                               num_query_heads * qk_dim,
-                               bias=bias,
-                               dtype=dtype)
+        self.query = nn.Linear(config.hidden_state,
+                               config.num_query_heads * config.qk_dim,
+                               bias=config.bias)
         
-        self.key_value = nn.Linear(hidden_state,
-                                   num_kv_heads * (qk_dim + v_dim))
+        self.key_value = nn.Linear(config.hidden_state,
+                                   config.num_kv_heads * (config.qk_dim + config.v_dim))
         
         
     def forward(self,
