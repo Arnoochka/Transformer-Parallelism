@@ -88,13 +88,13 @@ class TransformerEncoderDecoderModel(TransformerCore):
     def __get_output_decoder(self,
                              target: Tensor,
                              tgt_mask: Tensor,
-                             output_encoder: Tensor) -> Tensor:
+                             output_encoder: Tensor,
+                             pos_seq: int = 0) -> Tensor:
         
         output_decoder = self.dropout(
             self.pos_encoding(
-                self.embedding(target)
-                )
-            )
+                self.embedding(target),
+                pos_start = pos_seq))
         
         for layer in self.decoder_layers:
             output_decoder = layer(output_decoder,
@@ -123,7 +123,7 @@ class TransformerEncoderDecoderModel(TransformerCore):
                  max_len: int,
                  device: str = 'cuda',) -> list:
         
-        current_len = 0
+        current_len = len(tokens)
         AttentionKVCacheCore.call_kv_cache_method(self, "enable_kv_cache")
         
         source = torch.tensor([context]).to(device)
@@ -134,14 +134,16 @@ class TransformerEncoderDecoderModel(TransformerCore):
         tgt_mask = self._generate_target_mask(target)
         next_token = self.__get_next_token(target,
                                            tgt_mask,
+                                           0,
                                            output_encoder)
         current_len += 1
         tokens.append(next_token)
         
-        while current_len < max_len & next_token != stop_token:
+        while current_len < max_len and next_token != stop_token:
             target = torch.tensor([[next_token]]).to(device)
             next_token = self.__get_next_token(target,
                                                None,
+                                               current_len - 1,
                                                output_encoder)
             current_len += 1
             tokens.append(next_token)
@@ -152,11 +154,13 @@ class TransformerEncoderDecoderModel(TransformerCore):
     def __get_next_token(self,
                          target: Tensor,
                          tgt_mask: Tensor,
-                         output_encoder: Tensor,) -> int:
+                         pos_seq: int,
+                         output_encoder: Tensor) -> int:
         
         output_decoder = self.__get_output_decoder(target,
                                                    tgt_mask,
-                                                   output_encoder)
+                                                   output_encoder,
+                                                   pos_seq=pos_seq)
         
         logits = self.linear(output_decoder)
         next_token_logits = logits[0, -1, :]

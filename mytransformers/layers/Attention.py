@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch import Tensor
 from typing import Optional
 from torch.nn import Module
+import copy
 
 class GroupedQueryAttention(Module):
     def __init__(self,
@@ -95,10 +96,11 @@ class AttentionKVCacheCore(Module):
             dropout=dropout)
         
         self.use_kv_cache = False
-        self.register_buffer('k_cache', None, persistent=False)
-        self.register_buffer('v_cache', None, persistent=False)
+        self.register_buffer('k_cache', None, persistent=True)
+        self.register_buffer('v_cache', None, persistent=True)
     
     def enable_kv_cache(self) -> None:
+        self.clear_kv_cache()
         self.use_kv_cache = True
         
     def disable_kv_cache(self) -> None:
@@ -111,6 +113,7 @@ class AttentionKVCacheCore(Module):
         
     def print_kv_cache_status(self) -> None:
         print(f"kv cache status:{self.use_kv_cache}")
+        
         
     @staticmethod
     def call_kv_cache_method(model: Module, method_name: str) -> None:
