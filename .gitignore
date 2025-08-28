@@ -1,6 +1,11 @@
-/single_gpu/model_weights.pth
-/single_gpu/model.pth
-/single_gpu/tiny_tokenizer.model
-/single_gpu/tiny_tokenizer.vocab
-/single_gpu/tinystories.txt
+/single-gpu/model_weights.pth
+/single-gpu/model.pth
+/single-gpu/tiny_tokenizer.model
+/single-gpu/tiny_tokenizer.vocab
+/single-gpu/tinystories.txt
+/multi-gpu/model_weights.pth
+/multi-gpu/model.pth
+/multi-gpu/tiny_tokenizer.model
+/multi-gpu/tiny_tokenizer.vocab
+/multi-gpu/tinystories.txt
 /__pycache__
