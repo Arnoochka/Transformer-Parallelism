@@ -5,7 +5,7 @@ from torch import Tensor
 import numpy as np
 import torch.distributed as dist
 from torch.distributed import ProcessGroup
-from .ParallelModule import TensorParallelModule
+from .ParallelModule import TensorParallelModule, TensorParallelModuleGenerator
 
 class ParallelLinear(TensorParallelModule):
     def __init__(self,
@@ -28,7 +28,6 @@ class ParallelLinear(TensorParallelModule):
         else:
             self.bias = None
 
-
 class ColumnParallelLinear(ParallelLinear):
     def __init__(self,
                  in_features: int,
@@ -37,9 +36,8 @@ class ColumnParallelLinear(ParallelLinear):
                  bias: bool = True,
                  use_all_gather: bool = True):
         self.use_all_gather = use_all_gather
-        world_size = dist.get_world_size(tp_group)
-        assert out_features % world_size == 0, "out_features must be divisible by world_size"
-        self.out_features_per_device = out_features // world_size
+        tp_size = dist.get_world_size(tp_group)
+        self.out_features_per_device = out_features // tp_size
         super().__init__(in_features, self.out_features_per_device, tp_group, bias=bias)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -52,29 +50,30 @@ class ColumnParallelLinear(ParallelLinear):
             logits = logits + self.bias
 
         if self.use_all_gather:
-            world_size = dist.get_world_size(group=self.tp_group)
-            logits_tensors = [torch.zeros_like(logits, device=logits.device) for _ in range(world_size)]
+            tp_size = dist.get_world_size(group=self.tp_group)
+            logits_tensors = [torch.zeros_like(logits, device=logits.device) for _ in range(tp_size)]
             dist.all_gather(logits_tensors, logits, group=self.tp_group)
             logits = torch.cat(logits_tensors, dim=-1)
 
         return logits
-
-    @staticmethod
-    def from_no_parallel(module: Module, tp_group, use_all_gather=True) -> TensorParallelModule:
+    
+class ColumnParallelLinearGenerator(TensorParallelModuleGenerator):
+    def __new__(cls, module: Module, tp_group: ProcessGroup, use_all_gather=True) -> ColumnParallelLinear:
         """create ColumnParallelLinear from torch.nn.Linear"""
-        world_size = dist.get_world_size(tp_group)
+        tp_size = dist.get_world_size(tp_group)
         rank = dist.get_rank(tp_group)
 
         in_features = module.in_features
         out_features = module.out_features
         add_bias = module.bias is not None
-
+        assert out_features % tp_size == 0, "out_features must be divisible by tp_size"
+        
         layer = ColumnParallelLinear(in_features, out_features, tp_group,
                                      bias=add_bias, use_all_gather=use_all_gather).to(torch.cuda.current_device())
 
         if rank == 0:
-            w_chunks = list(module.weight.chunk(world_size, dim=1))
-            b_chunks = list(module.bias.chunk(world_size, dim=0)) if add_bias else None
+            w_chunks = list(module.weight.chunk(tp_size, dim=1))
+            b_chunks = list(module.bias.chunk(tp_size, dim=0)) if add_bias else None
         else:
             w_chunks, b_chunks = None, None
 
@@ -82,7 +81,7 @@ class ColumnParallelLinear(ParallelLinear):
 
         if add_bias:
             dist.scatter(layer.bias, scatter_list=b_chunks if rank == 0 else [], src=0, group=tp_group)
-
+            
         return layer
     
 class RowParallelLinear(ParallelLinear):
@@ -93,9 +92,8 @@ class RowParallelLinear(ParallelLinear):
                  bias: bool = True,
                  use_all_reduce: bool = True):
         self.use_all_reduce = use_all_reduce
-        world_size = dist.get_world_size(tp_group)
-        assert in_features % world_size == 0, "out_features must be divisible by world_size"
-        self.in_features_per_device = in_features // world_size
+        tp_size = dist.get_world_size(tp_group)
+        self.in_features_per_device = in_features // tp_size
         super().__init__(self.in_features_per_device, out_features, tp_group, bias=bias)
         
     def forward(self, x: Tensor) -> Tensor:
@@ -114,22 +112,23 @@ class RowParallelLinear(ParallelLinear):
             
         return logits
     
-    @staticmethod
-    def from_no_parallel(module: Module, tp_group, use_all_reduce=True) -> TensorParallelModule:
+class RowParallelLinearGenerator(TensorParallelModuleGenerator):
+    def from_no_parallel(cls, module: Module, tp_group: ProcessGroup, use_all_reduce=True) -> RowParallelLinear:
         """create RowParallelLinear from torch.nn.Linear"""
-        world_size = dist.get_world_size(tp_group)
+        tp_size = dist.get_world_size(tp_group)
         rank = dist.get_rank(tp_group)
 
         in_features = module.in_features
         out_features = module.out_features
         add_bias = module.bias is not None
+        assert in_features % tp_size == 0, "in_features must be divisible by tp_size"
 
         layer = RowParallelLinear(in_features, out_features, tp_group,
                                      bias=add_bias, use_all_reduce=use_all_reduce).to(torch.cuda.current_device())
 
         if rank == 0:
-            w_chunks = list(module.weight.chunk(world_size, dim=0))
-            b_chunks = module.bias / world_size if add_bias else None
+            w_chunks = list(module.weight.chunk(tp_size, dim=0))
+            b_chunks = module.bias / tp_size if add_bias else None
         else:
             w_chunks, b_chunks = None, None
 

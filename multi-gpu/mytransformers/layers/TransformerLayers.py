@@ -6,7 +6,6 @@ from .SimpleLayers import AddNorm
 from .Attention import SelfAttention, CrossAttention
 from .MoE import MoELayer
 from .SimpleLayers import FeedForward
-import copy
 
 from enum import Enum
 
