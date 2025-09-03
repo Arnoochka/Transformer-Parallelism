@@ -2,24 +2,39 @@ import torch
 import torch.nn as nn
 from torch.nn import Module
 from torch import Tensor
-import torch.nn.functional as F
 import numpy as np
-from typing import Optional
-from torch.nn import ModuleList
+from .ParallelLinearLayers import ColumnParallelLinear, RowParallelLinear, ParallelLinear
+import torch.distributed as dist
+from torch.distributed import ProcessGroup
+from .ParallelModule import TensorParallelModule
 
-class FeedForward(Module):
-    def __init__(self, config):
-        super().__init__()
+
+
+class ParallelFeedForward(TensorParallelModule):
+    def __init__(self,
+                 config,
+                 wi: Module,
+                 wo: Module,
+                 tp_group: ProcessGroup):
+        super().__init__(tp_group)
         self.func = nn.ReLU()
-        
-        self.fc1 = nn.Linear(config.hidden_state, config.ffn_dim)
-        self.fc2 = nn.Linear(config.ffn_dim, config.hidden_state)
+        self.wi = ColumnParallelLinear.from_no_parallel(wi,
+                                                        tp_group,
+                                                        use_all_gather=False)
+        self.wo = RowParallelLinear.from_no_parallel(wo,
+                                                     tp_group=self.tp_group,
+                                                     use_all_reduce=True)
         self.dropout = nn.Dropout(config.dropout)
 
     def forward(self, x):
-        x = self.func(self.fc1(x))
-        logits = self.fc2(self.dropout(x))
+        x = self.func(self.wi(x))
+        logits = self.wo(self.dropout(x))
         return logits
+    
+    @staticmethod
+    def from_no_parallel(module: Module, tp_group: ProcessGroup, config):
+        return ParallelFeedForward(config, module.wi, module.wo, tp_group)
+        
     
 class AddNorm(Module):
     def __init__(self, config):

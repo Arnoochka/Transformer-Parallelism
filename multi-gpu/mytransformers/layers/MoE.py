@@ -2,22 +2,18 @@ from torch.nn import Module, ModuleList
 from torch import Tensor
 import torch
 import copy
+from .SimpleLayers import FeedForward
 
 class MoELayer(Module):
-    def __init__(self,
-                 num_experts: int,
-                 k: int,
-                 gate_model: Module,
-                 expert_model: Module
-                 ) -> None:
+    def __init__(self, config) -> None:
         super().__init__()
-        self.num_experts = num_experts
-        self.k = k
+        self.num_experts = config.num_experts
+        self.k = config.top_k
         
-        self.gate = copy.deepcopy(gate_model)
+        self.gate = FeedForward(config)
         self.experts = ModuleList(
-            [copy.deepcopy(expert_model)
-             for _ in range(num_experts)])
+            [FeedForward(config)
+             for _ in range(self.num_experts)])
         
     def forward(self, x: Tensor) -> Tensor:
         batch_size, seq_len, hidden_state = x.shape

@@ -3,31 +3,38 @@ from torch.nn import Module
 from torch import Tensor
 from typing import Optional
 from .SimpleLayers import AddNorm
+from .Attention import SelfAttention, CrossAttention
+from .MoE import MoELayer
+from .SimpleLayers import FeedForward
 import copy
+
+from enum import Enum
+
+class TransformerType(Enum):
+    Encoder = 0
+    Decoder = 1
+    EncoderDecoder = 2
+    
+class FFNType(Enum):
+    MoE = MoELayer
+    FFN = FeedForward
         
         
 class TransformerDecoderLayer(Module):
-    def __init__(self,
-                 hidden_state: int,
-                 self_attn_model: Module,
-                 ffn_model: Module,
-                 encoder_output: bool = False,
-                 cross_attn_model: Optional[Module] = None
-                 ) -> None:
+    def __init__(self, config) -> None:
         super().__init__()
         
-        self.masked_attn = copy.deepcopy(self_attn_model)
+        self.masked_attn = SelfAttention(config)
         
-        self.encoder_output = encoder_output
-        if encoder_output:
-            self.cross_attn = copy.deepcopy(cross_attn_model)
-            self.norm_attn_2 = AddNorm(hidden_state)
+        self.encoder_output = config.transformer_type == TransformerType.EncoderDecoder
+        if self.encoder_output:
+            self.cross_attn = CrossAttention(config)
+            self.cross_attn_norm = AddNorm(config)
             
-        self.norm_attn_1 = AddNorm(hidden_state)
-        self.norm_logits = AddNorm(hidden_state)
+        self.masked_attn_norm = AddNorm(config)
+        self.logits_norm = AddNorm(config)
         
-        self.ffn = copy.deepcopy(ffn_model)
-        
+        self.ffn = config.ffn_type.value(config)
         
     def forward(self,
                 x: Tensor,
@@ -39,32 +46,29 @@ class TransformerDecoderLayer(Module):
             decoder_mask = torch.tril(torch.ones(seq_len, seq_len)) \
                 .unsqueeze(0).unsqueeze(1).to(x.device)
         
-        attn_out = self.norm_attn_1(x, self.masked_attn(x, mask=decoder_mask))
+        attn_out = self.cross_attn_norm(x, self.masked_attn(x, mask=decoder_mask))
         if self.encoder_output:
-            attn_out = self.norm_attn_2(
+            attn_out = self.masked_attn_norm(
                 attn_out, self.cross_attn(attn_out, encoder_output)
                 )
             
-        logits = self.norm_logits(attn_out, self.ffn(attn_out))
+        logits = self.logits_norm(attn_out, self.ffn(attn_out))
         return logits
     
 class TransformerEncoderLayer(Module):
-    def __init__(self,
-                 hidden_state: int,
-                 attn_model: Module,
-                 ffn_model: Module) -> None:
+    def __init__(self, config) -> None:
         super().__init__()
         
-        self.attn = copy.deepcopy(attn_model)
+        self.attn = SelfAttention(config)
             
-        self.norm_attn = AddNorm(hidden_state)
-        self.norm_logits = AddNorm(hidden_state)
+        self.attn_norm = AddNorm(config)
+        self.logits_norm = AddNorm(config)
         
-        self.ffn = copy.deepcopy(ffn_model)
+        self.ffn = config.ffn_type.value(config)
         
     def forward(self,
                 x: Tensor,
                 mask: Optional[Tensor] = None) -> Tensor:
-        attn_out = self.norm_attn(x, self.attn(x, mask))
-        logits = self.norm_logits(attn_out, self.ffn(attn_out))
+        attn_out = self.attn_norm(x, self.attn(x, mask))
+        logits = self.logits_norm(attn_out, self.ffn(attn_out))
         return logits
