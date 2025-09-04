@@ -1,3 +1,3 @@
-# My Transformers realisations
+# My Transformers implementation
 
 ![loss](./readme.png)
