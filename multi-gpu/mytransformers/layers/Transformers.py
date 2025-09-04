@@ -92,7 +92,6 @@ class TransformerEncoderDecoderModel(TransformerCore):
         logits = self.linear(output_decoder)
         return logits
     
-    @torch.no_grad
     def generate(self, context: list,
                  tokens: list,
                  stop_token: int,

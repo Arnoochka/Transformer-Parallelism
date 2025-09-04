@@ -6,3 +6,6 @@ from .layers.Transformers import (TransformerDecoderModel,
 from .ModelTrainer import ModelTrainer
 
 from .layers import *
+from .layers import tensor_parallel as tp
+
+

@@ -23,8 +23,12 @@ class ColumnParallelLinearGenerator(TensorParallelModuleGenerator):
                                      bias=add_bias, use_all_gather=cls.use_all_gather).to(torch.cuda.current_device())
 
         if rank == 0:
-            w_chunks = list(module.weight.chunk(tp_size, dim=1))
-            b_chunks = list(module.bias.chunk(tp_size, dim=0)) if add_bias else None
+            device = torch.device(torch.cuda.current_device())
+            w_chunks = [w.contiguous().to(device)
+                        for w in module.weight.T.chunk(tp_size, dim=1)]
+            b_chunks = ([b.contiguous().to(device)
+                         for b in module.bias.chunk(tp_size, dim=0)]
+                        if add_bias else None)
         else:
             w_chunks, b_chunks = None, None
 
@@ -38,7 +42,7 @@ class ColumnParallelLinearGenerator(TensorParallelModuleGenerator):
 class RowParallelLinearGenerator(TensorParallelModuleGenerator):
     use_all_reduce: bool = True
     
-    def from_no_parallel(cls, module: Module, tp_group: ProcessGroup) -> RowParallelLinear:
+    def __new__(cls, module: Module, tp_group: ProcessGroup) -> RowParallelLinear:
         """create RowParallelLinear from torch.nn.Linear"""
         tp_size = dist.get_world_size(tp_group)
         rank = dist.get_rank(tp_group)
@@ -52,7 +56,7 @@ class RowParallelLinearGenerator(TensorParallelModuleGenerator):
                                      bias=add_bias, use_all_reduce=cls.use_all_reduce).to(torch.cuda.current_device())
 
         if rank == 0:
-            w_chunks = list(module.weight.chunk(tp_size, dim=0))
+            w_chunks = list(module.weight.T.chunk(tp_size, dim=0))
             b_chunks = module.bias / tp_size if add_bias else None
         else:
             w_chunks, b_chunks = None, None

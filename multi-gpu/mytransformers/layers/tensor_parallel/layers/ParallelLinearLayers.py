@@ -45,7 +45,7 @@ class ColumnParallelLinear(ParallelLinear):
         logits = x @ self.weight
         if self.bias is not None:
             logits = logits + self.bias
-
+        
         if self.use_all_gather:
             tp_size = dist.get_world_size(group=self.tp_group)
             logits_tensors = [torch.zeros_like(logits, device=logits.device) for _ in range(tp_size)]

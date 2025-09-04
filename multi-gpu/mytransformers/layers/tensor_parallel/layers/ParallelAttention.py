@@ -2,11 +2,9 @@ from torch.distributed import ProcessGroup
 import torch.distributed as dist
 from torch.nn import Module
 from torch.nn import Module
-from .ParallelLinearLayers import ColumnParallelLinearGenerator, RowParallelLinearGenerator
-from .ParallelModule import TensorParallelModule, TensorParallelModuleGenerator
+from .ParallelModule import TensorParallelModule
 import torch
 import torch.nn as nn
-from torch.nn import Linear
 from torch import Tensor
 from typing import Optional
 
