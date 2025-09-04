@@ -1,18 +1,20 @@
-from .ParallelAttention import (ParallelAttention,
-                                ParallelSelfAttention,
-                                ParallelCrossAttention,
-                                ParallelSelfAttentionGenerator,
-                                ParallelCrossAttentionGenerator)
+from .ParallelAttentionGenerator import (
+    ParallelAttentionGenerator,
+    ParallelSelfAttentionGenerator,
+    ParallelCrossAttentionGenerator
+)
 
-from .ParallelFeedForward import ParallelFeedForward, ParallelFeedForwardGenerator
-from .ParallelLinearLayers import (ColumnParallelLinear,
-                                   RowParallelLinear,
-                                   ColumnParallelLinearGenerator,
-                                   RowParallelLinearGenerator)
+from .ParallelFeedForwardGenerator import ParallelFeedForwardGenerator
+from .ParallelLinearLayersGenerator import (
+    RowParallelLinearGenerator,
+    ColumnParallelLinearGenerator
+)
 
-from .ParallelTransformerLayers import (ParallelTransformerEncoderLayer,
-                                        ParallelTransformerDecoderLayer,
-                                        ParallelTransformerEncoderGenerator,
-                                        ParallelTransformerDecoderGenerator)
+from .ParallelTransformerLayersGenerator import (
+    ParallelTransformerDecoderGenerator,
+    ParallelTransformerEncoderGenerator
+)
 
-from .ParallelModule import TensorParallelModule, TensorParallelModuleGenerator
+from .ParallelModuleGenerator import TensorParallelModule, TensorParallelModuleGenerator
+
+from .layers import *
