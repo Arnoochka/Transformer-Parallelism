@@ -2,10 +2,10 @@ import torch
 import torch.nn as nn
 from torch.nn import Module, ModuleList
 from torch import Tensor
-from .layers import (PositionalEncoding,
-                     TransformerDecoderLayer,
-                     TransformerEncoderLayer,
-                     AttentionKVCacheCore)
+from . import (PositionalEncoding,
+               TransformerDecoderLayer,
+               TransformerEncoderLayer,
+               AttentionKVCacheCore)
 
 class TransformerCore(Module):
     def __init__(self, config) -> None:

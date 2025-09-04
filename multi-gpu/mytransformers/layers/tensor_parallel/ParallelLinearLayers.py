@@ -58,7 +58,9 @@ class ColumnParallelLinear(ParallelLinear):
         return logits
     
 class ColumnParallelLinearGenerator(TensorParallelModuleGenerator):
-    def __new__(cls, module: Module, tp_group: ProcessGroup, use_all_gather=True) -> ColumnParallelLinear:
+    use_all_gather: bool = True
+        
+    def __new__(cls, module: Module, tp_group: ProcessGroup) -> ColumnParallelLinear:
         """create ColumnParallelLinear from torch.nn.Linear"""
         tp_size = dist.get_world_size(tp_group)
         rank = dist.get_rank(tp_group)
@@ -69,7 +71,7 @@ class ColumnParallelLinearGenerator(TensorParallelModuleGenerator):
         assert out_features % tp_size == 0, "out_features must be divisible by tp_size"
         
         layer = ColumnParallelLinear(in_features, out_features, tp_group,
-                                     bias=add_bias, use_all_gather=use_all_gather).to(torch.cuda.current_device())
+                                     bias=add_bias, use_all_gather=cls.use_all_gather).to(torch.cuda.current_device())
 
         if rank == 0:
             w_chunks = list(module.weight.chunk(tp_size, dim=1))
@@ -113,7 +115,9 @@ class RowParallelLinear(ParallelLinear):
         return logits
     
 class RowParallelLinearGenerator(TensorParallelModuleGenerator):
-    def from_no_parallel(cls, module: Module, tp_group: ProcessGroup, use_all_reduce=True) -> RowParallelLinear:
+    use_all_reduce: bool = True
+    
+    def from_no_parallel(cls, module: Module, tp_group: ProcessGroup) -> RowParallelLinear:
         """create RowParallelLinear from torch.nn.Linear"""
         tp_size = dist.get_world_size(tp_group)
         rank = dist.get_rank(tp_group)
@@ -124,7 +128,7 @@ class RowParallelLinearGenerator(TensorParallelModuleGenerator):
         assert in_features % tp_size == 0, "in_features must be divisible by tp_size"
 
         layer = RowParallelLinear(in_features, out_features, tp_group,
-                                     bias=add_bias, use_all_reduce=use_all_reduce).to(torch.cuda.current_device())
+                                     bias=add_bias, use_all_reduce=cls.use_all_reduce).to(torch.cuda.current_device())
 
         if rank == 0:
             w_chunks = list(module.weight.chunk(tp_size, dim=0))

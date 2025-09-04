@@ -13,7 +13,7 @@ from typing import Optional
 class ParallelGroupedQueryAttention(TensorParallelModule):
     def __init__(self,
                  config,
-                 out_proj: Module,
+                 out_proj: TensorParallelModule,
                  tp_group: ProcessGroup):
         super().__init__(tp_group)
         
@@ -32,7 +32,7 @@ class ParallelGroupedQueryAttention(TensorParallelModule):
         self.scale = 1.0 / (self.qk_dim ** 0.5)
         self.softmax = nn.Softmax(dim=-1)
         self.dropout = nn.Dropout(config.dropout)
-        self.out_proj = RowParallelLinearGenerator(out_proj, tp_group, use_all_reduce=True)
+        self.out_proj = out_proj
         
     def forward(self,
                 Q: Tensor,
@@ -78,7 +78,7 @@ class ParallelGroupedQueryAttention(TensorParallelModule):
 class ParallelAttentionKVCacheCore(TensorParallelModule):
     def __init__(self,
                  config,
-                 out_proj: Module,
+                 out_proj: TensorParallelModule,
                  tp_group: ProcessGroup) -> None:
         super().__init__(tp_group)
         
@@ -123,18 +123,18 @@ class ParallelAttentionKVCacheCore(TensorParallelModule):
 class ParallelAttention(ParallelAttentionKVCacheCore):
     def __init__(self,
                  config,
-                 query: Module,
-                 key: Module,
-                 value: Module,
-                 out_proj: Module,
+                 query: TensorParallelModule,
+                 key: TensorParallelModule,
+                 value: TensorParallelModule,
+                 out_proj: TensorParallelModule,
                  tp_group: ProcessGroup) -> None:
         super().__init__(config, out_proj, tp_group)
         """
         Groupted-query self-attention 
         """
-        self.query = ColumnParallelLinearGenerator(query, tp_group, use_all_gather = False)
-        self.key = ColumnParallelLinearGenerator(key, tp_group, use_all_gather = False)
-        self.value = ColumnParallelLinearGenerator(value, tp_group, use_all_gather = False)
+        self.query = query
+        self.key = key
+        self.value = value
         
     def get_key_value(self, x: Tensor) -> tuple[Tensor, Tensor]:
         K = self.key(x)
@@ -200,31 +200,20 @@ class ParallelCrossAttention(ParallelAttention):
         if self.use_kv_cache:
             if (self.k_cache is None) or (self.v_cache is None):
                 K, V = super().get_key_value(x)
+                self.k_cache, self.v_cache = K, V
             K: Tensor = self.k_cache
             V: Tensor = self.v_cache
         else:
             K, V = super().get_key_value(x)
         
         return K, V
-    
-class ParallelCrossAttentionGenerator(TensorParallelModuleGenerator):
-    def __new__(cls, module: Module, tp_group: ProcessGroup, config) -> ParallelSelfAttention:
-        tp_size = dist.get_world_size(tp_group)
-        assert config.num_query_heads % tp_size and config.num_kv_heads % tp_size, \
-            "num_query_heads and num_kv_heads must be divisible by tp_size"
-        key_size = config.num_kv_heads * config.qk_dim
-        query = module.query
-        key = module.key_value[..., :key_size]
-        value = module.key_value[..., key_size:]
-        out_proj = module.attention.out_proj
-        return ParallelCrossAttention()
 
 
 def get_linear_from_weight(weight: Tensor,
                    hidden_size: int,
                    out_size: int,
                    bias: Optional[Tensor],
-                   device: str | torch.device) -> tuple[Linear, Linear, Linear]:
+                   device: str | torch.device) -> Linear:
     
         proj = nn.Linear(hidden_size, out_size, bias=bias, device=device)
 
@@ -235,83 +224,91 @@ def get_linear_from_weight(weight: Tensor,
             
         return proj
         
-        
+class ParallelAttentionGenerator(TensorParallelModuleGenerator):
+    config = None 
+    attn: ParallelAttention = None
     
-   
-class ParallelSelfAttentionGenerator(TensorParallelModuleGenerator):
-    def __new__(cls, module: Module, tp_group: ProcessGroup, config) -> ParallelSelfAttention:
+    def __new__(cls, module: Module, tp_group: ProcessGroup) -> ParallelAttention:
         tp_size = dist.get_world_size(tp_group)
-        assert config.num_query_heads % tp_size and config.num_kv_heads % tp_size, \
+        assert cls.config.num_query_heads % tp_size == 0 and cls.config.num_kv_heads % tp_size == 0, \
             "num_query_heads and num_kv_heads must be divisible by tp_size"
-        query_size = config.num_query_heads * config.qk_dim
-        key_size = config.num_kv_heads * config.qk_dim
-        value_size = config.num_kv_heads * config.v_dim
-        query_weight = module.query_key_value.weight[..., :query_size]
-        key_weight = module.query_key_value.weight[..., query_size:key_size]
-        value_weight = module.query_key_value.weight[..., query_size + key_size:]
+            
+        query_size = cls.config.num_query_heads * cls.config.qk_dim
+        key_size = cls.config.num_kv_heads * cls.config.qk_dim
+        value_size = cls.config.num_kv_heads * cls.config.v_dim
+        hidden_size = cls.config.hidden_size
         bias = module.query_key_value.bias
-        
-        hidden_size = config.hidden_size
         device = module.query_key_value.weight.device
-        query = get_linear_from_weight(query_weight,
+        
+        query = get_linear_from_weight(module.query_weight,
                                        hidden_size,
                                        query_size,
                                        bias,
                                        device
                                        )
-        key = get_linear_from_weight(key_weight,
+        key = get_linear_from_weight(module.key_weight,
                                hidden_size,
                                key_size,
                                bias,
                                device
                                )
-        value = get_linear_from_weight(value_weight,
+        value = get_linear_from_weight(module.value_weight,
                                hidden_size,
                                value_size,
                                bias,
                                device
                                )
+        out = module.attention.out_proj
         
-        out_proj = module.attention.out_proj
-        return ParallelSelfAttention(config, query, key, value, out_proj, tp_group)
+        query_proj = ColumnParallelLinearGenerator(query, tp_group)
+        key_proj = ColumnParallelLinearGenerator(key, tp_group)
+        value_proj = ColumnParallelLinearGenerator(value, tp_group)
+        out_proj = RowParallelLinearGenerator(out, tp_group)
+        
+        return cls.attn(query_proj, key_proj, value_proj, out_proj)
+    
+   
+class ParallelSelfAttentionGenerator(TensorParallelModuleGenerator):
+    config = None
+    def __new__(cls, module: Module, tp_group: ProcessGroup) -> ParallelSelfAttention:
+        
+        ParallelAttentionGenerator.config = cls.config
+        ParallelAttentionGenerator.attn = ParallelSelfAttention
+        ColumnParallelLinearGenerator.use_all_gather = False
+        RowParallelLinearGenerator.use_all_reduce = True
+        
+        query_size = cls.config.num_query_heads * cls.config.qk_dim
+        key_size = cls.config.num_kv_heads * cls.config.qk_dim
+        query_weight = module.query_key_value.weight[..., :query_size]
+        key_weight = module.query_key_value.weight[..., query_size:key_size]
+        value_weight = module.query_key_value.weight[..., query_size + key_size:]
+        
+        module.query_weight = query_weight
+        module.key_weight = key_weight
+        module.value_weight = value_weight
+        
+        return ParallelAttentionGenerator(module, tp_group)
     
 class ParallelCrossAttentionGenerator(TensorParallelModuleGenerator):
-    def __new__(cls, module: Module, tp_group: ProcessGroup, config) -> ParallelSelfAttention:
-        tp_size = dist.get_world_size(tp_group)
-        assert config.num_query_heads % tp_size and config.num_kv_heads % tp_size, \
-            "num_query_heads and num_kv_heads must be divisible by tp_size"
-        query_size = config.num_query_heads * config.qk_dim
-        key_size = config.num_kv_heads * config.qk_dim
-        value_size = config.num_kv_heads * config.v_dim
+    config = None
+    def __new__(cls, module: Module, tp_group: ProcessGroup) -> ParallelCrossAttention:
+        
+        ParallelAttentionGenerator.config = cls.config
+        ParallelAttentionGenerator.attn = ParallelCrossAttention
+        ColumnParallelLinearGenerator.use_all_gather = False
+        RowParallelLinearGenerator.use_all_reduce = True
+        
+        key_size = cls.config.num_kv_heads * cls.config.qk_dim
         query_weight = module.query.weight
         key_weight = module.key_value.weight[..., :key_size]
         value_weight = module.key_value.weight[..., key_size:]
-        q_bias = module.query.bias
-        kv_bias = module.key_value.bias
         
-        hidden_size = config.hidden_size
-        device = module.query_key_value.weight.device
-        query = get_linear_from_weight(query_weight,
-                                       hidden_size,
-                                       query_size,
-                                       q_bias,
-                                       device
-                                       )
-        key = get_linear_from_weight(key_weight,
-                               hidden_size,
-                               key_size,
-                               kv_bias,
-                               device
-                               )
-        value = get_linear_from_weight(value_weight,
-                               hidden_size,
-                               value_size,
-                               kv_bias,
-                               device
-                               )
+        module.query_weight = query_weight
+        module.key_weight = key_weight
+        module.value_weight = value_weight
         
-        out_proj = module.attention.out_proj
-        return ParallelCrossAttention(config, query, key, value, out_proj, tp_group)
+        return ParallelAttentionGenerator(module, tp_group)
+        
     
     
     

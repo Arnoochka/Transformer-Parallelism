@@ -7,6 +7,7 @@ from ..SimpleLayers import AddNorm
 from ..MoE import MoELayer
 from ..TransformerLayers import TransformerType
 from .ParallelAttention import ParallelCrossAttentionGenerator, ParallelSelfAttentionGenerator
+from .ParallelLinearLayers import ColumnParallelLinearGenerator
 from .ParallelFeedForward import ParallelFeedForwardGenerator
 import torch
 from torch import Tensor
@@ -22,23 +23,23 @@ class FFNType(Enum):
 class ParallelTransformerDecoderLayer(TensorParallelModule):
     def __init__(self,
                  config,
-                 self_attn: Module,
-                 cross_attn: Module,
-                 ffn: Module,
+                 self_attn: TensorParallelModule,
+                 cross_attn: Optional[TensorParallelModule],
+                 ffn: TensorParallelModule,
                  tp_group: ProcessGroup) -> None:
         super().__init__(tp_group)
         
-        self.masked_attn = ParallelSelfAttentionGenerator(self_attn, tp_group, config)
+        self.masked_attn = self_attn
         
         self.encoder_output = config.transformer_type == TransformerType.EncoderDecoder
         if self.encoder_output:
-            self.cross_attn = ParallelCrossAttentionGenerator(cross_attn, tp_group, config)
+            self.cross_attn = cross_attn
             self.cross_attn_norm = AddNorm(config)
             
         self.masked_attn_norm = AddNorm(config)
         self.logits_norm = AddNorm(config)
         
-        self.ffn = config.ffn_type.value(ffn, tp_group, config)
+        self.ffn = ffn
         
     def forward(self,
                 x: Tensor,
@@ -62,17 +63,17 @@ class ParallelTransformerDecoderLayer(TensorParallelModule):
 class ParallelTransformerEncoderLayer(TensorParallelModule):
     def __init__(self,
                  config,
-                 attn: Tensor,
-                 ffn: Module,
+                 attn: TensorParallelModule,
+                 ffn: TensorParallelModule,
                  tp_group: ProcessGroup) -> None:
         super().__init__(tp_group)
         
-        self.attn = ParallelSelfAttentionGenerator(attn, tp_group, config)
+        self.attn = attn
             
         self.attn_norm = AddNorm(config)
         self.logits_norm = AddNorm(config)
         
-        self.ffn = config.ffn_type.value(ffn, tp_group, config)
+        self.ffn = ffn
         
     def forward(self,
                 x: Tensor,
@@ -81,19 +82,43 @@ class ParallelTransformerEncoderLayer(TensorParallelModule):
         logits = self.logits_norm(attn_out, self.ffn(attn_out))
         return logits
     
+    
 class ParallelTransformerDecoderGenerator(TensorParallelModuleGenerator):
-    def __new__(cls, module: Module, tp_group: ProcessGroup, config) -> ParallelTransformerDecoderLayer:
-        return ParallelTransformerDecoderLayer(config,
-                                               module.masked_attn,
-                                               module.cross_attn,
-                                               module.ffn,
-                                               tp_group)
+    config = None
+    def __new__(cls, module: Module, tp_group: ProcessGroup) -> ParallelTransformerDecoderLayer:
+        ParallelSelfAttentionGenerator.config = cls.config
+        ParallelCrossAttentionGenerator.config = cls.config
+        
+        use_encoder = cls.config.transformer_type == TransformerType.EncoderDecoder
+        self_attn = ParallelSelfAttentionGenerator(module.self_attn, tp_group)
+        ColumnParallelLinearGenerator.use_all_gather = True
+        ffn = ColumnParallelLinearGenerator(module.ffn, tp_group)
+        if use_encoder:
+            cross_attn = ParallelCrossAttentionGenerator(module.cross_attn)
+            return ParallelTransformerDecoderLayer(cls.config,
+                                                   self_attn,
+                                                   cross_attn,
+                                                   ffn,
+                                                   tp_group)
+        else:
+            return ParallelTransformerDecoderLayer(cls.config,
+                                       self_attn,
+                                       None,
+                                       ffn,
+                                       tp_group)
+        
         
 class ParallelTransformerEncoderGenerator(TensorParallelModuleGenerator):
-    def __new__(cls, module: Module, tp_group: ProcessGroup, config) -> ParallelTransformerEncoderLayer:
-        return ParallelTransformerDecoderLayer(config,
-                                               module.attn,
-                                               module.ffn,
+    config = None
+    def __new__(cls, module: Module, tp_group: ProcessGroup) -> ParallelTransformerDecoderLayer:
+        ParallelSelfAttentionGenerator.config = cls.config
+        attn = ParallelSelfAttentionGenerator(module.self_attn, tp_group)
+        ColumnParallelLinearGenerator.use_all_gather = True
+        ffn = ColumnParallelLinearGenerator(module.ffn, tp_group)
+        
+        return ParallelTransformerEncoderLayer(cls.config,
+                                               attn,
+                                               ffn,
                                                tp_group)
         
         

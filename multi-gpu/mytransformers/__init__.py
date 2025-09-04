@@ -1,4 +1,4 @@
-from .Transformers import (TransformerDecoderModel,
+from .layers.Transformers import (TransformerDecoderModel,
                           TransformerEncoderDecoderModel,
                           TransformerEncoderModel,
                           TransformerCore)
@@ -6,6 +6,3 @@ from .Transformers import (TransformerDecoderModel,
 from .ModelTrainer import ModelTrainer
 
 from .layers import *
-
-import mytransformers.layers as layers
-import mytransformers.layers.tensor_parallel as tp

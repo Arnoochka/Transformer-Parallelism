@@ -3,20 +3,19 @@ import torch.nn as nn
 from torch.nn import Module, ModuleList
 from torch import Tensor
 from torch.distributed import ProcessGroup
-import torch.distributed as dist
-from .layers.tensor_parallel import (ParallelAttention,
-                                     ParallelTransformerEncoderGenerator,
-                                     ParallelTransformerDecoderGenerator,
-                                     ColumnParallelLinearGenerator,
-                                     TensorParallelModule,
-                                     TensorParallelModuleGenerator)
+from . import (ParallelAttention,
+               ParallelTransformerEncoderGenerator,
+               ParallelTransformerDecoderGenerator,
+               ColumnParallelLinearGenerator,
+               TensorParallelModule,
+               TensorParallelModuleGenerator)
 
-from .layers import PositionalEncoding, TransformerType
+from .. import PositionalEncoding
 
 class ParallelTransformerCore(TensorParallelModule):
     def __init__(self,
                  config,
-                 linear: Module,
+                 linear: TensorParallelModule,
                  tp_group: ProcessGroup) -> None:
         super().__init__(tp_group)
         
@@ -28,7 +27,7 @@ class ParallelTransformerCore(TensorParallelModule):
         
         self.dropout = nn.Dropout(config.dropout)
             
-        self.linear = ColumnParallelLinearGenerator(linear, tp_group, use_all_gather=True)
+        self.linear = linear
         
     def generate(self, x: Tensor) -> Tensor:
         return self.forward(x)
@@ -47,14 +46,12 @@ class ParallelTransformerCore(TensorParallelModule):
 class ParallelTransformerDecoderModel(ParallelTransformerCore):
     def __init__(self,
                  config,
-                 layers: ModuleList,
+                 layers: ModuleList[TensorParallelModule],
+                 linear: TensorParallelModule,
                  tp_group: ProcessGroup) -> None:
-        super().__init__(config)
+        super().__init__(config, linear, tp_group)
 
-        self.decoder_layers = ModuleList(
-            [ParallelTransformerDecoderGenerator(layers[k], tp_group, config)
-             for k in range(self.num_layers)]
-        )
+        self.layers = layers
     
     def forward(self, target: Tensor) -> Tensor:
         
@@ -67,7 +64,7 @@ class ParallelTransformerDecoderModel(ParallelTransformerCore):
                 )
             )
         
-        for layer in self.decoder_layers:
+        for layer in self.layers:
             output_decoder = layer(output_decoder, decoder_mask=mask)
             
         logits = self.linear(output_decoder)
@@ -106,15 +103,13 @@ class ParallelTransformerDecoderModel(ParallelTransformerCore):
 class ParallelTransformerEncoderModel(ParallelTransformerCore):
     def __init__(self,
                  config,
-                 layers: ModuleList,
+                 layers: ModuleList[TensorParallelModule],
+                 linear: TensorParallelModule,
                  tp_group: ProcessGroup
                  ) -> None:
-        super().__init__(config)
+        super().__init__(config, linear, tp_group)
         
-        self.encoder_layers = ModuleList(
-            [ParallelTransformerEncoderGenerator(layers[k], tp_group, config)
-             for k in range(self.num_layers)]
-        )
+        self.layers = layers
     
     def forward(self, source: Tensor) -> Tensor:
         
@@ -127,7 +122,7 @@ class ParallelTransformerEncoderModel(ParallelTransformerCore):
                 )
             )
         
-        for layer in self.encoder_layers:
+        for layer in self.layers:
             output_encoder = layer(output_encoder, mask)
             
         logits = self.linear(output_encoder)
@@ -137,20 +132,20 @@ class ParallelTransformerEncoderModel(ParallelTransformerCore):
 class ParallelTransformerEncoderDecoderModel(ParallelTransformerCore):
     def __init__(self,
                  config,
-                 encoder_layers: ModuleList,
-                 decoder_layers: ModuleList,
-                 linear: Module,
+                 encoder: TensorParallelModule,
+                 decoder: TensorParallelModule,
+                 linear: TensorParallelModule,
                  tp_group: ProcessGroup) -> None:
         super().__init__(config, linear, tp_group)
         
         self.encoder_layers = ModuleList(
-            [ParallelTransformerEncoderGenerator(encoder_layers[k],
+            [ParallelTransformerEncoderGenerator(encoder.layers[k],
                                                  tp_group,
                                                  config)
              for k in range(self.num_layers)]
         )
         self.decoder_layers = ModuleList(
-            [ParallelTransformerDecoderGenerator(decoder_layers[k],
+            [ParallelTransformerDecoderGenerator(decoder.layers[k],
                                                  tp_group,
                                                  config)
              for k in range(self.num_layers)]
@@ -252,17 +247,44 @@ class ParallelTransformerEncoderDecoderModel(ParallelTransformerCore):
         return next_token
     
 class ParallelTransformerEncoderModelGenerator(TensorParallelModuleGenerator):
-    def __new__(cls, module: Module, tp_group: ProcessGroup, config) -> ParallelTransformerEncoderModel:
-        return ParallelTransformerEncoderModel(config, module.layers, tp_group)
+    config = None
+    encoder_layer_gen = ParallelTransformerEncoderGenerator
+    def __new__(cls, module: Module, tp_group: ProcessGroup) -> ParallelTransformerDecoderModel:
+        cls.encoder_layer_gen.config = cls.config
+        layers = ModuleList(
+            [cls.encoder_layer_gen(layer) for layer in module.layers]
+        )
+        ColumnParallelLinearGenerator.use_all_gather = True
+        linear = ColumnParallelLinearGenerator(module, tp_group)
+        return ParallelTransformerEncoderModel(cls.config, layers, linear, tp_group)
     
 class ParallelTransformerDecoderModelGenerator(TensorParallelModuleGenerator):
-    def __new__(cls, module: Module, tp_group: ProcessGroup, config) -> ParallelTransformerDecoderModel:
-        return ParallelTransformerDecoderModel(config, module.layers, tp_group)
+    config = None
+    decoder_layer_gen = ParallelTransformerDecoderGenerator
+    def __new__(cls, module: Module, tp_group: ProcessGroup) -> ParallelTransformerDecoderModel:
+        cls.decoder_layer_gen.config = cls.config
+        layers = ModuleList(
+            [cls.decoder_layer_gen(layer) for layer in module.layers]
+        )
+        ColumnParallelLinearGenerator.use_all_gather = True
+        linear = ColumnParallelLinearGenerator(module, tp_group)
+        return ParallelTransformerEncoderModel(cls.config, layers, linear, tp_group)
     
 class ParallelTransformerEncoderDecoderModelGenerator(TensorParallelModuleGenerator):
+    config = None
     def __new__(cls, module: Module, tp_group: ProcessGroup, config) -> ParallelTransformerEncoderDecoderModel:
+        ParallelTransformerEncoderModelGenerator.config = cls.config
+        ParallelTransformerDecoderModelGenerator.config = cls.config
+        
+        module.layers = module.encoder_layers
+        encoder = ParallelTransformerEncoderModelGenerator(module, tp_group)
+        module.layers = module.decoder_layers
+        decoder = ParallelTransformerDecoderModelGenerator(module, tp_group)
+        ColumnParallelLinearGenerator.use_all_gather = True
+        linear = ColumnParallelLinearGenerator(module)
+        
         return ParallelTransformerEncoderDecoderModel(config,
-                                                      module.encoder_layers,
-                                                      module.decoder_layers, 
-                                                      module.linear,
+                                                      encoder,
+                                                      decoder, 
+                                                      linear,
                                                       tp_group)
