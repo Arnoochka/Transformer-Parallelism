@@ -8,7 +8,6 @@ from .layers.tensor_parallel import (ParallelAttention,
                                      ParallelTransformerEncoderGenerator,
                                      ParallelTransformerDecoderGenerator,
                                      ColumnParallelLinearGenerator,
-                                     RowParallelLinearGenerator,
                                      TensorParallelModule,
                                      TensorParallelModuleGenerator)
 
@@ -44,9 +43,98 @@ class ParallelTransformerCore(TensorParallelModule):
         target_mask = target_mask & casual_mask
         
         return target_mask
-
     
-class TransformerEncoderDecoderModel(ParallelTransformerCore):
+class ParallelTransformerDecoderModel(ParallelTransformerCore):
+    def __init__(self,
+                 config,
+                 layers: ModuleList,
+                 tp_group: ProcessGroup) -> None:
+        super().__init__(config)
+
+        self.decoder_layers = ModuleList(
+            [ParallelTransformerDecoderGenerator(layers[k], tp_group, config)
+             for k in range(self.num_layers)]
+        )
+    
+    def forward(self, target: Tensor) -> Tensor:
+        
+        mask = self._generate_target_mask(target)
+            
+        # Decoder
+        output_decoder = self.dropout(
+            self.pos_encoding(
+                self.embedding(target)
+                )
+            )
+        
+        for layer in self.decoder_layers:
+            output_decoder = layer(output_decoder, decoder_mask=mask)
+            
+        logits = self.linear(output_decoder)
+        return logits
+    
+    def generate(self,
+                 tokens: list,
+                 stop_token: int,
+                 max_len: int,
+                 device: str = 'cuda') -> Tensor:
+        
+        current_len = 0
+        
+        with torch.no_grad:
+            next_token = self.__get_next_token(tokens, device=device)
+            tokens.append(next_token)
+            current_len += 1
+            
+            while current_len < max_len and next_token != stop_token:
+                next_token = self.__get_next_token([next_token], device=device)
+                tokens.append(next_token)
+                
+                current_len += 1
+
+        return tokens
+    
+    def __get_next_token(self, tokens: list, device: str = 'cuda') -> int:
+        x = torch.tensor([tokens]).to(device)
+        logits = self.forward(x)
+        next_token_logits = logits[0, -1, :]
+        next_token = torch.argmax(next_token_logits, dim=-1).item()  
+        
+        return next_token  
+    
+    
+class ParallelTransformerEncoderModel(ParallelTransformerCore):
+    def __init__(self,
+                 config,
+                 layers: ModuleList,
+                 tp_group: ProcessGroup
+                 ) -> None:
+        super().__init__(config)
+        
+        self.encoder_layers = ModuleList(
+            [ParallelTransformerEncoderGenerator(layers[k], tp_group, config)
+             for k in range(self.num_layers)]
+        )
+    
+    def forward(self, source: Tensor) -> Tensor:
+        
+        mask = self._generate_source_mask(source)
+        
+        # Encoder
+        output_encoder = self.dropout(
+            self.pos_encoding(
+                self.embedding(source)
+                )
+            )
+        
+        for layer in self.encoder_layers:
+            output_encoder = layer(output_encoder, mask)
+            
+        logits = self.linear(output_encoder)
+        return logits
+    
+    
+class ParallelTransformerEncoderDecoderModel(ParallelTransformerCore):
     def __init__(self,
                  config,
                  encoder_layers: ModuleList,
@@ -163,91 +251,18 @@ class TransformerEncoderDecoderModel(ParallelTransformerCore):
         
         return next_token
     
-class TransformerDecoderModel(ParallelTransformerCore):
-    def __init__(self,
-                 config,
-                 layers: ModuleList,
-                 tp_group: ProcessGroup) -> None:
-        super().__init__(config)
-
-        self.decoder_layers = ModuleList(
-            [ParallelTransformerDecoderGenerator(layers[k], tp_group, config)
-             for k in range(self.num_layers)]
-        )
+class ParallelTransformerEncoderModelGenerator(TensorParallelModuleGenerator):
+    def __new__(cls, module: Module, tp_group: ProcessGroup, config) -> ParallelTransformerEncoderModel:
+        return ParallelTransformerEncoderModel(config, module.layers, tp_group)
     
-    def forward(self, target: Tensor) -> Tensor:
-        
-        mask = self._generate_target_mask(target)
-            
-        # Decoder
-        output_decoder = self.dropout(
-            self.pos_encoding(
-                self.embedding(target)
-                )
-            )
-        
-        for layer in self.decoder_layers:
-            output_decoder = layer(output_decoder, decoder_mask=mask)
-            
-        logits = self.linear(output_decoder)
-        return logits
+class ParallelTransformerDecoderModelGenerator(TensorParallelModuleGenerator):
+    def __new__(cls, module: Module, tp_group: ProcessGroup, config) -> ParallelTransformerDecoderModel:
+        return ParallelTransformerDecoderModel(config, module.layers, tp_group)
     
-    def generate(self,
-                 tokens: list,
-                 stop_token: int,
-                 max_len: int,
-                 device: str = 'cuda') -> Tensor:
-        
-        current_len = 0
-        
-        with torch.no_grad:
-            next_token = self.__get_next_token(tokens, device=device)
-            tokens.append(next_token)
-            current_len += 1
-            
-            while current_len < max_len and next_token != stop_token:
-                next_token = self.__get_next_token([next_token], device=device)
-                tokens.append(next_token)
-                
-                current_len += 1
-
-        return tokens
-    
-    def __get_next_token(self, tokens: list, device: str = 'cuda') -> int:
-        x = torch.tensor([tokens]).to(device)
-        logits = self.forward(x)
-        next_token_logits = logits[0, -1, :]
-        next_token = torch.argmax(next_token_logits, dim=-1).item()  
-        
-        return next_token  
-    
-    
-class TransformerEncoderModel(ParallelTransformerCore):
-    def __init__(self,
-                 config,
-                 layers: ModuleList,
-                 tp_group: ProcessGroup
-                 ) -> None:
-        super().__init__(config)
-        
-        self.encoder_layers = ModuleList(
-            [ParallelTransformerEncoderGenerator(layers[k], tp_group, config)
-             for k in range(self.num_layers)]
-        )
-    
-    def forward(self, source: Tensor) -> Tensor:
-        
-        mask = self._generate_source_mask(source)
-        
-        # Encoder
-        output_encoder = self.dropout(
-            self.pos_encoding(
-                self.embedding(source)
-                )
-            )
-        
-        for layer in self.encoder_layers:
-            output_encoder = layer(output_encoder, mask)
-            
-        logits = self.linear(output_encoder)
-        return logits
+class ParallelTransformerEncoderDecoderModelGenerator(TensorParallelModuleGenerator):
+    def __new__(cls, module: Module, tp_group: ProcessGroup, config) -> ParallelTransformerEncoderDecoderModel:
+        return ParallelTransformerEncoderDecoderModel(config,
+                                                      module.encoder_layers,
+                                                      module.decoder_layers, 
+                                                      module.linear,
+                                                      tp_group)
