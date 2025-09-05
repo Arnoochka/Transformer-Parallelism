@@ -14,12 +14,12 @@ class TransformerCore(Module):
         self.pad_token_id: int = config.pad_token_id
         self.num_layers: int = config.num_layers
         
-        self.embedding = nn.Embedding(config.vocab_size, config.hidden_state)
+        self.embedding = nn.Embedding(config.vocab_size, config.hidden_size)
         self.pos_encoding = PositionalEncoding(config)
         
         self.dropout = nn.Dropout(config.dropout)
             
-        self.linear = nn.Linear(config.hidden_state, config.vocab_size, config.bias)
+        self.linear = nn.Linear(config.hidden_size, config.vocab_size, config.bias)
         
     def generate(self, x: Tensor) -> Tensor:
         return self.forward(x)

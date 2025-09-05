@@ -3,10 +3,11 @@ import torch.nn as nn
 from torch.nn import ModuleList
 from torch import Tensor
 from torch.distributed import ProcessGroup
-from . import (ParallelAttention,
-               ParallelTransformerEncoderGenerator,
-               ParallelTransformerDecoderGenerator,
-               TensorParallelModule,)
+from .parallel_layers import (ParallelAttention, TensorParallelModule)
+
+from .ParallelTransformerLayersGenerator import(
+    ParallelTransformerEncoderGenerator,
+    ParallelTransformerDecoderGenerator)
 
 from .. import PositionalEncoding
 
@@ -20,7 +21,7 @@ class ParallelTransformerCore(TensorParallelModule):
         self.pad_token_id: int = config.pad_token_id
         self.num_layers: int = config.num_layers
         
-        self.embedding = nn.Embedding(config.vocab_size, config.hidden_state)
+        self.embedding = nn.Embedding(config.vocab_size, config.hidden_size)
         self.pos_encoding = PositionalEncoding(config)
         
         self.dropout = nn.Dropout(config.dropout)

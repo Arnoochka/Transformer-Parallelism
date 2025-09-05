@@ -2,40 +2,20 @@ from torch.distributed import ProcessGroup
 from .ParallelModule import TensorParallelModule
 import torch
 from torch.nn import Module
-import torch.nn as nn
 from torch import Tensor
 from typing import Optional
+from ... import AddNorm, TransformerType, FFNType
 
-from enum import Enum
-
-class TransformerType(Enum):
-    Encoder = 0
-    Decoder = 1
-    EncoderDecoder = 2
-    
-class FFNType(Enum):
-    MoE = 0
-    FFN = 1
-    
-class AddNorm(Module):
-    def __init__(self, config):
-        super().__init__()
-        self.norm = nn.LayerNorm(config.hidden_state,
-                                 config.eps,
-                                 config.elementwise_affine,
-                                 config.bias)
-        self.dropout = nn.Dropout(config.dropout)
-
-    def forward(self, x, sublayer_output):
-        return self.norm(x + self.dropout(sublayer_output))
-        
         
 class ParallelTransformerDecoderLayer(TensorParallelModule):
     def __init__(self,
                  config,
                  self_attn: TensorParallelModule,
+                 self_attn_norm: Module,
                  cross_attn: Optional[TensorParallelModule],
+                 cross_attn_norm: Optional[Module],
                  ffn: TensorParallelModule,
+                 logits_norm: Module,
                  tp_group: ProcessGroup) -> None:
         super().__init__(tp_group)
         
@@ -44,13 +24,14 @@ class ParallelTransformerDecoderLayer(TensorParallelModule):
         self.encoder_output = config.transformer_type == TransformerType.EncoderDecoder
         if self.encoder_output:
             self.cross_attn = cross_attn
-            self.cross_attn_norm = AddNorm(config)
+            self.cross_attn_norm = cross_attn_norm
             
-        self.masked_attn_norm = AddNorm(config)
-        self.logits_norm = AddNorm(config)
+        self.masked_attn_norm = self_attn_norm
+        self.logits_norm = logits_norm
         
         self.ffn = ffn
         
+    @torch.no_grad()   
     def forward(self,
                 x: Tensor,
                 encoder_output: Optional[Tensor] = None,
@@ -60,13 +41,11 @@ class ParallelTransformerDecoderLayer(TensorParallelModule):
         if decoder_mask is None:
             decoder_mask = torch.tril(torch.ones(seq_len, seq_len)) \
                 .unsqueeze(0).unsqueeze(1).to(x.device)
-        
-        attn_out = self.cross_attn_norm(x, self.masked_attn(x, mask=decoder_mask))
+        attn_out = self.masked_attn_norm(x, self.masked_attn(x, mask=decoder_mask))
         if self.encoder_output:
-            attn_out = self.masked_attn_norm(
+            attn_out = self.cross_attn_norm(
                 attn_out, self.cross_attn(attn_out, encoder_output)
                 )
-            
         logits = self.logits_norm(attn_out, self.ffn(attn_out))
         return logits
     
@@ -74,17 +53,19 @@ class ParallelTransformerEncoderLayer(TensorParallelModule):
     def __init__(self,
                  config,
                  attn: TensorParallelModule,
+                 attn_norm: Module,
                  ffn: TensorParallelModule,
+                 logits_norm: Module,
                  tp_group: ProcessGroup) -> None:
         super().__init__(tp_group)
         
         self.attn = attn
             
-        self.attn_norm = AddNorm(config)
-        self.logits_norm = AddNorm(config)
+        self.attn_norm = attn_norm
+        self.logits_norm = logits_norm
         
         self.ffn = ffn
-        
+    @torch.no_grad()   
     def forward(self,
                 x: Tensor,
                 mask: Optional[Tensor] = None) -> Tensor:

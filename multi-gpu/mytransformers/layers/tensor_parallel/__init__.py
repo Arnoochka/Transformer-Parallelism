@@ -17,4 +17,4 @@ from .ParallelTransformerLayersGenerator import (
 
 from .ParallelModuleGenerator import TensorParallelModule, TensorParallelModuleGenerator
 
-from .layers import *
+from .parallel_layers import *

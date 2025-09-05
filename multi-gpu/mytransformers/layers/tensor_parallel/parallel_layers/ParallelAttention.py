@@ -1,8 +1,8 @@
 from torch.distributed import ProcessGroup
 import torch.distributed as dist
 from torch.nn import Module
-from torch.nn import Module
 from .ParallelModule import TensorParallelModule
+import torch.nn.functional as F
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -28,10 +28,9 @@ class ParallelGroupedQueryAttention(TensorParallelModule):
         self.num_kv_heads_per_device = self.num_kv_heads // tp_size
         
         self.scale = 1.0 / (self.qk_dim ** 0.5)
-        self.softmax = nn.Softmax(dim=-1)
-        self.dropout = nn.Dropout(config.dropout)
         self.out_proj = out_proj
         
+    @torch.no_grad()    
     def forward(self,
                 Q: Tensor,
                 K: Tensor,
@@ -45,11 +44,14 @@ class ParallelGroupedQueryAttention(TensorParallelModule):
         if mask is not None:
             mask = mask.unsqueeze(1)
             attn_out = attn_out.masked_fill(mask==0, float('-inf'))
-        attn_out: Tensor = self.dropout(
-            self.softmax(attn_out)
-        ) @ V
-        attn_out = attn_out.view(batch_size, self.num_query_heads, seq_len, self.v_dim)
-        logits = attn_out.transpose(1, 2).reshape(batch_size, seq_len, self.num_query_heads * self.v_dim)
+        attn_out: Tensor = F.softmax(attn_out, dim=-1) @ V
+        attn_out = attn_out.view(batch_size,
+                                 self.num_query_heads_per_device,
+                                 seq_len,
+                                 self.v_dim)
+        logits = attn_out.transpose(1, 2).reshape(batch_size,
+                                                  seq_len,
+                                                  self.num_query_heads_per_device * self.v_dim)
         
         return self.out_proj(logits)
     
@@ -80,7 +82,7 @@ class ParallelAttentionKVCacheCore(TensorParallelModule):
                  tp_group: ProcessGroup) -> None:
         super().__init__(tp_group)
         
-        self.hidden_state = config.hidden_state
+        self.hidden_size = config.hidden_size
         self.num_query_heads = config.num_query_heads
         self.num_kv_heads = config.num_kv_heads
         self.qk_dim = config.qk_dim
@@ -140,17 +142,17 @@ class ParallelAttention(ParallelAttentionKVCacheCore):
         return K, V
 
 class ParallelSelfAttention(ParallelAttention):     
-        
+    @torch.no_grad()   
     def forward(self,
                 x: Tensor,
                 mask: Optional[Tensor] = None) -> Tensor:
         """
         Input:
-            x: [batch_size, seq_len, hidden_state]
-            encoder_output: [batch_size, seq_len, hidden_state]
+            x: [batch_size, seq_len, hidden_size]
+            encoder_output: [batch_size, seq_len, hidden_size]
             mask: [batch_size, 1, seq_len, seq_len]
         Output:
-            logits: [batch_size, seq_len, hidden_state]
+            logits: [batch_size, seq_len, hidden_size]
         """
         Q = self.query(x)
         K, V = self.get_key_value(x)
@@ -176,17 +178,17 @@ class ParallelSelfAttention(ParallelAttention):
     
 class ParallelCrossAttention(ParallelAttention):
         
-        
+    @torch.no_grad()  
     def forward(self,
                 x: Tensor,
                 encoder_output: Tensor) -> Tensor:
         """
         Input:
-            x: [batch_size, seq_len, hidden_state]
-            encoder_output: [batch_size, seq_len, hidden_state]
+            x: [batch_size, seq_len, hidden_size]
+            encoder_output: [batch_size, seq_len, hidden_size]
             mask: [seq_len, seq_len]
         Output:
-            logits: [batch_size, seq_len, hidden_state]
+            logits: [batch_size, seq_len, hidden_size]
         """
         
         Q: Tensor = self.query(x)

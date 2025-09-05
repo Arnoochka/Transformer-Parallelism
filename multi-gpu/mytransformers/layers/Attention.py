@@ -3,7 +3,6 @@ import torch.nn as nn
 from torch import Tensor
 from typing import Optional
 from torch.nn import Module
-import copy
 
 class GroupedQueryAttention(Module):
     def __init__(self, config):
@@ -21,7 +20,7 @@ class GroupedQueryAttention(Module):
         self.softmax = nn.Softmax(dim=-1)
         self.dropout = nn.Dropout(config.dropout)
         
-        self.out_proj = nn.Linear(self.num_query_heads * self.v_dim, config.hidden_state)
+        self.out_proj = nn.Linear(self.num_query_heads * self.v_dim, config.hidden_size)
         
     def forward(self,
                 Q: Tensor,
@@ -68,7 +67,7 @@ class AttentionKVCacheCore(Module):
     def __init__(self, config) -> None:
         super().__init__()
         
-        self.hidden_state = config.hidden_state
+        self.hidden_size = config.hidden_size
         self.num_query_heads = config.num_query_heads
         self.num_kv_heads = config.num_kv_heads
         self.qk_dim = config.qk_dim
@@ -111,7 +110,7 @@ class SelfAttention(AttentionKVCacheCore):
         Groupted-query self-attention 
         """
         
-        self.query_key_value = nn.Linear(self.hidden_state,
+        self.query_key_value = nn.Linear(self.hidden_size,
                                          self.num_query_heads * self.qk_dim \
                                              + self.num_kv_heads * (self.qk_dim + self.v_dim),
                                          bias=config.bias)
@@ -123,11 +122,11 @@ class SelfAttention(AttentionKVCacheCore):
                 mask: Optional[Tensor] = None) -> Tensor:
         """
         Input:
-            x: [batch_size, seq_len, hidden_state]
-            encoder_output: [batch_size, seq_len, hidden_state]
+            x: [batch_size, seq_len, hidden_size]
+            encoder_output: [batch_size, seq_len, hidden_size]
             mask: [batch_size, 1, seq_len, seq_len]
         Output:
-            logits: [batch_size, seq_len, hidden_state]
+            logits: [batch_size, seq_len, hidden_size]
         """
         query_key_value = self.query_key_value(x)
         total_q_size = self.num_query_heads * self.qk_dim
@@ -156,12 +155,13 @@ class CrossAttention(AttentionKVCacheCore):
         Groupted-query cross-attention 
         """
         
-        self.query = nn.Linear(config.hidden_state,
+        self.query = nn.Linear(config.hidden_size,
                                config.num_query_heads * config.qk_dim,
                                bias=config.bias)
         
-        self.key_value = nn.Linear(config.hidden_state,
-                                   config.num_kv_heads * (config.qk_dim + config.v_dim))
+        self.key_value = nn.Linear(config.hidden_size,
+                                   config.num_kv_heads * (config.qk_dim + config.v_dim),
+                                   bias=config.bias)
         
         
     def forward(self,
@@ -169,11 +169,11 @@ class CrossAttention(AttentionKVCacheCore):
                 encoder_output: Tensor) -> Tensor:
         """
         Input:
-            x: [batch_size, seq_len, hidden_state]
-            encoder_output: [batch_size, seq_len, hidden_state]
+            x: [batch_size, seq_len, hidden_size]
+            encoder_output: [batch_size, seq_len, hidden_size]
             mask: [seq_len, seq_len]
         Output:
-            logits: [batch_size, seq_len, hidden_state]
+            logits: [batch_size, seq_len, hidden_size]
         """
         
         Q: Tensor = self.query(x)

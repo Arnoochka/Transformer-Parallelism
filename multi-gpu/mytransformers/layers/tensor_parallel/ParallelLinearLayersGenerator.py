@@ -3,12 +3,12 @@ from torch.nn import Module
 import torch.distributed as dist
 from torch.distributed import ProcessGroup
 from .ParallelModuleGenerator import  TensorParallelModuleGenerator
-from .layers import ColumnParallelLinear, RowParallelLinear
+from .parallel_layers import ColumnParallelLinear, RowParallelLinear
 
     
 class ColumnParallelLinearGenerator(TensorParallelModuleGenerator):
     use_all_gather: bool = True
-        
+    @torch.no_grad()  
     def __new__(cls, module: Module, tp_group: ProcessGroup) -> ColumnParallelLinear:
         """create ColumnParallelLinear from torch.nn.Linear"""
         tp_size = dist.get_world_size(tp_group)
@@ -25,15 +25,13 @@ class ColumnParallelLinearGenerator(TensorParallelModuleGenerator):
         if rank == 0:
             device = torch.device(torch.cuda.current_device())
             w_chunks = [w.contiguous().to(device)
-                        for w in module.weight.T.chunk(tp_size, dim=1)]
+                        for w in module.weight.chunk(tp_size, dim=0)]
             b_chunks = ([b.contiguous().to(device)
                          for b in module.bias.chunk(tp_size, dim=0)]
                         if add_bias else None)
         else:
             w_chunks, b_chunks = None, None
-
         dist.scatter(layer.weight, scatter_list=w_chunks if rank == 0 else [], src=0, group=tp_group)
-
         if add_bias:
             dist.scatter(layer.bias, scatter_list=b_chunks if rank == 0 else [], src=0, group=tp_group)
             
@@ -41,7 +39,7 @@ class ColumnParallelLinearGenerator(TensorParallelModuleGenerator):
     
 class RowParallelLinearGenerator(TensorParallelModuleGenerator):
     use_all_reduce: bool = True
-    
+    @torch.no_grad()
     def __new__(cls, module: Module, tp_group: ProcessGroup) -> RowParallelLinear:
         """create RowParallelLinear from torch.nn.Linear"""
         tp_size = dist.get_world_size(tp_group)
@@ -56,15 +54,15 @@ class RowParallelLinearGenerator(TensorParallelModuleGenerator):
                                      bias=add_bias, use_all_reduce=cls.use_all_reduce).to(torch.cuda.current_device())
 
         if rank == 0:
-            w_chunks = list(module.weight.T.chunk(tp_size, dim=0))
-            b_chunks = module.bias / tp_size if add_bias else None
+            device = torch.device(torch.cuda.current_device())
+            w_chunks = [w.contiguous().to(device)
+                        for w in module.weight.chunk(tp_size, dim=1)]
+            layer.bias = module.bias / tp_size if add_bias else None
         else:
-            w_chunks, b_chunks = None, None
-
+            w_chunks = None
         dist.scatter(layer.weight, scatter_list=w_chunks if rank == 0 else [], src=0, group=tp_group)
-
         if add_bias:
-            dist.broadcast(b_chunks, src=0, group=tp_group)
+            dist.broadcast(layer.bias, src=0, group=tp_group)
 
         return layer
         

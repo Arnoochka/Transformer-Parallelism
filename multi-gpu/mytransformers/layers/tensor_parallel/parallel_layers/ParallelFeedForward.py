@@ -1,11 +1,11 @@
 import torch.nn as nn
+import torch
 from torch import Tensor
 from torch.distributed import ProcessGroup
 from .ParallelModule import TensorParallelModule
 
 class ParallelFeedForward(TensorParallelModule):
     def __init__(self,
-                 config,
                  wi: TensorParallelModule,
                  wo: TensorParallelModule,
                  tp_group: ProcessGroup):
@@ -13,9 +13,9 @@ class ParallelFeedForward(TensorParallelModule):
         self.func = nn.ReLU()
         self.wi = wi
         self.wo = wo
-        self.dropout = nn.Dropout(config.dropout)
 
-    def forward(self, x) -> Tensor:
+    @torch.no_grad()
+    def forward(self, x: Tensor) -> Tensor:
         x = self.func(self.wi(x))
-        logits = self.wo(self.dropout(x))
+        logits = self.wo(x)
         return logits
