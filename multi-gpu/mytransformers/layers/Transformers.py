@@ -147,7 +147,7 @@ class TransformerDecoderModel(TransformerCore):
     def __init__(self, config) -> None:
         super().__init__(config)
 
-        self.decoder_layers = ModuleList(
+        self.layers = ModuleList(
             [TransformerDecoderLayer(config)
              for _ in range(self.num_layers)]
         )
@@ -163,7 +163,7 @@ class TransformerDecoderModel(TransformerCore):
                 )
             )
         
-        for layer in self.decoder_layers:
+        for layer in self.layers:
             output_decoder = layer(output_decoder, decoder_mask=mask)
             
         logits = self.linear(output_decoder)
@@ -203,7 +203,7 @@ class TransformerEncoderModel(TransformerCore):
     def __init__(self, config) -> None:
         super().__init__(config)
         
-        self.encoder_layers = ModuleList(
+        self.layers = ModuleList(
             [TransformerEncoderLayer(config)
              for _ in range(self.num_layers)]
         )
@@ -218,8 +218,7 @@ class TransformerEncoderModel(TransformerCore):
                 self.embedding(source)
                 )
             )
-        
-        for layer in self.encoder_layers:
+        for layer in self.layers:
             output_encoder = layer(output_encoder, mask)
             
         logits = self.linear(output_encoder)

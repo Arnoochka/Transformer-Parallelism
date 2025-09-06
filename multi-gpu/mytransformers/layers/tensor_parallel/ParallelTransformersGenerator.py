@@ -1,9 +1,15 @@
 from torch.nn import Module, ModuleList
+import torch
 from torch.distributed import ProcessGroup
-from . import (ParallelTransformerEncoderGenerator,
-               ParallelTransformerDecoderGenerator,
-               ColumnParallelLinearGenerator,
-               TensorParallelModuleGenerator)
+from .ParallelTransformerLayersGenerator import (
+    ParallelTransformerEncoderLayerGenerator,
+    ParallelTransformerDecoderLayerGenerator
+)
+from .ParallelModuleGenerator import TensorParallelModuleGenerator
+from .ParallelLinearLayersGenerator import (
+    ColumnParallelLinearGenerator,
+    RowParallelLinearGenerator
+)
 from .ParallelTransformers import (
     ParallelTransformerEncoderModel,
     ParallelTransformerDecoderModel,
@@ -12,23 +18,31 @@ from .ParallelTransformers import (
     
 class ParallelTransformerEncoderModelGenerator(TensorParallelModuleGenerator):
     config = None
-    encoder_layer_gen = ParallelTransformerEncoderGenerator
+    encoder_layer_gen = ParallelTransformerEncoderLayerGenerator
     def __new__(cls, module: Module, tp_group: ProcessGroup) -> ParallelTransformerDecoderModel:
         cls.encoder_layer_gen.config = cls.config
         layers = ModuleList(
-            [cls.encoder_layer_gen(layer) for layer in module.layers]
+            [cls.encoder_layer_gen(layer, tp_group) for layer in module.layers]
         )
         ColumnParallelLinearGenerator.use_all_gather = True
-        linear = ColumnParallelLinearGenerator(module, tp_group)
-        return ParallelTransformerEncoderModel(cls.config, layers, linear, tp_group)
+        linear = ColumnParallelLinearGenerator(module.linear, tp_group)
+        device = torch.cuda.current_device()
+        embedding = module.embedding.to(device)
+        pos_encoding = module.pos_encoding.to(device)
+        return ParallelTransformerEncoderModel(cls.config,
+                                               layers,
+                                               linear,
+                                               embedding,
+                                               pos_encoding,
+                                               tp_group)
     
 class ParallelTransformerDecoderModelGenerator(TensorParallelModuleGenerator):
     config = None
-    decoder_layer_gen = ParallelTransformerDecoderGenerator
+    decoder_layer_gen = ParallelTransformerDecoderLayerGenerator
     def __new__(cls, module: Module, tp_group: ProcessGroup) -> ParallelTransformerDecoderModel:
         cls.decoder_layer_gen.config = cls.config
         layers = ModuleList(
-            [cls.decoder_layer_gen(layer) for layer in module.layers]
+            [cls.decoder_layer_gen(layer, tp_group) for layer in module.layers]
         )
         ColumnParallelLinearGenerator.use_all_gather = True
         linear = ColumnParallelLinearGenerator(module, tp_group)

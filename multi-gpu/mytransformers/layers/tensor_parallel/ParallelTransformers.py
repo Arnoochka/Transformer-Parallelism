@@ -1,30 +1,24 @@
 import torch
-import torch.nn as nn
+from torch.nn import Module
 from torch.nn import ModuleList
 from torch import Tensor
 from torch.distributed import ProcessGroup
 from .parallel_layers import (ParallelAttention, TensorParallelModule)
 
-from .ParallelTransformerLayersGenerator import(
-    ParallelTransformerEncoderGenerator,
-    ParallelTransformerDecoderGenerator)
-
-from .. import PositionalEncoding
-
 class ParallelTransformerCore(TensorParallelModule):
     def __init__(self,
                  config,
                  linear: TensorParallelModule,
+                 embedding: Module,
+                 pos_encoding: Module,
                  tp_group: ProcessGroup) -> None:
         super().__init__(tp_group)
         
         self.pad_token_id: int = config.pad_token_id
         self.num_layers: int = config.num_layers
         
-        self.embedding = nn.Embedding(config.vocab_size, config.hidden_size)
-        self.pos_encoding = PositionalEncoding(config)
-        
-        self.dropout = nn.Dropout(config.dropout)
+        self.embedding = embedding
+        self.pos_encoding = pos_encoding
             
         self.linear = linear
         
@@ -45,7 +39,7 @@ class ParallelTransformerCore(TensorParallelModule):
 class ParallelTransformerDecoderModel(ParallelTransformerCore):
     def __init__(self,
                  config,
-                 layers: ModuleList[TensorParallelModule],
+                 layers: ModuleList,
                  linear: TensorParallelModule,
                  tp_group: ProcessGroup) -> None:
         super().__init__(config, linear, tp_group)
@@ -57,11 +51,9 @@ class ParallelTransformerDecoderModel(ParallelTransformerCore):
         mask = self._generate_target_mask(target)
             
         # Decoder
-        output_decoder = self.dropout(
-            self.pos_encoding(
+        output_decoder = self.pos_encoding(
                 self.embedding(target)
                 )
-            )
         
         for layer in self.layers:
             output_decoder = layer(output_decoder, decoder_mask=mask)
@@ -102,24 +94,24 @@ class ParallelTransformerDecoderModel(ParallelTransformerCore):
 class ParallelTransformerEncoderModel(ParallelTransformerCore):
     def __init__(self,
                  config,
-                 layers: ModuleList[TensorParallelModule],
+                 layers: ModuleList,
                  linear: TensorParallelModule,
+                 embedding: Module,
+                 pos_encoding: Module,
                  tp_group: ProcessGroup
                  ) -> None:
-        super().__init__(config, linear, tp_group)
+        super().__init__(config, linear, embedding, pos_encoding, tp_group)
         
         self.layers = layers
-    
+        
+    @torch.no_grad()
     def forward(self, source: Tensor) -> Tensor:
         
         mask = self._generate_source_mask(source)
         
         # Encoder
-        output_encoder = self.dropout(
-            self.pos_encoding(
-                self.embedding(source)
-                )
-            )
+        output_encoder = self.pos_encoding(
+                self.embedding(source))
         
         for layer in self.layers:
             output_encoder = layer(output_encoder, mask)
@@ -137,25 +129,12 @@ class ParallelTransformerEncoderDecoderModel(ParallelTransformerCore):
                  tp_group: ProcessGroup) -> None:
         super().__init__(config, linear, tp_group)
         
-        self.encoder_layers = ModuleList(
-            [ParallelTransformerEncoderGenerator(encoder.layers[k],
-                                                 tp_group,
-                                                 config)
-             for k in range(self.num_layers)]
-        )
-        self.decoder_layers = ModuleList(
-            [ParallelTransformerDecoderGenerator(decoder.layers[k],
-                                                 tp_group,
-                                                 config)
-             for k in range(self.num_layers)]
-        )
+        self.encoder_layers = encoder.layers
+        self.decoder_layers = decoder.layers
     
     def __get_output_encoder(self, source: Tensor, src_mask: Tensor) -> Tensor:
-        output_encoder = self.dropout(
-            self.pos_encoding(
-                self.embedding(source)
-                )
-            )
+        output_encoder = self.pos_encoding(
+                self.embedding(source))
         
         for layer in self.encoder_layers:
             output_encoder = layer(output_encoder, src_mask)
@@ -168,10 +147,9 @@ class ParallelTransformerEncoderDecoderModel(ParallelTransformerCore):
                              output_encoder: Tensor,
                              pos_seq: int = 0) -> Tensor:
         
-        output_decoder = self.dropout(
-            self.pos_encoding(
+        output_decoder = self.pos_encoding(
                 self.embedding(target),
-                pos_start = pos_seq))
+                pos_start = pos_seq)
         
         for layer in self.decoder_layers:
             output_decoder = layer(output_decoder,
@@ -193,7 +171,7 @@ class ParallelTransformerEncoderDecoderModel(ParallelTransformerCore):
         logits = self.linear(output_decoder)
         return logits
     
-    @torch.no_grad
+    @torch.no_grad()
     def generate(self, context: list,
                  tokens: list,
                  stop_token: int,
