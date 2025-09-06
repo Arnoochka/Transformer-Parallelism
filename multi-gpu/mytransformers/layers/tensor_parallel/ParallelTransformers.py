@@ -41,8 +41,10 @@ class ParallelTransformerDecoderModel(ParallelTransformerCore):
                  config,
                  layers: ModuleList,
                  linear: TensorParallelModule,
+                 embedding: Module,
+                 pos_encoding: Module,
                  tp_group: ProcessGroup) -> None:
-        super().__init__(config, linear, tp_group)
+        super().__init__(config, linear, embedding, pos_encoding, tp_group)
 
         self.layers = layers
     
@@ -126,8 +128,10 @@ class ParallelTransformerEncoderDecoderModel(ParallelTransformerCore):
                  encoder: TensorParallelModule,
                  decoder: TensorParallelModule,
                  linear: TensorParallelModule,
+                 embedding: Module,
+                 pos_encoding: Module,
                  tp_group: ProcessGroup) -> None:
-        super().__init__(config, linear, tp_group)
+        super().__init__(config, linear, embedding, pos_encoding, tp_group)
         
         self.encoder_layers = encoder.layers
         self.decoder_layers = decoder.layers

@@ -40,7 +40,6 @@ class TransformerDecoderLayer(Module):
                 encoder_output: Optional[Tensor] = None,
                 decoder_mask: Optional[Tensor] = None) -> Tensor:
         
-        seq_len = x.size(dim=1)
         attn_out = self.masked_attn_norm(x, self.masked_attn(x, mask=decoder_mask))
         if self.encoder_output:
             attn_out = self.cross_attn_norm(

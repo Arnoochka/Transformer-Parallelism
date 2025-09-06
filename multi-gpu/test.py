@@ -16,7 +16,7 @@ class Config:
     bias = True
     batch_size = 4
     seq_len = 5
-    transformer_type = TransformerType.Encoder
+    transformer_type = TransformerType.EncoderDecoder
     ffn_type = FFNType.FFN
     eps = 10**(-5)
     elementwise_affine = True
@@ -42,7 +42,7 @@ def main():
     tp_group = dist.new_group(ranks=[0, 1], backend="nccl")
     torch.manual_seed(0)
     torch.cuda.manual_seed_all(0)
-    attn = l.TransformerEncoderModel(Config)
+    attn = l.TransformerEncoderDecoderModel(Config)
     torch.cuda.set_device(local_rank)
     if rank == 0:
         x = torch.randint(low=0, high=31,
@@ -62,13 +62,13 @@ def main():
     if rank == 0:  
         model = attn.cuda(local_rank)
         with torch.no_grad():
-            x_1 = model(x)
+            x_1 = model(x, encoder_output)
     logger(f"x_1:\n{x_1}", rank)
     logger("multi generator", rank)
-    tp.ParallelTransformerEncoderModelGenerator.config = Config
-    model = tp.ParallelTransformerEncoderModelGenerator(attn, tp_group)
+    tp.ParallelTransformerEncoderDecoderModelGenerator.config = Config
+    model = tp.ParallelTransformerEncoderDecoderModelGenerator(attn, tp_group)
     logger("multi", rank)
-    x_2 = model(x)
+    x_2 = model(x, encoder_output)
     logger(f"x_2:\n{x_2}", rank)
     if rank == 0:
         logger(f"is equal:{torch.all(torch_round(x_1, 3) == torch_round(x_2, 3))}", rank)
