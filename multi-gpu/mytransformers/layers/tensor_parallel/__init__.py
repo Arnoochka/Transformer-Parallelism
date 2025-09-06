@@ -11,8 +11,8 @@ from .ParallelLinearLayersGenerator import (
 )
 
 from .ParallelTransformerLayersGenerator import (
-    ParallelTransformerDecoderGenerator,
-    ParallelTransformerEncoderGenerator
+    ParallelTransformerDecoderLayerGenerator,
+    ParallelTransformerEncoderLayerGenerator
 )
 
 from .ParallelModuleGenerator import TensorParallelModule, TensorParallelModuleGenerator

@@ -4,7 +4,7 @@ import torch
 from torch.nn import Module
 from torch import Tensor
 from typing import Optional
-from ... import AddNorm, TransformerType, FFNType
+from ... import TransformerType
 
         
 class ParallelTransformerDecoderLayer(TensorParallelModule):
@@ -38,9 +38,6 @@ class ParallelTransformerDecoderLayer(TensorParallelModule):
                 decoder_mask: Optional[Tensor] = None) -> Tensor:
         
         seq_len = x.size(dim=1)
-        if decoder_mask is None:
-            decoder_mask = torch.tril(torch.ones(seq_len, seq_len)) \
-                .unsqueeze(0).unsqueeze(1).to(x.device)
         attn_out = self.masked_attn_norm(x, self.masked_attn(x, mask=decoder_mask))
         if self.encoder_output:
             attn_out = self.cross_attn_norm(

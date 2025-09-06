@@ -16,7 +16,7 @@ class Config:
     bias = True
     batch_size = 4
     seq_len = 5
-    transformer_type = TransformerType.EncoderDecoder
+    transformer_type = TransformerType.Encoder
     ffn_type = FFNType.FFN
     eps = 10**(-5)
     elementwise_affine = True
@@ -51,8 +51,8 @@ def main():
             x_1 = model(x)
             if rank == 0:
                 print(f"x_1:\n{x_1}")
-    tp.ParallelTransformerEncoderGenerator.config = Config
-    model = tp.ParallelTransformerEncoderGenerator(attn, tp_group)
+    tp.ParallelTransformerEncoderLayerGenerator.config = Config
+    model = tp.ParallelTransformerEncoderLayerGenerator(attn, tp_group)
     x_2 = model(x)
     if rank == 0:
         print(f"x_2:\n{x_2}")

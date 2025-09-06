@@ -7,7 +7,7 @@ from .ParallelAttentionGenerator import ParallelCrossAttentionGenerator, Paralle
 from .ParallelFeedForwardGenerator import ParallelFeedForwardGenerator
 from .parallel_layers import ParallelTransformerEncoderLayer, ParallelTransformerDecoderLayer
     
-class ParallelTransformerDecoderGenerator(TensorParallelModuleGenerator):
+class ParallelTransformerDecoderLayerGenerator(TensorParallelModuleGenerator):
     config = None
     @torch.no_grad()
     def __new__(cls, module: Module, tp_group: ProcessGroup) -> ParallelTransformerDecoderLayer:
@@ -42,7 +42,7 @@ class ParallelTransformerDecoderGenerator(TensorParallelModuleGenerator):
                                                    tp_group)
         
         
-class ParallelTransformerEncoderGenerator(TensorParallelModuleGenerator):
+class ParallelTransformerEncoderLayerGenerator(TensorParallelModuleGenerator):
     config = None
     @torch.no_grad()
     def __new__(cls, module: Module, tp_group: ProcessGroup) -> ParallelTransformerDecoderLayer:
