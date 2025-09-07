@@ -19,10 +19,11 @@ from .ParallelTransformers import (
 class ParallelTransformerEncoderModelGenerator(TensorParallelModuleGenerator):
     config = None
     encoder_layer_gen = ParallelTransformerEncoderLayerGenerator
+    @torch.no_grad()
     def __new__(cls, module: Module, tp_group: ProcessGroup) -> ParallelTransformerDecoderModel:
         cls.encoder_layer_gen.config = cls.config
         layers = ModuleList(
-            [cls.encoder_layer_gen(layer, tp_group) for layer in module.layers]
+            [cls.encoder_layer_gen(layer, tp_group) for layer in module.encoder_layers]
         )
         ColumnParallelLinearGenerator.use_all_gather = True
         linear = ColumnParallelLinearGenerator(module.linear, tp_group)
@@ -39,10 +40,11 @@ class ParallelTransformerEncoderModelGenerator(TensorParallelModuleGenerator):
 class ParallelTransformerDecoderModelGenerator(TensorParallelModuleGenerator):
     config = None
     decoder_layer_gen = ParallelTransformerDecoderLayerGenerator
+    @torch.no_grad()
     def __new__(cls, module: Module, tp_group: ProcessGroup) -> ParallelTransformerDecoderModel:
         cls.decoder_layer_gen.config = cls.config
         layers = ModuleList(
-            [cls.decoder_layer_gen(layer, tp_group) for layer in module.layers]
+            [cls.decoder_layer_gen(layer, tp_group) for layer in module.decoder_layers]
         )
         ColumnParallelLinearGenerator.use_all_gather = True
         linear = ColumnParallelLinearGenerator(module.linear, tp_group)
@@ -58,13 +60,12 @@ class ParallelTransformerDecoderModelGenerator(TensorParallelModuleGenerator):
     
 class ParallelTransformerEncoderDecoderModelGenerator(TensorParallelModuleGenerator):
     config = None
+    @torch.no_grad()
     def __new__(cls, module: Module, tp_group: ProcessGroup) -> ParallelTransformerEncoderDecoderModel:
         ParallelTransformerEncoderModelGenerator.config = cls.config
         ParallelTransformerDecoderModelGenerator.config = cls.config
         
-        module.layers = module.encoder_layers
         encoder = ParallelTransformerEncoderModelGenerator(module, tp_group)
-        module.layers = module.decoder_layers
         decoder = ParallelTransformerDecoderModelGenerator(module, tp_group)
         ColumnParallelLinearGenerator.use_all_gather = True
         linear = ColumnParallelLinearGenerator(module.linear, tp_group)
