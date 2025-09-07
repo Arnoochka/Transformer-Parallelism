@@ -1,0 +1,1 @@
+import mytransformers.parallel.tensor_parallel as tp

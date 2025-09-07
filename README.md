@@ -1,3 +1,5 @@
-# My Transformers implementation
+# Parallelism in Transformers: My Implementation
 
-![loss](./readme.png)
+![loss](./images//README.png)
+
+
