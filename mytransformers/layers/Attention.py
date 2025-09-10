@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch import Tensor
 from typing import Optional
 from torch.nn import Module
+import torch.nn.functional as F
 
 class GroupedAttentionCore(Module):
     def __init__(self, config):
@@ -17,7 +18,6 @@ class GroupedAttentionCore(Module):
         self.query_in_group = self.num_query_heads // self.num_kv_heads
         
         self.scale = 1.0 / (self.qk_dim ** 0.5)
-        self.softmax = nn.Softmax(dim=-1)
         self.dropout = nn.Dropout(config.dropout)
         
         self.out_proj = nn.Linear(self.num_query_heads * self.v_dim, config.hidden_size)
@@ -36,7 +36,7 @@ class GroupedAttentionCore(Module):
             mask = mask.unsqueeze(1)
             attn_out = attn_out.masked_fill(mask==0, float('-inf'))
         attn_out: Tensor = self.dropout(
-            self.softmax(attn_out)
+            F.softmax(attn_out, dim=-1)
         ) @ V
         attn_out = attn_out.view(batch_size, self.num_query_heads, seq_len, self.v_dim)
         logits = attn_out.transpose(1, 2).reshape(batch_size, seq_len, self.num_query_heads * self.v_dim)

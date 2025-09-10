@@ -17,7 +17,6 @@ class TPLinear(TPModule):
             "weight",
             torch.empty(out_features,
                         in_features,
-                        device=torch.cuda.current_device(),
                         requires_grad=False)
         )
 
@@ -25,7 +24,6 @@ class TPLinear(TPModule):
             self.register_buffer(
                 "bias",
                 torch.empty(out_features,
-                            device=torch.cuda.current_device(),
                             requires_grad=False)
             )
         else:

@@ -140,7 +140,8 @@ class TPAttention(TPAttentionKVCore):
         V = self.value(x)
         return K, V
 
-class TPSelfAttention(TPAttention):     
+class TPSelfAttention(TPAttention):    
+    config = None 
     @torch.no_grad()   
     def forward(self,
                 x: Tensor,

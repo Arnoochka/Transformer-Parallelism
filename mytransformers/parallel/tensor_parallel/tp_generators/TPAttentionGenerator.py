@@ -1,142 +1,141 @@
-from mytransformers.parallel.tensor_parallel.tp_layers import (
-    TPAttention,
-    TPCrossAttention,
-    TPSelfAttention)
+from mytransformers.parallel.tensor_parallel.tp_layers import TPLinear
 from torch.distributed import ProcessGroup
 import torch.distributed as dist
 from torch.nn import Module
 from .TPLinearLayersGenerator import TPColumnLinearGenerator, TPRowLinearGenerator
 from .TPModuleGenerator import  TPModuleGenerator
-import torch
-import torch.nn as nn
-from torch.nn import Linear
 from torch import Tensor
-from typing import Optional
+import torch
 
+def get_chunks(weight: Tensor, num_chunks: int) -> list[Tensor]:
+    return torch.split(weight, [weight.size(0) // num_chunks] * num_chunks, dim=0) 
 
-def get_linear_from_weight(weight: Tensor,
-                   hidden_size: int,
-                   out_size: int,
-                   bias: Optional[Tensor],
-                   device: str | torch.device) -> Linear:
-    
-        proj = nn.Linear(hidden_size, out_size, bias=bias is not None, device=device)
-
-        proj.weight.data.copy_(weight)
-        
-        if bias is not None:
-            proj.bias.data.copy_(bias)
-            
-        return proj
-        
-class TPAttentionGenerator(TPModuleGenerator):
-    config = None 
-    attn: TPAttention = None
+class TPGroupedAttentionGenerator(TPModuleGenerator):
+    out_gen = TPRowLinearGenerator
     @torch.no_grad()
-    def __new__(cls, module: Module, tp_group: ProcessGroup) -> TPAttention:
-        tp_size = dist.get_world_size(tp_group)
-        assert cls.config.num_query_heads % tp_size == 0 and cls.config.num_kv_heads % tp_size == 0, \
-            "num_query_heads and num_kv_heads must be divisible by tp_size"
-            
-        query_size = cls.config.num_query_heads * cls.config.qk_dim
-        key_size = cls.config.num_kv_heads * cls.config.qk_dim
-        value_size = cls.config.num_kv_heads * cls.config.v_dim
-        hidden_size = cls.config.hidden_size
-        device = module.query_weight.device
+    def __new__(cls, module: Module, tp_group: ProcessGroup) -> Module:
+        cls.out_gen.use_all_reduce = True
+        module.out_proj = cls.out_gen(module.out_proj, tp_group)
         
-        query = get_linear_from_weight(module.query_weight,
-                                       hidden_size,
-                                       query_size,
-                                       module.query_bias,
-                                       device
-                                       )
-        key = get_linear_from_weight(module.key_weight,
-                               hidden_size,
-                               key_size,
-                               module.key_bias,
-                               device
-                               )
-        value = get_linear_from_weight(module.value_weight,
-                               hidden_size,
-                               value_size,
-                               module.value_bias,
-                               device
-                               )
-        out = module.attention.out_proj
+        world_size = dist.get_world_size()
+        module.num_query_heads = module.num_query_heads // world_size
+        module.num_kv_heads = module.num_kv_heads // world_size
         
-        query_proj = TPColumnLinearGenerator(query, tp_group)
-        key_proj = TPColumnLinearGenerator(key, tp_group)
-        value_proj = TPColumnLinearGenerator(value, tp_group)
-        out_proj = TPRowLinearGenerator(out, tp_group)
-        
-        return cls.attn(cls.config,
-                        query_proj,
-                        key_proj,
-                        value_proj,
-                        out_proj,
-                        tp_group)
-    
+        return module
    
 class TPSelfAttentionGenerator(TPModuleGenerator):
-    config = None
+    query_key_value_gen = TPColumnLinearGenerator
+    attention_gen = TPGroupedAttentionGenerator
     @torch.no_grad()
-    def __new__(cls, module: Module, tp_group: ProcessGroup) -> TPSelfAttention:
+    def __new__(cls, module: Module, tp_group: ProcessGroup) -> Module:
+        cls.query_key_value_gen.use_all_gather = False
+        world_size = dist.get_world_size(tp_group)
+        assert module.num_query_heads % world_size == 0,\
+            f"It is not possible to split query heads into {world_size} devices"
+        assert module.num_kv_heads % world_size == 0,\
+            f"It is not possible to split kv heads into {world_size} devices"
+            
+        num_query_heads_per_device = module.num_query_heads // world_size
+        num_kv_heads_per_device = module.num_kv_heads // world_size
+        query_size = module.num_query_heads * module.qk_dim
+        key_size = module.num_kv_heads * module.qk_dim
+        value_size = module.num_kv_heads * module.v_dim
+        module.num_query_heads = num_query_heads_per_device
+        module.num_kv_heads = num_kv_heads_per_device
         
-        TPAttentionGenerator.config = cls.config
-        TPAttentionGenerator.attn = TPSelfAttention
-        TPColumnLinearGenerator.use_all_gather = False
-        TPRowLinearGenerator.use_all_reduce = True
-        
-        query_size = cls.config.num_query_heads * cls.config.qk_dim
-        key_size = cls.config.num_kv_heads * cls.config.qk_dim
-        value_size = cls.config.num_kv_heads * cls.config.v_dim
         query_weight, key_weight, value_weight = torch.split(
             module.query_key_value.weight,
             [query_size, key_size, value_size], dim=0)
-        query_bias, key_bias, value_bias = torch.split(
-            module.query_key_value.bias,
-            [query_size, key_size, value_size], dim=0)
+        rearrange_weight = cls.rearrange_heads(query_weight,
+                                             key_weight,
+                                             value_weight,
+                                             world_size)
+        module.query_key_value.weight.copy_(rearrange_weight)
+        if module.query_key_value.bias is not None:
+            query_bias, key_bias, value_bias = torch.split(
+                module.query_key_value.bias,
+                [query_size, key_size, value_size], dim=0)
+            rearrange_bias = cls.rearrange_heads(query_bias,
+                                                key_bias,
+                                                value_bias,
+                                                world_size)
+            module.query_key_value.bias.copy_(rearrange_bias)
+            
+        module.query_key_value = cls.query_key_value_gen(module.query_key_value, tp_group)
+        module.attention = cls.attention_gen(module.attention, tp_group)
+        return module
+    
+    @staticmethod
+    def rearrange_heads(query: Tensor,
+                         key: Tensor,
+                         value: Tensor,
+                         num_chunks: int) -> TPLinear:
+        chunks = []
+        query_chunks = get_chunks(query, num_chunks)
+        key_chunks = get_chunks(key, num_chunks)
+        value_chunks = get_chunks(value, num_chunks)
+        for query_chunk, key_chunk, value_chunk in zip(query_chunks,
+                                                       key_chunks,
+                                                       value_chunks):
+            chunks.append(torch.cat([query_chunk, key_chunk, value_chunk]))
+            
+        return torch.cat(chunks)
         
-        module.query_weight = query_weight
-        module.key_weight = key_weight
-        module.value_weight = value_weight
-        module.query_bias = query_bias
-        module.key_bias = key_bias
-        module.value_bias = value_bias
-        
-        return TPAttentionGenerator(module, tp_group)
     
 class TPCrossAttentionGenerator(TPModuleGenerator):
-    config = None
+    query_gen = TPColumnLinearGenerator
+    key_value_gen = TPColumnLinearGenerator
+    attention_gen = TPGroupedAttentionGenerator
     @torch.no_grad()
-    def __new__(cls, module: Module, tp_group: ProcessGroup) -> TPCrossAttention:
+    def __new__(cls, module: Module, tp_group: ProcessGroup) -> Module:
+        cls.key_value_gen.use_all_gather = False
+        cls.query_gen.use_all_gather=  False
+        world_size = dist.get_world_size(tp_group)
+        assert module.num_query_heads % world_size == 0,\
+            f"It is not possible to split query heads into {world_size} devices"
+        assert module.num_kv_heads % world_size == 0,\
+            f"It is not possible to split kv heads into {world_size} devices"
+            
+        num_query_heads_per_device = module.num_query_heads // world_size
+        num_kv_heads_per_device = module.num_kv_heads // world_size
+        key_size = module.num_kv_heads * module.qk_dim
+        value_size = module.num_kv_heads * module.v_dim
+        module.num_query_heads = num_query_heads_per_device
+        module.num_kv_heads = num_kv_heads_per_device
         
-        TPAttentionGenerator.config = cls.config
-        TPAttentionGenerator.attn = TPCrossAttention
-        TPColumnLinearGenerator.use_all_gather = False
-        TPRowLinearGenerator.use_all_reduce = True
-        
-        key_size = cls.config.num_kv_heads * cls.config.qk_dim
-        value_size = cls.config.num_kv_heads * cls.config.v_dim
-        query_weight = module.query.weight
-        query_bias = module.query.bias
         key_weight, value_weight = torch.split(
             module.key_value.weight,
-            [key_size, value_size])
-        key_bias, value_bias = torch.split(
-            module.key_value.bias,
-            [key_size, value_size]
-        )
-        
-        module.query_weight = query_weight
-        module.key_weight = key_weight
-        module.value_weight = value_weight
-        module.query_bias = query_bias
-        module.key_bias = key_bias
-        module.value_bias = value_bias
-        
-        
-        return TPAttentionGenerator(module, tp_group)
+            [key_size, value_size], dim=0)
+        rearrange_weight = cls.rearrange_heads(key_weight,
+                                               value_weight,
+                                               world_size)
+        module.key_value.weight.copy_(rearrange_weight)
+        if module.key_value.bias is not None:
+            key_bias, value_bias = torch.split(
+                module.key_value.bias,
+                [key_size, value_size], dim=0)
+            rearrange_bias = cls.rearrange_heads(key_bias,
+                                                 value_bias,
+                                                 world_size)
+            module.key_value.bias.copy_(rearrange_bias)
+         
+        module.query = cls.query_gen(module.query, tp_group) 
+        module.key_value = cls.key_value_gen(module.key_value, tp_group)
+        module.attention = cls.attention_gen(module.attention, tp_group)
+        return module
+    
+    @staticmethod
+    def rearrange_heads(key: Tensor,
+                        value: Tensor,
+                        num_chunks: int) -> TPLinear:
+        chunks = []
+        key_chunks = get_chunks(key, num_chunks)
+        value_chunks = get_chunks(value, num_chunks)
+        for key_chunk, value_chunk in zip(key_chunks,
+                                                       value_chunks):
+            chunks.append(torch.cat([key_chunk, value_chunk]))
+            
+        return torch.cat(chunks)
         
     
     

@@ -1,3 +1,3 @@
-from .tp_generators import *
+from .old_generators import *
 
 from .tp_layers import *

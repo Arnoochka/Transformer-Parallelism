@@ -5,16 +5,17 @@ from .TPLinearLayersGenerator import(
     TPRowLinearGenerator)
 from torch.distributed import ProcessGroup
 from .TPModuleGenerator import TPModuleGenerator
-from mytransformers.parallel.tensor_parallel.tp_layers import TPFeedForward
 
 class TPFeedForwardGenerator(TPModuleGenerator):
+    wi_gen = TPColumnLinearGenerator
+    wo_gen = TPRowLinearGenerator 
     @torch.no_grad() 
     def __new__(cls,
                 module: Module,
-                tp_group: ProcessGroup) -> TPFeedForward:
-        TPColumnLinearGenerator.use_all_gather = False
-        TPRowLinearGenerator.use_all_reduce = True
-        wi = TPColumnLinearGenerator(module.wi, tp_group)
-        wo = TPRowLinearGenerator(module.wo, tp_group)
+                tp_group: ProcessGroup) -> Module:
+        cls.wi_gen.use_all_gather = False
+        cls.wo_gen.use_all_reduce = True
+        module.wi = cls.wi_gen(module.wi, tp_group)
+        module.wo = cls.wo_gen(module.wo, tp_group)
         
-        return TPFeedForward(wi, wo, tp_group)
+        return module
