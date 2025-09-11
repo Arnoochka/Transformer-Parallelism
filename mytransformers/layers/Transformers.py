@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn import Module, ModuleList
 from torch import Tensor
-from .SimpleLayers import PositionalEncoding
+from .PositionalEncoding import PositionalEncoding
 from .Attention import AttentionKVCore
 from .TransformerLayers import TransformerEncoderLayer, TransformerDecoderLayer
 

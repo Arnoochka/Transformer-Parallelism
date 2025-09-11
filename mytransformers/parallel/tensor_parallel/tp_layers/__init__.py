@@ -1,5 +1,5 @@
 from .TPAttention import *
-from .TPFeedForward import *
+from .TPFFNLayers import *
 from .TPLinearLayers import *
 from .TPModule import *
 from .TPTransformerLayers import *

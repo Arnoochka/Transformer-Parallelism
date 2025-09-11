@@ -1,21 +1,14 @@
 from torch.nn import Module
 from torch import Tensor
 from typing import Optional
-from .SimpleLayers import AddNorm
+from .Norm import AddNorm
 from .Attention import SelfAttention, CrossAttention
-from .MoE import MoELayer
-from .SimpleLayers import FeedForward
-
 from enum import Enum
 
 class TransformerType(Enum):
     Encoder = 0
     Decoder = 1
     EncoderDecoder = 2
-    
-class FFNType(Enum):
-    MoE = MoELayer
-    FFN = FeedForward
         
         
 class TransformerDecoderLayer(Module):

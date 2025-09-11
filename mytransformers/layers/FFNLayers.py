@@ -1,7 +1,22 @@
 from torch.nn import Module, ModuleList
+import torch.nn as nn
 from torch import Tensor
 import torch
-from .SimpleLayers import FeedForward
+from enum import Enum
+
+class FeedForward(Module):
+    def __init__(self, config):
+        super().__init__()
+        self.func = nn.SELU()
+        
+        self.wi = nn.Linear(config.hidden_size, config.ffn_dim, bias=config.bias)
+        self.wo = nn.Linear(config.ffn_dim, config.hidden_size, bias=config.bias)
+        self.dropout = nn.Dropout(config.dropout)
+
+    def forward(self, x: Tensor):
+        x = self.func(self.wi(x))
+        logits = self.wo(self.dropout(x))
+        return logits
 
 class MoELayer(Module):
     def __init__(self, config) -> None:
@@ -39,4 +54,7 @@ class MoELayer(Module):
         logits = logits_flat.view(batch_size, seq_len, hidden_size)
         return logits
         
+class FFNType(Enum):
+    MoE = MoELayer
+    FFN = FeedForward
         

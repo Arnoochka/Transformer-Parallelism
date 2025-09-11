@@ -4,7 +4,7 @@ import torch
 from torch.nn import Module
 from torch import Tensor
 from typing import Optional
-from mytransformers import TransformerType
+from mytransformers.layers import TransformerType
 
         
 class TPTransformerDecoderLayer(TPModule):
