@@ -1,1 +1,2 @@
 import mytransformers.parallel.tensor_parallel as tp
+import mytransformers.parallel.tensor_parallel.custom_generators as tp_custom

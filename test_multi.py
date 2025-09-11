@@ -24,7 +24,7 @@ class Config:
     pad_token_id = 0
     bos_token_id = 1
     eos_token_id = 2
-    num_layers = 7
+    num_layers = 1
     vocab_size = 10000
     max_len = 256
 
@@ -47,7 +47,8 @@ def main():
     x = list(x)
     encoder_output = list(encoder_output)
     logger("generate", local_rank)
-    result = model.generate(x, encoder_output)
+    # result = model.generate(x, encoder_output)
+    logger([module[0] for module in model.named_children()], local_rank)
     memory = torch.cuda.max_memory_allocated()
     print(f"---device:{local_rank }---\npeak allocated memory: {memory / 1024**3:.3f} GB")
     dist.destroy_process_group()
