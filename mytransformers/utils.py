@@ -5,11 +5,14 @@ from torch import Tensor
 from torch.nn import Module
 from mytransformers.parallel.tensor_parallel import TPModuleGenerator
 import torch.distributed as dist
+from typing import Any
 
 TP_GROUP = None
 
-def logger(log: str, rank: int) -> None:
+def logger(log: Any, rank: int) -> None:
     if rank == 0:
+        if not isinstance(log, str):
+            log = f"{log}"
         print(log)
 
 def torch_round(tensor: Tensor, decimals: int) -> Tensor:

@@ -3,7 +3,7 @@ from torch.nn import Module
 import torch.distributed as dist
 from torch.distributed import ProcessGroup
 from .TPModuleGenerator import  TPModuleGenerator
-from mytransformers.parallel.tensor_parallel.tp_layers import (TPColumnLinear,TPRowLinear, TPLinear)
+from mytransformers.parallel.tensor_parallel.tp_layers import TPColumnLinear,TPRowLinear, TPModule
 import warnings
 
     
@@ -12,7 +12,7 @@ class TPColumnLinearGenerator(TPModuleGenerator):
     @torch.no_grad()  
     def __new__(cls, module: Module, tp_group: ProcessGroup) -> TPColumnLinear:
         """create ColumnParallelLinear from torch.nn.Linear"""
-        if isinstance(module, TPLinear):
+        if isinstance(module, TPModule):
             warnings.warn(
                 f"linear module is already converted in TPLinear: {type(module).__name__}",
                 UserWarning,
@@ -45,7 +45,7 @@ class TPRowLinearGenerator(TPModuleGenerator):
     @torch.no_grad()
     def __new__(cls, module: Module, tp_group: ProcessGroup) -> TPRowLinear:
         """create RowParallelLinear from torch.nn.Linear"""
-        if isinstance(module, TPLinear):
+        if isinstance(module, TPModule):
             warnings.warn(
                 f"linear module is already converted in TPLinear: {type(module).__name__}",
                 UserWarning,

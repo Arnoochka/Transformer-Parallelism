@@ -5,3 +5,4 @@ from .TPLinearLayersGenerator import *
 from .TPTransformerLayersGenerator import *
 from .TPTransformersGenerator import *
 from .TPModuleGenerator import *
+from .TPEmbeddingLayersGenerator import *

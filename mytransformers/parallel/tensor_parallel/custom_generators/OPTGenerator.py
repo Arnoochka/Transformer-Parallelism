@@ -5,8 +5,10 @@ from torch.distributed import ProcessGroup
 from transformers import OPTForCausalLM
 from mytransformers.parallel.tensor_parallel.tp_generators import (TPModuleGenerator,
                                                                    TPColumnLinearGenerator,
-                                                                   TPRowLinearGenerator)
-from torch.nn import ModuleList, Linear, LayerNorm
+                                                                   TPRowLinearGenerator,
+                                                                   TPColumnEmbeddingGenerator,
+                                                                   TPRowEmbeddingGenerator)
+from torch.nn import ModuleList, Linear, LayerNorm, Embedding
 
 class OPTGenerator(TPModuleGenerator):
     def __new__(cls, module: OPTForCausalLM, tp_group: ProcessGroup) -> OPTForCausalLM:
@@ -21,6 +23,8 @@ class OPTGenerator(TPModuleGenerator):
                 child = ModuleList([
                     OPTDecoderLayerGenerator(layer, tp_group)
                     for layer in child])
+            elif type(child) is Embedding:
+                child = TPRowEmbeddingGenerator(child, tp_group)
             else:
                 child = child.to(device)
             setattr(decoder, name, child)
@@ -49,7 +53,6 @@ class OPTAttentionGenerator(TPModuleGenerator):
     def __new__(cls, module: Module, tp_group: ProcessGroup) -> Module:
         TPColumnLinearGenerator.use_all_gather = False
         TPRowLinearGenerator.use_all_reduce = True
-        device = torch.cuda.current_device()
         for name, child in module.named_children():
             if isinstance(child, Linear):
                 if name == "out_proj":

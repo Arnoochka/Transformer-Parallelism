@@ -1,4 +1,5 @@
 from torch.distributed import ProcessGroup
+import torch.distributed as dist
 from torch.nn import Module
 
 class TPModule(Module):

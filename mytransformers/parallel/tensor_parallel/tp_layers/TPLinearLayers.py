@@ -38,8 +38,8 @@ class TPColumnLinear(TPLinear):
                  use_all_gather: bool = True):
         self.use_all_gather = use_all_gather
         tp_size = dist.get_world_size(tp_group)
-        self.out_features_per_device = out_features // tp_size
-        super().__init__(in_features, self.out_features_per_device, tp_group, bias=bias)
+        out_features_per_device = out_features // tp_size
+        super().__init__(in_features, out_features_per_device, tp_group, bias=bias)
 
     @torch.no_grad()
     def forward(self, x: Tensor) -> Tensor:
@@ -65,8 +65,8 @@ class TPRowLinear(TPLinear):
                  use_all_reduce: bool = True):
         self.use_all_reduce = use_all_reduce
         tp_size = dist.get_world_size(tp_group)
-        self.in_features_per_device = in_features // tp_size
-        super().__init__(self.in_features_per_device, out_features, tp_group, bias=bias)
+        in_features_per_device = in_features // tp_size
+        super().__init__(in_features_per_device, out_features, tp_group, bias=bias)
     
     @torch.no_grad()  
     def forward(self, x: Tensor) -> Tensor:
