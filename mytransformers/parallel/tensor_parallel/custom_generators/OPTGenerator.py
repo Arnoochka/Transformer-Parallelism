@@ -12,7 +12,7 @@ from torch.nn import ModuleList, Linear, LayerNorm, Embedding
 
 class OPTGenerator(TPModuleGenerator):
     def __new__(cls, module: OPTForCausalLM, tp_group: ProcessGroup) -> OPTForCausalLM:
-        TPColumnEmbeddingGenerator.use_all_gather = False
+        TPColumnEmbeddingGenerator.use_all_gather = True
         TPColumnLinearGenerator.use_all_gather = True
         device = torch.cuda.current_device()
         module.lm_head = TPColumnLinearGenerator(module.lm_head, tp_group)
