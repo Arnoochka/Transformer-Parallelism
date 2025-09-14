@@ -31,7 +31,8 @@ class TPColumnEmbeddingGenerator(TPModuleGenerator):
             module.padding_idx,
             module.max_norm,
             module.norm_type,
-            module.sparse)
+            module.sparse,
+            use_all_gather=cls.use_all_gather)
         weight = module.weight.chunk(tp_size, dim=1)[rank]
         layer.weight.copy_(weight.contiguous())
         
@@ -62,7 +63,8 @@ class TPRowEmbeddingGenerator(TPModuleGenerator):
             module.padding_idx,
             module.max_norm,
             module.norm_type,
-            module.sparse)
+            module.sparse,
+            use_all_reduce=cls.use_all_reduce)
         weight = module.weight.chunk(tp_size, dim=0)[rank]
         layer.weight.copy_(weight.contiguous())
         

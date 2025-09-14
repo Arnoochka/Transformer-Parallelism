@@ -12,19 +12,18 @@ from torch.nn import ModuleList, Linear, LayerNorm, Embedding
 
 class OPTGenerator(TPModuleGenerator):
     def __new__(cls, module: OPTForCausalLM, tp_group: ProcessGroup) -> OPTForCausalLM:
+        TPColumnEmbeddingGenerator.use_all_gather = False
         TPColumnLinearGenerator.use_all_gather = True
         device = torch.cuda.current_device()
         module.lm_head = TPColumnLinearGenerator(module.lm_head, tp_group)
         decoder = module.model.decoder
         for name, child in decoder.named_children():
-            if isinstance(child, Linear):
-                child = TPColumnLinearGenerator(child, tp_group)
-            elif isinstance(child, ModuleList):
+            if isinstance(child, ModuleList):
                 child = ModuleList([
                     OPTDecoderLayerGenerator(layer, tp_group)
                     for layer in child])
             elif type(child) is Embedding:
-                child = TPRowEmbeddingGenerator(child, tp_group)
+                child = TPColumnEmbeddingGenerator(child, tp_group)
             else:
                 child = child.to(device)
             setattr(decoder, name, child)
