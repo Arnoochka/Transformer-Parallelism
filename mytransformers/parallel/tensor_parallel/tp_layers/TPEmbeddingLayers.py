@@ -51,20 +51,30 @@ class TPColumnEmbedding(TPEmbedding):
         
     @torch.no_grad()
     def forward(self, x: Tensor) -> Tensor:
-        logits = F.embedding(x,
-                             self.weight,
-                             padding_idx=self.padding_idx,
-                             max_norm=self.max_norm,
-                             norm_type=self.norm_type,
-                             sparse=self.sparse)
+        """
+        input: X
+        output = [Z_1, Z_2, ..., Z_n]
+        """
+        if not self.use_all_gather:
+            return F.embedding(x,
+                                 self.weight,
+                                 padding_idx=self.padding_idx,
+                                 max_norm=self.max_norm,
+                                 norm_type=self.norm_type,
+                                 sparse=self.sparse)
+        logits_t =  F.embedding(x,
+                                self.weight,
+                                padding_idx=self.padding_idx,
+                                max_norm=self.max_norm,
+                                norm_type=self.norm_type,
+                                sparse=self.sparse).transpose(0, 2).contiguous()
         
-        if self.use_all_gather:
-            tp_size = dist.get_world_size(group=self.tp_group)
-            logits_tensors = [torch.zeros_like(logits, device=logits.device) for _ in range(tp_size)]
-            dist.all_gather(logits_tensors, logits, group=self.tp_group)
-            logits = torch.cat(logits_tensors, dim=-1)
+        tp_size = dist.get_world_size(group=self.tp_group)
+        all_logits_t = torch.empty((logits_t.shape[0] * tp_size, *logits_t.shape[1:]),
+                                   device=logits_t.device)
+        dist.all_gather_into_tensor(all_logits_t, logits_t, group=self.tp_group)
 
-        return logits
+        return all_logits_t.transpose(0, 2).contiguous()
     
 class TPRowEmbedding(TPEmbedding):
     def __init__(self,
@@ -93,6 +103,10 @@ class TPRowEmbedding(TPEmbedding):
     
     @torch.no_grad()
     def forward(self, x: Tensor) -> Tensor:
+        """
+        input: X
+        output = Z_1 + Z_2 + ... +Z_n
+        """
         mask = ((x >= self.start_idx) & (x < self.end_idx)).unsqueeze(-1).float()
         x_local = (x - self.start_idx).clamp(min=0, max=self.max_idx)
         logits = F.embedding(x_local,

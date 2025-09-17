@@ -1,16 +1,10 @@
 from torch.distributed import ProcessGroup
-import torch.distributed as dist
-from torch.nn import Module
+from mytransformers.parallel.ParallelModule import ParallelModule
+from torch import Tensor
 
-class TPModule(Module):
+class TPModule(ParallelModule):
     def __init__(self, tp_group: ProcessGroup):
-        super().__init__()
-        self.tp_group = tp_group
+        super().__init__(tp_group)
         
-    @staticmethod
-    def from_no_parallel(module: Module, tp_group: ProcessGroup, **kwargs) -> "TPModule":
-        pass
-    
-class TPModuleGenerator(Module):
-    def __new__(cls, module: Module, tp_group: ProcessGroup) -> TPModule:
-        return TPModule(tp_group)
+    def forward(self, x: Tensor) -> Tensor:
+        return super().forward(x)

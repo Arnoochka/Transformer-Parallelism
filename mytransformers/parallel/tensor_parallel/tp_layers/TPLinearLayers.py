@@ -47,14 +47,16 @@ class TPColumnLinear(TPLinear):
         W = [W_1, W_2, ..., W_n]
         X @ W = [X @ W_1, X @ W_2, ..., X @ W_n]
         """
-        logits = F.linear(x, self.weight, self.bias)
-        if self.use_all_gather:
-            tp_size = dist.get_world_size(group=self.tp_group)
-            logits_tensors = [torch.zeros_like(logits, device=logits.device) for _ in range(tp_size)]
-            dist.all_gather(logits_tensors, logits, group=self.tp_group)
-            logits = torch.cat(logits_tensors, dim=-1)
+        if not self.use_all_gather:
+            return F.linear(x, self.weight, self.bias)
+            
+        logits_t = F.linear(x, self.weight, self.bias).transpose(0, 2).contiguous() 
+        tp_size = dist.get_world_size(group=self.tp_group)
+        all_logits_t = torch.empty((logits_t.shape[0] * tp_size, *logits_t.shape[1:]),
+                                   device=logits_t.device)
+        dist.all_gather_into_tensor(all_logits_t, logits_t, group=self.tp_group)
 
-        return logits
+        return all_logits_t.transpose(0, 2).contiguous()
     
 class TPRowLinear(TPLinear):
     def __init__(self,

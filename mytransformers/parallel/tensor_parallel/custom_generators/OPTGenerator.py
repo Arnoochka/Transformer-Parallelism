@@ -8,11 +8,12 @@ from mytransformers.parallel.tensor_parallel.tp_generators import (TPModuleGener
                                                                    TPRowLinearGenerator,
                                                                    TPColumnEmbeddingGenerator,
                                                                    TPRowEmbeddingGenerator)
+from mytransformers.parallel.Reshaper import SimpleSplitter
 from torch.nn import ModuleList, Linear, LayerNorm, Embedding
 
 class OPTGenerator(TPModuleGenerator):
     def __new__(cls, module: OPTForCausalLM, tp_group: ProcessGroup) -> OPTForCausalLM:
-        TPColumnEmbeddingGenerator.use_all_gather = True
+        TPColumnEmbeddingGenerator.use_all_gather = False
         TPColumnLinearGenerator.use_all_gather = True
         device = torch.cuda.current_device()
         module.lm_head = TPColumnLinearGenerator(module.lm_head, tp_group)
@@ -24,6 +25,8 @@ class OPTGenerator(TPModuleGenerator):
                     for layer in child])
             elif type(child) is Embedding:
                 child = TPColumnEmbeddingGenerator(child, tp_group)
+            elif name == "embed_positions":
+                child = SimpleSplitter(child, -1, tp_group)
             else:
                 child = child.to(device)
             setattr(decoder, name, child)
@@ -65,6 +68,9 @@ class OPTAttentionGenerator(TPModuleGenerator):
         module.num_heads = module.num_heads // world_size
         module.embed_dim = module.embed_dim // world_size
         return module
+
+    
+
                 
                 
             
