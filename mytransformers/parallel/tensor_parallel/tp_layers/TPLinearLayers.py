@@ -27,7 +27,7 @@ class TPLinear(TPModule):
                             requires_grad=False)
             )
         else:
-            self.bias = None
+            self.bias = self.register_buffer('weight', None)
 
 class TPColumnLinear(TPLinear):
     def __init__(self,

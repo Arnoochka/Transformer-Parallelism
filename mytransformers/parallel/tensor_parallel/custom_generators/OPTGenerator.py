@@ -7,13 +7,14 @@ from mytransformers.parallel.tensor_parallel.tp_generators import (TPModuleGener
                                                                    TPColumnLinearGenerator,
                                                                    TPRowLinearGenerator,
                                                                    TPColumnEmbeddingGenerator,
-                                                                   TPRowEmbeddingGenerator)
+                                                                   TPLayerNormGenerator)
 from mytransformers.parallel.Reshaper import SimpleSplitter
 from torch.nn import ModuleList, Linear, LayerNorm, Embedding
 
 class OPTGenerator(TPModuleGenerator):
     def __new__(cls, module: OPTForCausalLM, tp_group: ProcessGroup) -> OPTForCausalLM:
         TPColumnEmbeddingGenerator.use_all_gather = False
+        TPLayerNormGenerator.use_all_gather = False
         TPColumnLinearGenerator.use_all_gather = True
         device = torch.cuda.current_device()
         module.lm_head = TPColumnLinearGenerator(module.lm_head, tp_group)
@@ -26,7 +27,9 @@ class OPTGenerator(TPModuleGenerator):
             elif type(child) is Embedding:
                 child = TPColumnEmbeddingGenerator(child, tp_group)
             elif name == "embed_positions":
-                child = SimpleSplitter(child, -1, tp_group)
+                child = SimpleSplitter(child, -1, tp_group).to(torch.cuda.current_device())
+            elif name == "final_layer_norm":
+                child = TPLayerNormGenerator(child, tp_group)
             else:
                 child = child.to(device)
             setattr(decoder, name, child)

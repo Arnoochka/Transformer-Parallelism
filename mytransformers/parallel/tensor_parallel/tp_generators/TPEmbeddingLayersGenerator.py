@@ -1,23 +1,18 @@
 import torch
-from torch.nn import Module
 import torch.distributed as dist
 from torch.distributed import ProcessGroup
 from .TPModuleGenerator import  TPModuleGenerator
-from mytransformers.parallel.tensor_parallel.tp_layers import TPColumnEmbedding, TPRowEmbedding, TPModule
-import warnings
+from mytransformers.parallel.tensor_parallel.tp_layers import TPColumnEmbedding, TPRowEmbedding
+from torch.nn import Embedding
 
     
 class TPColumnEmbeddingGenerator(TPModuleGenerator):
     use_all_gather: bool = True
     @torch.no_grad()  
-    def __new__(cls, module: Module, tp_group: ProcessGroup) -> TPColumnEmbedding:
+    def __new__(cls, module: Embedding, tp_group: ProcessGroup) -> TPColumnEmbedding:
         """create ColumnParallEmbedding from torch.nn.Embedding"""
-        if isinstance(module, TPModule):
-            warnings.warn(
-                f"embedding module is already converted in TPLinear: {type(module).__name__}",
-                UserWarning,
-                stacklevel=5)
-            return module
+        if TPColumnEmbeddingGenerator.already_conferted(module):
+            return True
         tp_size = dist.get_world_size(tp_group)
         rank = dist.get_rank(tp_group)
 
@@ -42,14 +37,10 @@ class TPColumnEmbeddingGenerator(TPModuleGenerator):
 class TPRowEmbeddingGenerator(TPModuleGenerator):
     use_all_reduce: bool = True
     @torch.no_grad()  
-    def __new__(cls, module: Module, tp_group: ProcessGroup) -> TPRowEmbedding:
+    def __new__(cls, module: Embedding, tp_group: ProcessGroup) -> TPRowEmbedding:
         """create ColumnParallEmbedding from torch.nn.Embedding"""
-        if isinstance(module, TPModule):
-            warnings.warn(
-                f"embedding module is already converted in TPLinear: {type(module).__name__}",
-                UserWarning,
-                stacklevel=5)
-            return module
+        if TPRowEmbeddingGenerator.already_conferted(module):
+            return True
         tp_size = dist.get_world_size(tp_group)
         rank = dist.get_rank(tp_group)
 

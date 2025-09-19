@@ -25,9 +25,8 @@ if __name__ == "__main__":
         model,
         inference_generator,
         tokenizer,
-        loops=1,
         model_name="deepspeed_opt-1.3b")
     promts = utils.get_prompts("/home/victor/Transformer-Parallelism/Data/benchmark_mini.txt")
-    results = benchmark(promts, tp_group, print_output_num=3)
+    results = benchmark(promts, tp_group)
     utils.logger(results, rank)
     

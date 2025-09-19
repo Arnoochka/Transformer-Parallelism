@@ -13,11 +13,10 @@ class BenchmarkStats:
     max_memory_allocated_per_device: List[float]
     max_memory_allocated_generator_per_device: List[float]
     max_memory_allocated_inference_per_device: List[List[float]]
-    loops: int
     data_size: int
     batch_size: int
     max_prompt_len: int
-    max_new_tokens: int
+    max_new_tokens_list: List[int]
     generate_time: float
     inference_time: List[float]
     throughput: List[float]
@@ -41,18 +40,19 @@ class BenchmarkStats:
             results.append(f"model config dir: {self.model_config_dir}")
         results.append(f"mean inference time (s): {sum(self.inference_time) / len(self.inference_time):.3f}")
         results.append(f"mean throughput (token/s): {sum(self.throughput) / len(self.throughput):.3f}")
-        results.append(f"num loops: {self.loops}, data size: {self.data_size}, batch size: {self.batch_size}, max len: {self.max_prompt_len}, max new tokens: {self.max_new_tokens}")
+        results.append(f"data size: {self.data_size}, batch size: {self.batch_size}, max len: {self.max_prompt_len}")
+        results.append(f"max new tokens: {self.max_new_tokens_list}")
         
         indent = "\n    "  
-        if self.loops == 1 and self.inference_time:
+        if len(self.max_new_tokens_list) == 1 and self.inference_time:
             results += self._get_loop_statistic(self.inference_time[0],
                                                 self.throughput[0],
                                                 indent=indent[1:])
         else:
-            for loop in range(self.loops):
-                results += self._get_loop_statistic(self.inference_time[loop],
-                                                    self.throughput[loop],
-                                                    loop=loop+1,
+            for idx, max_new_tokens in enumerate(self.max_new_tokens_list):
+                results += self._get_loop_statistic(self.inference_time[idx],
+                                                    self.throughput[idx],
+                                                    max_new_tokens,
                                                     indent=indent[1:])   
                   
         results.append(f"\nmax memory allocated per device for generator (GB):\
@@ -68,9 +68,9 @@ class BenchmarkStats:
     def _get_loop_statistic(self,
                            inference_time: float,
                            throughput: float,
-                           loop: Optional[int] = None,
+                           max_new_tokens: Optional[int] = None,
                            indent: str = "") -> List[str]:
-        results = [f"---loop: {loop}---"] if loop is not None else []
+        results = [f"---max_new_tokens: {max_new_tokens}---"] if max_new_tokens is not None else []
         results.append(indent + f"inference time (s): {inference_time:.3f}")
         results.append(indent + f"throughput (token/s): {throughput:.3f}")
         

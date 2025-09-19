@@ -1,22 +1,17 @@
 import torch
-from torch.nn import Module
 import torch.distributed as dist
 from torch.distributed import ProcessGroup
 from .TPModuleGenerator import  TPModuleGenerator
-from mytransformers.parallel.tensor_parallel.tp_layers import TPColumnLinear,TPRowLinear, TPModule
-import warnings
+from mytransformers.parallel.tensor_parallel.tp_layers import TPColumnLinear, TPRowLinear
+from torch.nn import Linear
 
     
 class TPColumnLinearGenerator(TPModuleGenerator):
     use_all_gather: bool = True
     @torch.no_grad()  
-    def __new__(cls, module: Module, tp_group: ProcessGroup) -> TPColumnLinear:
+    def __new__(cls, module: Linear, tp_group: ProcessGroup) -> TPColumnLinear:
         """create ColumnParallelLinear from torch.nn.Linear"""
-        if isinstance(module, TPModule):
-            warnings.warn(
-                f"linear module is already converted in TPLinear: {type(module).__name__}",
-                UserWarning,
-                stacklevel=5)
+        if TPColumnLinearGenerator.already_conferted(module): 
             return module
         tp_size = dist.get_world_size(tp_group)
         rank = dist.get_rank(tp_group)
@@ -43,13 +38,9 @@ class TPColumnLinearGenerator(TPModuleGenerator):
 class TPRowLinearGenerator(TPModuleGenerator):
     use_all_reduce: bool = True
     @torch.no_grad()
-    def __new__(cls, module: Module, tp_group: ProcessGroup) -> TPRowLinear:
+    def __new__(cls, module: Linear, tp_group: ProcessGroup) -> TPRowLinear:
         """create RowParallelLinear from torch.nn.Linear"""
-        if isinstance(module, TPModule):
-            warnings.warn(
-                f"linear module is already converted in TPLinear: {type(module).__name__}",
-                UserWarning,
-                stacklevel=5)
+        if TPRowLinearGenerator.already_conferted(module):
             return module
         tp_size = dist.get_world_size(tp_group)
         rank = dist.get_rank(tp_group)

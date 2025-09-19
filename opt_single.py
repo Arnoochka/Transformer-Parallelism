@@ -1,4 +1,3 @@
-import os
 import torch
 from torch.distributed import ProcessGroup
 from mytransformers import bench, utils
@@ -6,8 +5,18 @@ import deepspeed
 from deepspeed import comm
 from transformers import AutoTokenizer, OPTForCausalLM, PreTrainedModel
 
+class DummyModule(torch.nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+    def generate(tokens, *args, **kwargs):
+        return tokens
+
 def inference_generator(model: PreTrainedModel, tp_group: ProcessGroup):
-    return model.to(torch.cuda.current_device())
+    rank = comm.get_rank(tp_group)
+    if rank == 0:
+        return model.to(torch.cuda.current_device())
+    else: return DummyModule().to(torch.cuda.current_device())
         
 if __name__ == "__main__":
     deepspeed.init_distributed('nccl')
@@ -21,9 +30,9 @@ if __name__ == "__main__":
         model,
         inference_generator,
         tokenizer,
-        loops=1,
         model_name="deepspeed_single-1.3b")
     promts = utils.get_prompts("/home/victor/Transformer-Parallelism/Data/benchmark_mini.txt")
-    results = benchmark(promts, tp_group, print_output_num=3)
+    results = benchmark(promts, tp_group)
     utils.logger(results, rank)
+    utils.logger([child for child in model.children()], rank)
     
