@@ -21,8 +21,6 @@ class BenchmarkStats:
     inference_time: List[float]
     throughput: List[float]
     
-    max_print_items: int = 10
-    
     def __str__(self) -> str:
         results = [f"Description: {self.description}"] \
             if self.description is not None else []
@@ -84,7 +82,7 @@ class BenchmarkStats:
             return "No data"
         memory_entries = [
             indent + f"device {idx}: {value:.3f}" 
-            for idx, value in enumerate(memory_list[:self.max_print_items])
+            for idx, value in enumerate(memory_list)
         ]
         memory_info = "".join(memory_entries)
         return memory_info

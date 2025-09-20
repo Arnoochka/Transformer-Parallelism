@@ -17,7 +17,7 @@ class TPLayerNormGenerator(TPModuleGenerator):
         tp_size = dist.get_world_size(tp_group)
         rank = dist.get_rank(tp_group)
 
-        normalized_shape = module.normalized_shape
+        normalized_shape = module.normalized_shape[0]
         assert normalized_shape % tp_size == 0, "out_features must be divisible by tp_size"
         layer = TPLayerNorm(normalized_shape,
                             tp_group,

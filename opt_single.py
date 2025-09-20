@@ -34,5 +34,4 @@ if __name__ == "__main__":
     promts = utils.get_prompts("/home/victor/Transformer-Parallelism/Data/benchmark_mini.txt")
     results = benchmark(promts, tp_group)
     utils.logger(results, rank)
-    utils.logger([child for child in model.children()], rank)
     

@@ -7,6 +7,7 @@ from typing import List, Optional, Union
 from transformers import PreTrainedModel, AutoTokenizer
 from .BenchmarkStats import BenchmarkStats
 from .Tracker import Tracker
+from mytransformers.parallel import ParallelModuleGenerator
 from mytransformers.utils import logger, get_model_size
 import pandas as pd
 
@@ -18,11 +19,11 @@ def get_synchronize_func(group: ProcessGroup):
 class BenchmarkModel:
     def __init__(self,
                  model: PreTrainedModel,
-                 generator: torch.nn.Module,
+                 generator: ParallelModuleGenerator,
                  tokenizer: AutoTokenizer,
                  batch_size: Optional[int] = None,
                  max_prompt_len: int = 64,
-                 max_new_tokens_list: List[int] = [8, 16],
+                 max_new_tokens_list: List[int] = [256],
                  model_name: Optional[str] = None,
                  description: Optional[str] = None,
                  tool: Optional[str] = None,
@@ -75,7 +76,8 @@ class BenchmarkModel:
         tracker.start() 
         model = self.generator(self.model, group)
         tracker.snapshot("generator")
-        self.generate(model, prompts, self.max_new_tokens_list[-1])
+        logger(f"model:\n{[child for child in model.children()]}", rank)
+        # self.generate(model, prompts, self.max_new_tokens_list[-1])
         for max_new_tokens in self.max_new_tokens_list:
             tracker.snapshot(f"max new tokens:{max_new_tokens} start")
             output = self.generate(model, prompts, max_new_tokens)

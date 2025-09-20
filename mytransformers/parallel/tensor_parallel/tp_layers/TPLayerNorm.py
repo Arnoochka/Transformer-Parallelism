@@ -38,8 +38,8 @@ class TPLayerNorm(TPModule):
         """
         stats = torch.empty((*x.shape[:-1], 1, 2), device=x.device, dtype=x.dtype)
 
-        stats[..., 0] = x.sum(dim=-1)
-        stats[..., 1] = (x * x).sum(dim=-1)
+        stats[..., 0] = x.sum(dim=-1, keepdim=True)
+        stats[..., 1] = (x * x).sum(dim=-1, keepdim=True)
         dist.all_reduce(stats, group=self.tp_group)
         
         stats = stats / self.global_normalized_shape

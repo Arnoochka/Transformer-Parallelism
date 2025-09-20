@@ -16,8 +16,9 @@ class OPTGenerator(TPModuleGenerator):
         TPColumnEmbeddingGenerator.use_all_gather = False
         TPLayerNormGenerator.use_all_gather = False
         TPColumnLinearGenerator.use_all_gather = True
+        TPRowLinearGenerator.use_all_reduce = True
         device = torch.cuda.current_device()
-        module.lm_head = TPColumnLinearGenerator(module.lm_head, tp_group)
+        module.lm_head = TPRowLinearGenerator(module.lm_head, tp_group)
         decoder = module.model.decoder
         for name, child in decoder.named_children():
             if isinstance(child, ModuleList):
@@ -40,14 +41,17 @@ class OPTDecoderLayerGenerator(TPModuleGenerator):
     def __new__(cls, module: Module, tp_group: ProcessGroup) -> Module:
         TPColumnLinearGenerator.use_all_gather = False
         TPRowLinearGenerator.use_all_reduce = True
+        TPLayerNormGenerator.use_all_gather = False
         device = torch.cuda.current_device()
         for name, child in module.named_children():
             if isinstance(child, Linear):
                 if name == 'fc1':
-                    child = TPColumnLinearGenerator(child, tp_group)
-                else:
                     child = TPRowLinearGenerator(child, tp_group)
-            elif isinstance(child, LayerNorm) or name == "activation_fn":
+                else:
+                    child = TPColumnLinearGenerator(child, tp_group)
+            elif isinstance(child, LayerNorm):
+                child = TPLayerNormGenerator(child, tp_group)
+            elif name == "activation_fn":
                 child = child.to(device)
             else:
                 child = OPTAttentionGenerator(child, tp_group)
@@ -61,15 +65,13 @@ class OPTAttentionGenerator(TPModuleGenerator):
         for name, child in module.named_children():
             if isinstance(child, Linear):
                 if name == "out_proj":
-                    child = TPRowLinearGenerator(child, tp_group)
-                else:
                     child = TPColumnLinearGenerator(child, tp_group)
+                else:
+                    child = TPRowLinearGenerator(child, tp_group)
             setattr(module, name, child)
         world_size = dist.get_world_size(tp_group)
         assert module.num_heads % world_size == 0,\
             f"It is not possible to split query heads into {world_size} devices"
-        module.num_heads = module.num_heads // world_size
-        module.embed_dim = module.embed_dim // world_size
         return module
 
     
