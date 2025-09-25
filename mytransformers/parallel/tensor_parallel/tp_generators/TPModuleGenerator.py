@@ -7,11 +7,11 @@ import torch
     
 class TPModuleGenerator(ParallelModuleGenerator):
     @torch.no_grad()
-    def __new__(cls, module: Module, tp_group: ProcessGroup) -> TPModule:
+    def __new__(cls, module: Module, tp_group: ProcessGroup, device: torch.device) -> TPModule:
         return super().__new__(module)
     
     @staticmethod
-    def already_conferted(module: Module) -> bool:
+    def already_converted(module: Module) -> bool:
         if isinstance(module, TPModule):
             warnings.warn(
                 f"this module is already converted in TPModule: {type(module).__name__}",

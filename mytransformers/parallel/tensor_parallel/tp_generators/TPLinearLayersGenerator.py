@@ -9,9 +9,9 @@ from torch.nn import Linear
 class TPColumnLinearGenerator(TPModuleGenerator):
     use_all_gather: bool = True
     @torch.no_grad()  
-    def __new__(cls, module: Linear, tp_group: ProcessGroup) -> TPColumnLinear:
+    def __new__(cls, module: Linear, tp_group: ProcessGroup, device: torch.device) -> TPColumnLinear:
         """create ColumnParallelLinear from torch.nn.Linear"""
-        if TPColumnLinearGenerator.already_conferted(module): 
+        if TPColumnLinearGenerator.already_converted(module): 
             return module
         tp_size = dist.get_world_size(tp_group)
         rank = dist.get_rank(tp_group)
@@ -32,13 +32,12 @@ class TPColumnLinearGenerator(TPModuleGenerator):
             bias = module.bias.chunk(tp_size, dim=0)[rank]
             layer.bias.copy_(bias.contiguous())
         
-        device = torch.device(torch.cuda.current_device())  
         return layer.to(device)
     
 class TPRowLinearGenerator(TPModuleGenerator):
     use_all_reduce: bool = True
     @torch.no_grad()
-    def __new__(cls, module: Linear, tp_group: ProcessGroup) -> TPRowLinear:
+    def __new__(cls, module: Linear, tp_group: ProcessGroup, device: torch.device) -> TPRowLinear:
         """create RowParallelLinear from torch.nn.Linear"""
         if TPRowLinearGenerator.already_conferted(module):
             return module
@@ -60,7 +59,6 @@ class TPRowLinearGenerator(TPModuleGenerator):
         if add_bias:
             layer.bias.copy_((module.bias / tp_size))
 
-        device = torch.device(torch.cuda.current_device())
         return layer.to(device)
         
         

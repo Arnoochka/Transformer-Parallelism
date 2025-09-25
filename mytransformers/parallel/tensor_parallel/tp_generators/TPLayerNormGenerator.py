@@ -9,9 +9,9 @@ from torch.nn import LayerNorm
 class TPLayerNormGenerator(TPModuleGenerator):
     use_all_gather: bool = True
     @torch.no_grad()  
-    def __new__(cls, module: LayerNorm, tp_group: ProcessGroup) -> TPLayerNorm:
+    def __new__(cls, module: LayerNorm, tp_group: ProcessGroup, device: torch.device) -> TPLayerNorm:
         """create TPLayerNorm from torch.nn.LayerNorm"""
-        if TPLayerNormGenerator.already_conferted(module): 
+        if TPLayerNormGenerator.already_converted(module): 
             return module
         
         tp_size = dist.get_world_size(tp_group)
@@ -29,7 +29,6 @@ class TPLayerNormGenerator(TPModuleGenerator):
             bias = module.bias.chunk(tp_size, dim=0)[rank]
             layer.weight.copy_(weight.contiguous())
             layer.bias.copy_(bias.contiguous())
-        device = torch.device(torch.cuda.current_device())  
         return layer.to(device)
         
         

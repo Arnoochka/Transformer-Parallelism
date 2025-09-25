@@ -9,9 +9,9 @@ from torch.nn import Embedding
 class TPColumnEmbeddingGenerator(TPModuleGenerator):
     use_all_gather: bool = True
     @torch.no_grad()  
-    def __new__(cls, module: Embedding, tp_group: ProcessGroup) -> TPColumnEmbedding:
+    def __new__(cls, module: Embedding, tp_group: ProcessGroup, device: torch.device) -> TPColumnEmbedding:
         """create ColumnParallEmbedding from torch.nn.Embedding"""
-        if TPColumnEmbeddingGenerator.already_conferted(module):
+        if TPColumnEmbeddingGenerator.already_converted(module):
             return True
         tp_size = dist.get_world_size(tp_group)
         rank = dist.get_rank(tp_group)
@@ -30,14 +30,12 @@ class TPColumnEmbeddingGenerator(TPModuleGenerator):
             use_all_gather=cls.use_all_gather)
         weight = module.weight.chunk(tp_size, dim=1)[rank]
         layer.weight.copy_(weight.contiguous())
-        
-        device = torch.device(torch.cuda.current_device())  
         return layer.to(device)
     
 class TPRowEmbeddingGenerator(TPModuleGenerator):
     use_all_reduce: bool = True
     @torch.no_grad()  
-    def __new__(cls, module: Embedding, tp_group: ProcessGroup) -> TPRowEmbedding:
+    def __new__(cls, module: Embedding, tp_group: ProcessGroup, device: torch.device) -> TPRowEmbedding:
         """create ColumnParallEmbedding from torch.nn.Embedding"""
         if TPRowEmbeddingGenerator.already_conferted(module):
             return True
@@ -59,5 +57,4 @@ class TPRowEmbeddingGenerator(TPModuleGenerator):
         weight = module.weight.chunk(tp_size, dim=0)[rank]
         layer.weight.copy_(weight.contiguous())
         
-        device = torch.device(torch.cuda.current_device())  
         return layer.to(device)

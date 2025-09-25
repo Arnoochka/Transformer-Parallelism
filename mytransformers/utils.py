@@ -8,7 +8,7 @@ import torch.distributed as dist
 from typing import Any, List
 from enum import Enum
 
-TP_GROUP = None
+GROUP = None
 
 class MemoryUnits(Enum):
     GB = 1024**3
@@ -48,10 +48,10 @@ def init_distributed() -> None:
     rank = int(os.environ["RANK"])
     world_size = int(os.environ["WORLD_SIZE"])
     dist.init_process_group(backend="nccl", world_size=world_size, rank=rank)
-    tp_group = dist.new_group(ranks=[k for k in range(world_size)], backend="nccl")
+    group = dist.new_group(ranks=[k for k in range(world_size)], backend="nccl")
     torch.manual_seed(0)
     torch.cuda.manual_seed_all(0)
     torch.cuda.set_device(rank)
-    global TP_GROUP
-    TP_GROUP = tp_group
-    return tp_group
+    global GROUP
+    GROUP = group
+    return group
