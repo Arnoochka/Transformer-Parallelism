@@ -23,7 +23,7 @@ class BenchmarkModel:
                  tokenizer: AutoTokenizer,
                  batch_size: Optional[int] = None,
                  max_prompt_len: int = 64,
-                 max_new_tokens_list: List[int] = [256],
+                 max_new_tokens_list: List[int] = [8],
                  model_name: Optional[str] = None,
                  description: Optional[str] = None,
                  tool: Optional[str] = None,

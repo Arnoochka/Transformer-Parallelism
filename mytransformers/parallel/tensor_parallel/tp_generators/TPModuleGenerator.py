@@ -8,7 +8,7 @@ import torch
 class TPModuleGenerator(ParallelModuleGenerator):
     @torch.no_grad()
     def __new__(cls, module: Module, tp_group: ProcessGroup) -> TPModule:
-        return super().__new__(module, tp_group)
+        return super().__new__(module)
     
     @staticmethod
     def already_conferted(module: Module) -> bool:
