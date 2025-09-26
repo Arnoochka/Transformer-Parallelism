@@ -26,14 +26,14 @@ class Strategy(ParallelModule):
             tensor_size: size of tensor that is transfrered
         return: transfered tensor
         """
+        if comm_role == CommRole.none:
+            raise AttributeError(f"comm role is CommRole.none")
         self.comm_role = comm_role
         self.send_group = send_group
         self.recv_group = recv_group
         self.tensor_dim = tensor_dim
         
     def forward(self, x: Tensor) -> Tensor:
-        if self.comm_role == CommRole.none:
-            raise AttributeError(f"comm role is CommRole.none")
         return x
     
     
@@ -60,7 +60,6 @@ class LeaderStrategy(Strategy):
         self.tag = 0
         
     def forward(self, x: Tensor) -> Tensor:
-        super().forward(x)
         if self.comm_role == CommRole.send:
             if dist.get_rank(self.send_group) == self.leader_rank:
                 dst_rank = dist.get_global_rank(self.recv_group, self.leader_rank)
