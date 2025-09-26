@@ -6,7 +6,7 @@ import deepspeed
 from deepspeed import comm
 from transformers import AutoTokenizer, OPTForCausalLM, PreTrainedModel
 
-def inference_generator(model: PreTrainedModel, tp_group: ProcessGroup):
+def inference_generator(model: PreTrainedModel, device: torch.device):
     module = deepspeed.init_inference(model, 
                                     tensor_parallel={"tp_size": 2},
                                     replace_with_kernel_inject=True,

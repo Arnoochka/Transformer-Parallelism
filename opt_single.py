@@ -12,11 +12,11 @@ class DummyModule(torch.nn.Module):
     def generate(tokens, *args, **kwargs):
         return tokens
 
-def inference_generator(model: PreTrainedModel, tp_group: ProcessGroup):
+def inference_generator(model: PreTrainedModel, device: torch.device):
     rank = comm.get_rank(tp_group)
     if rank == 0:
-        return model.to(torch.cuda.current_device())
-    else: return DummyModule().to(torch.cuda.current_device())
+        return model.to(device)
+    else: return DummyModule().to(device)
         
 if __name__ == "__main__":
     deepspeed.init_distributed('nccl')

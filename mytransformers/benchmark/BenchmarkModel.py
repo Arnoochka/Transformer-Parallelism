@@ -74,7 +74,7 @@ class BenchmarkModel:
         logger("start benchmark", rank)
 
         tracker.start() 
-        model = self.generator(self.model, group)
+        model = self.generator(self.model, torch.cuda.current_device())
         tracker.snapshot("generator")
         logger(f"model:\n{[child for child in model.children()]}", rank)
         # self.generate(model, prompts, self.max_new_tokens_list[-1])

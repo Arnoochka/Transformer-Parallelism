@@ -4,5 +4,5 @@ import torch
     
 class ParallelModuleGenerator(Module):
     @torch.no_grad()
-    def __new__(cls, module: Module) -> ParallelModule:
+    def __new__(cls, module: Module, device: torch.device) -> ParallelModule:
         return ParallelModule()

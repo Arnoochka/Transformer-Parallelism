@@ -1,14 +1,14 @@
 import os
-from typing import Optional
+from typing import List
 import torch
 from torch import Tensor
 from torch.nn import Module
-from mytransformers.parallel.tensor_parallel import TPModuleGenerator
 import torch.distributed as dist
 from typing import Any, List
 from enum import Enum
 
 GROUP = None
+BACKEND = None
 
 class MemoryUnits(Enum):
     GB = 1024**3
@@ -44,14 +44,20 @@ def get_model_size(model: Module, unit = MemoryUnits.GB):
     
     return total_size / unit.value
     
-def init_distributed() -> None:
+def init_distributed(backend: str = 'nccl') -> None:
     rank = int(os.environ["RANK"])
     world_size = int(os.environ["WORLD_SIZE"])
-    dist.init_process_group(backend="nccl", world_size=world_size, rank=rank)
-    group = dist.new_group(ranks=[k for k in range(world_size)], backend="nccl")
+    dist.init_process_group(backend=backend, world_size=world_size, rank=rank)
+    group = dist.new_group(ranks=[k for k in range(world_size)], backend=backend)
     torch.manual_seed(0)
     torch.cuda.manual_seed_all(0)
     torch.cuda.set_device(rank)
-    global GROUP
+    global GROUP,BACKEND
+    BACKEND = backend
     GROUP = group
     return group
+
+def create_group(ranks: List[int]) -> dist.ProcessGroup:
+    group = dist.new_group(ranks=ranks, backend=BACKEND)
+    return group
+

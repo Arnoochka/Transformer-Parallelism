@@ -8,19 +8,20 @@ from torch.nn import LayerNorm
     
 class TPLayerNormGenerator(TPModuleGenerator):
     use_all_gather: bool = True
+    tp_group: ProcessGroup = None
     @torch.no_grad()  
-    def __new__(cls, module: LayerNorm, tp_group: ProcessGroup, device: torch.device) -> TPLayerNorm:
+    def __new__(cls, module: LayerNorm, device: torch.device) -> TPLayerNorm:
         """create TPLayerNorm from torch.nn.LayerNorm"""
         if TPLayerNormGenerator.already_converted(module): 
             return module
         
-        tp_size = dist.get_world_size(tp_group)
-        rank = dist.get_rank(tp_group)
+        tp_size = dist.get_world_size(cls.tp_group)
+        rank = dist.get_rank(cls.tp_group)
 
         normalized_shape = module.normalized_shape[0]
         assert normalized_shape % tp_size == 0, "out_features must be divisible by tp_size"
         layer = TPLayerNorm(normalized_shape,
-                            tp_group,
+                            cls.tp_group,
                             module.eps,
                             module.elementwise_affine,
                             cls.use_all_gather)

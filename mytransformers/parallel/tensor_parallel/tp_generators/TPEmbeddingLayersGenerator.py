@@ -8,13 +8,14 @@ from torch.nn import Embedding
     
 class TPColumnEmbeddingGenerator(TPModuleGenerator):
     use_all_gather: bool = True
+    tp_group: ProcessGroup = None
     @torch.no_grad()  
-    def __new__(cls, module: Embedding, tp_group: ProcessGroup, device: torch.device) -> TPColumnEmbedding:
+    def __new__(cls, module: Embedding, device: torch.device) -> TPColumnEmbedding:
         """create ColumnParallEmbedding from torch.nn.Embedding"""
         if TPColumnEmbeddingGenerator.already_converted(module):
-            return True
-        tp_size = dist.get_world_size(tp_group)
-        rank = dist.get_rank(tp_group)
+            return module
+        tp_size = dist.get_world_size(cls.tp_group)
+        rank = dist.get_rank(cls.tp_group)
 
         num_embeddings = module.num_embeddings
         embedding_dim = module.embedding_dim
@@ -22,7 +23,7 @@ class TPColumnEmbeddingGenerator(TPModuleGenerator):
         layer = TPColumnEmbedding(
             num_embeddings,
             embedding_dim,
-            tp_group,
+            cls.tp_group,
             module.padding_idx,
             module.max_norm,
             module.norm_type,
@@ -34,13 +35,14 @@ class TPColumnEmbeddingGenerator(TPModuleGenerator):
     
 class TPRowEmbeddingGenerator(TPModuleGenerator):
     use_all_reduce: bool = True
+    tp_group: ProcessGroup
     @torch.no_grad()  
-    def __new__(cls, module: Embedding, tp_group: ProcessGroup, device: torch.device) -> TPRowEmbedding:
+    def __new__(cls, module: Embedding, device: torch.device) -> TPRowEmbedding:
         """create ColumnParallEmbedding from torch.nn.Embedding"""
-        if TPRowEmbeddingGenerator.already_conferted(module):
-            return True
-        tp_size = dist.get_world_size(tp_group)
-        rank = dist.get_rank(tp_group)
+        if TPRowEmbeddingGenerator.already_converted(module):
+            return module
+        tp_size = dist.get_world_size(cls.tp_group)
+        rank = dist.get_rank(cls.tp_group)
 
         num_embeddings = module.num_embeddings
         embedding_dim = module.embedding_dim
@@ -48,7 +50,7 @@ class TPRowEmbeddingGenerator(TPModuleGenerator):
         layer = TPRowEmbedding(
             num_embeddings,
             embedding_dim,
-            tp_group,
+            cls.tp_group,
             module.padding_idx,
             module.max_norm,
             module.norm_type,

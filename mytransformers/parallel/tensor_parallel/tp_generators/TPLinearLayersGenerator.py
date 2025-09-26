@@ -8,13 +8,14 @@ from torch.nn import Linear
     
 class TPColumnLinearGenerator(TPModuleGenerator):
     use_all_gather: bool = True
+    tp_group: ProcessGroup = None
     @torch.no_grad()  
-    def __new__(cls, module: Linear, tp_group: ProcessGroup, device: torch.device) -> TPColumnLinear:
+    def __new__(cls, module: Linear, device: torch.device) -> TPColumnLinear:
         """create ColumnParallelLinear from torch.nn.Linear"""
         if TPColumnLinearGenerator.already_converted(module): 
             return module
-        tp_size = dist.get_world_size(tp_group)
-        rank = dist.get_rank(tp_group)
+        tp_size = dist.get_world_size(cls.tp_group)
+        rank = dist.get_rank(cls.tp_group)
 
         in_features = module.in_features
         out_features = module.out_features
@@ -22,7 +23,7 @@ class TPColumnLinearGenerator(TPModuleGenerator):
         assert out_features % tp_size == 0, "out_features must be divisible by tp_size"
         layer = TPColumnLinear(in_features,
                                out_features,
-                               tp_group,
+                               cls.tp_group,
                                bias=add_bias,
                                use_all_gather=cls.use_all_gather)
             
@@ -36,13 +37,14 @@ class TPColumnLinearGenerator(TPModuleGenerator):
     
 class TPRowLinearGenerator(TPModuleGenerator):
     use_all_reduce: bool = True
+    tp_group: ProcessGroup = None
     @torch.no_grad()
-    def __new__(cls, module: Linear, tp_group: ProcessGroup, device: torch.device) -> TPRowLinear:
+    def __new__(cls, module: Linear, device: torch.device) -> TPRowLinear:
         """create RowParallelLinear from torch.nn.Linear"""
-        if TPRowLinearGenerator.already_conferted(module):
+        if TPRowLinearGenerator.already_converted(module):
             return module
-        tp_size = dist.get_world_size(tp_group)
-        rank = dist.get_rank(tp_group)
+        tp_size = dist.get_world_size(cls.tp_group)
+        rank = dist.get_rank(cls.tp_group)
 
         in_features = module.in_features
         out_features = module.out_features
@@ -50,7 +52,7 @@ class TPRowLinearGenerator(TPModuleGenerator):
         assert in_features % tp_size == 0, "in_features must be divisible by tp_size"
         layer = TPRowLinear(in_features,
                             out_features,
-                            tp_group,
+                            cls.tp_group,
                             bias=add_bias,
                             use_all_reduce=cls.use_all_reduce)
         

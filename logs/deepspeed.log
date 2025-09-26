@@ -1,23 +1,23 @@
-[2025-09-24 19:39:12,961] [INFO] [real_accelerator.py:260:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-09-24 19:39:16,146] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-09-24 19:39:16,813] [WARNING] [runner.py:220:fetch_hostfile] Unable to find hostfile, will proceed with training with local resources only.
-[2025-09-24 19:39:16,813] [INFO] [runner.py:610:main] cmd = /home/victor/anaconda3/envs/nir/bin/python -u -m deepspeed.launcher.launch --world_info=eyJsb2NhbGhvc3QiOiBbMCwgMV19 --master_addr=127.0.0.1 --master_port=29500 --enable_each_rank_log=None opt_deepspeed.py
-[2025-09-24 19:39:18,887] [INFO] [real_accelerator.py:260:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-09-24 19:39:22,009] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-09-24 19:39:22,671] [INFO] [launch.py:146:main] WORLD INFO DICT: {'localhost': [0, 1]}
-[2025-09-24 19:39:22,672] [INFO] [launch.py:152:main] nnodes=1, num_local_procs=2, node_rank=0
-[2025-09-24 19:39:22,672] [INFO] [launch.py:163:main] global_rank_mapping=defaultdict(<class 'list'>, {'localhost': [0, 1]})
-[2025-09-24 19:39:22,672] [INFO] [launch.py:164:main] dist_world_size=2
-[2025-09-24 19:39:22,672] [INFO] [launch.py:168:main] Setting CUDA_VISIBLE_DEVICES=0,1
-[2025-09-24 19:39:22,672] [INFO] [launch.py:256:main] process 4714 spawned with command: ['/home/victor/anaconda3/envs/nir/bin/python', '-u', 'opt_deepspeed.py', '--local_rank=0']
-[2025-09-24 19:39:22,675] [INFO] [launch.py:256:main] process 4715 spawned with command: ['/home/victor/anaconda3/envs/nir/bin/python', '-u', 'opt_deepspeed.py', '--local_rank=1']
-[2025-09-24 19:39:26,554] [INFO] [real_accelerator.py:260:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-09-24 19:39:26,648] [INFO] [real_accelerator.py:260:get_accelerator] Setting ds_accelerator to cuda (auto detect)
-[2025-09-24 19:39:31,443] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-09-24 19:39:31,450] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-09-24 19:39:31,541] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-09-24 19:39:31,547] [INFO] [comm.py:821:init_distributed] cdb=None
-[2025-09-24 19:39:31,548] [INFO] [comm.py:852:init_distributed] Initializing TorchBackend in DeepSpeed with backend nccl
+[2025-09-26 16:58:29,115] [INFO] [real_accelerator.py:260:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-09-26 16:58:32,278] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-09-26 16:58:32,945] [WARNING] [runner.py:220:fetch_hostfile] Unable to find hostfile, will proceed with training with local resources only.
+[2025-09-26 16:58:32,945] [INFO] [runner.py:610:main] cmd = /home/victor/anaconda3/envs/nir/bin/python -u -m deepspeed.launcher.launch --world_info=eyJsb2NhbGhvc3QiOiBbMCwgMV19 --master_addr=127.0.0.1 --master_port=29500 --enable_each_rank_log=None opt_deepspeed.py
+[2025-09-26 16:58:35,016] [INFO] [real_accelerator.py:260:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-09-26 16:58:38,108] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-09-26 16:58:38,774] [INFO] [launch.py:146:main] WORLD INFO DICT: {'localhost': [0, 1]}
+[2025-09-26 16:58:38,774] [INFO] [launch.py:152:main] nnodes=1, num_local_procs=2, node_rank=0
+[2025-09-26 16:58:38,774] [INFO] [launch.py:163:main] global_rank_mapping=defaultdict(<class 'list'>, {'localhost': [0, 1]})
+[2025-09-26 16:58:38,774] [INFO] [launch.py:164:main] dist_world_size=2
+[2025-09-26 16:58:38,774] [INFO] [launch.py:168:main] Setting CUDA_VISIBLE_DEVICES=0,1
+[2025-09-26 16:58:38,775] [INFO] [launch.py:256:main] process 4657 spawned with command: ['/home/victor/anaconda3/envs/nir/bin/python', '-u', 'opt_deepspeed.py', '--local_rank=0']
+[2025-09-26 16:58:38,777] [INFO] [launch.py:256:main] process 4658 spawned with command: ['/home/victor/anaconda3/envs/nir/bin/python', '-u', 'opt_deepspeed.py', '--local_rank=1']
+[2025-09-26 16:58:42,554] [INFO] [real_accelerator.py:260:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-09-26 16:58:42,641] [INFO] [real_accelerator.py:260:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-09-26 16:58:47,242] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-09-26 16:58:47,249] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-09-26 16:58:47,249] [INFO] [comm.py:852:init_distributed] Initializing TorchBackend in DeepSpeed with backend nccl
+[2025-09-26 16:58:47,294] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-09-26 16:58:47,301] [INFO] [comm.py:821:init_distributed] cdb=None
 /home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/_utils.py:776: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
   return self.fget.__get__(instance, owner)()
 /home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/_utils.py:776: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
@@ -25,13 +25,12 @@
 start benchmark
 /home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/cuda/memory.py:303: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
   warnings.warn(
-[2025-09-24 19:39:44,152] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed info: version=0.17.5, git-hash=unknown, git-branch=unknown
 /home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/cuda/memory.py:303: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
   warnings.warn(
-[2025-09-24 19:39:44,153] [INFO] [logging.py:107:log_dist] [Rank 0] [TorchCheckpointEngine] Initialized with serialization = False
-[2025-09-24 19:39:44,153] [INFO] [logging.py:107:log_dist] [Rank 0] quantize_bits = 8 mlp_extra_grouping = False, quantize_groups = 1
-[2025-09-24 19:39:44,242] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed-Inference config: {'layer_id': 0, 'hidden_size': 2048, 'intermediate_size': 8192, 'heads': 32, 'num_hidden_layers': -1, 'dtype': torch.float32, 'pre_layer_norm': True, 'norm_type': <NormType.LayerNorm: 1>, 'local_rank': -1, 'stochastic_mode': False, 'epsilon': 1e-05, 'mp_size': 2, 'scale_attention': True, 'triangular_masking': True, 'local_attention': False, 'window_size': 1, 'rotary_dim': -1, 'rotate_half': False, 'rotate_every_two': True, 'return_tuple': True, 'mlp_after_attn': True, 'mlp_act_func_type': <ActivationFuncType.ReLU: 2>, 'training_mp_size': 1, 'bigscience_bloom': False, 'max_out_tokens': 1024, 'min_out_tokens': 1, 'scale_attn_by_inverse_layer_idx': False, 'enable_qkv_quantization': False, 'use_mup': False, 'return_single_tuple': False, 'set_empty_params': False, 'transposed_mode': False, 'use_triton': False, 'triton_autotune': False, 'num_kv': -1, 'rope_theta': 10000, 'invert_mask': True}
-Using /home/victor/.cache/torch_extensions/py311_cu118 as PyTorch extensions root...
+[2025-09-26 16:58:57,174] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed info: version=0.17.5, git-hash=unknown, git-branch=unknown
+[2025-09-26 16:58:57,175] [INFO] [logging.py:107:log_dist] [Rank 0] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-09-26 16:58:57,175] [INFO] [logging.py:107:log_dist] [Rank 0] quantize_bits = 8 mlp_extra_grouping = False, quantize_groups = 1
+[2025-09-26 16:58:57,252] [INFO] [logging.py:107:log_dist] [Rank 0] DeepSpeed-Inference config: {'layer_id': 0, 'hidden_size': 2048, 'intermediate_size': 8192, 'heads': 32, 'num_hidden_layers': -1, 'dtype': torch.float32, 'pre_layer_norm': True, 'norm_type': <NormType.LayerNorm: 1>, 'local_rank': -1, 'stochastic_mode': False, 'epsilon': 1e-05, 'mp_size': 2, 'scale_attention': True, 'triangular_masking': True, 'local_attention': False, 'window_size': 1, 'rotary_dim': -1, 'rotate_half': False, 'rotate_every_two': True, 'return_tuple': True, 'mlp_after_attn': True, 'mlp_act_func_type': <ActivationFuncType.ReLU: 2>, 'training_mp_size': 1, 'bigscience_bloom': False, 'max_out_tokens': 1024, 'min_out_tokens': 1, 'scale_attn_by_inverse_layer_idx': False, 'enable_qkv_quantization': False, 'use_mup': False, 'return_single_tuple': False, 'set_empty_params': False, 'transposed_mode': False, 'use_triton': False, 'triton_autotune': False, 'num_kv': -1, 'rope_theta': 10000, 'invert_mask': True}
 Using /home/victor/.cache/torch_extensions/py311_cu118 as PyTorch extensions root...
 Detected CUDA files, patching ldflags
 Emitting ninja build file /home/victor/.cache/torch_extensions/py311_cu118/transformer_inference/build.ninja...
@@ -39,9 +38,17 @@ Building extension module transformer_inference...
 Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
 ninja: no work to do.
 Loading extension module transformer_inference...
-Time to load transformer_inference op: 0.029773950576782227 seconds
+Time to load transformer_inference op: 0.015727996826171875 seconds
+Using /home/victor/.cache/torch_extensions/py311_cu118 as PyTorch extensions root...
+Detected CUDA files, patching ldflags
+Emitting ninja build file /home/victor/.cache/torch_extensions/py311_cu118/transformer_inference/build.ninja...
+Building extension module transformer_inference...
+Allowing ninja to set a default number of workers... (overridable by setting the environment variable MAX_JOBS=N)
+ninja: no work to do.
 Loading extension module transformer_inference...
-Time to load transformer_inference op: 0.11005020141601562 seconds
+Time to load transformer_inference op: 0.023097753524780273 seconds
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/cuda/memory.py:303: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
+  warnings.warn(
 /home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/cuda/memory.py:303: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
   warnings.warn(
 model:
@@ -78,26 +85,26 @@ Free memory : 4.594910 (GigaBytes)
 Total memory: 7.919250 (GigaBytes)  
 Requested memory: 3.609375 (GigaBytes) 
 Setting maximum total tokens (input + output) to 1024 
-WorkSpace: 0x754246000000 
+WorkSpace: 0x7d6006000000 
 ------------------------------------------------------
 stop benchmark
                                time  ...  max_memory_gpu_1
 name                                 ...                  
-start                   6909.304521  ...          0.000003
-generator               6930.456803  ...          2.705658
-max new tokens:8 start  6930.459171  ...          2.705659
-max new tokens:8 stop   6937.467921  ...          2.868393
+start                   4653.214586  ...          0.000003
+generator               4672.028851  ...          2.705658
+max new tokens:8 start  4672.031277  ...          2.705659
+max new tokens:8 stop   4679.031678  ...          2.868393
 
 [4 rows x 5 columns]
 -------Benchmark results-------
 model name: deepspeed_opt-1.3b
 model size: 4.902, dtype: float32
-mean inference time (s): 7.009
-mean throughput (token/s): 12.556
+mean inference time (s): 7.000
+mean throughput (token/s): 12.571
 data size: 11, batch size: 11, max len: 64
 max new tokens: [8]
-    inference time (s): 7.009
-    throughput (token/s): 12.556
+    inference time (s): 7.000
+    throughput (token/s): 12.571
 
 max memory allocated per device for generator (GB):            
     device 0: 2.706
@@ -110,5 +117,5 @@ max memory allocated per device for inference (GB):
 max memory allocated per device (GB):            
     device 0: 2.868
     device 1: 2.868
-[2025-09-24 19:40:13,699] [INFO] [launch.py:351:main] Process 4715 exits successfully.
-[2025-09-24 19:40:13,700] [INFO] [launch.py:351:main] Process 4714 exits successfully.
+[2025-09-26 16:59:24,789] [INFO] [launch.py:351:main] Process 4657 exits successfully.
+[2025-09-26 16:59:24,790] [INFO] [launch.py:351:main] Process 4658 exits successfully.

@@ -6,8 +6,9 @@ import warnings
 import torch
     
 class TPModuleGenerator(ParallelModuleGenerator):
+    tp_group: ProcessGroup = None
     @torch.no_grad()
-    def __new__(cls, module: Module, tp_group: ProcessGroup, device: torch.device) -> TPModule:
+    def __new__(cls, module: Module, device: torch.device) -> TPModule:
         return super().__new__(module)
     
     @staticmethod
