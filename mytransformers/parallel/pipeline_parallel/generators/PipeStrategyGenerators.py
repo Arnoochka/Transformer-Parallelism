@@ -2,86 +2,67 @@ import torch
 from torch.nn import Module
 import torch.distributed as dist
 from torch.distributed import ProcessGroup
-from mytransformers.parallel import ParallelModuleGenerator
 from typing import List, Tuple
-from mytransformers.parallel.pipeline_parallel.layers import (PipeStrategy,
-                                                              PipeRole,
+from mytransformers.parallel.pipeline_parallel.layers import (PipeModule,
                                                               PipeDummyModule,
-                                                              PipeModule,
-                                                              PipeLeaderStrategy,
-                                                              PipeBroadcastLeaderStrategy)
-
-class PipeStrategyGenerator(ParallelModuleGenerator):
-    role: PipeRole = PipeRole.none
-    neighbor_role: PipeRole = None
-    neighbor_module: Module = None
-    group_info: Tuple[ProcessGroup, List[int]] = None
-    next_group_info: Tuple[ProcessGroup, List[int]] = None
-    tensor_dim: int = 3
-    def __new__(cls, module: Module, device: torch.device) -> PipeStrategy:
-        rank = dist.get_rank()
-        group, ranks = cls.group_info
-        next_group, next_ranks = cls.next_group_info
-        return PipeStrategy(cls.role,
-                            module,
-                            group,
-                            next_group,
-                            cls.tensor_dim).to(device)
+                                                              PipeRole,
+                                                              PipeLeaderStrategyModule,
+                                                              PipeBroadcastLeaderStrategyModule)
+        
     
 
-class PipeLeaderStrategyGenerator(PipeStrategyGenerator):
-    role: PipeRole = PipeRole.none
-    neighbor_role: PipeRole = None
-    neighbor_module: Module = None
-    group_info: Tuple[ProcessGroup, List[int]] = None
-    next_group_info: Tuple[ProcessGroup, List[int]] = None
+class LeaderStrategyGenerator:
     tensor_dim: int = 3
-    leader_rank: int = 0
-
-    def __new__(cls, module: Module, device: torch.device) -> PipeModule:
+    def __new__(cls,
+                role: PipeRole,
+                module: Module,
+                group_info: Tuple[ProcessGroup, List[int]],
+                next_role: PipeRole,
+                next_module: Module,
+                next_group_info: Tuple[ProcessGroup, List[int]],
+                device: torch.device,
+                leader_rank: int) -> PipeModule:
         rank = dist.get_rank()
-        group, ranks = cls.group_info
-        next_group, next_ranks = cls.next_group_info
+        group, ranks = group_info
+        next_group, next_ranks = next_group_info
         if rank in ranks:
-            return PipeLeaderStrategy(cls.role,
-                                      module,
-                                      group,
-                                      next_group,
-                                      cls.tensor_dim,
-                                      cls.leader_rank).to(device)
+            return PipeLeaderStrategyModule(role,
+                                            module,
+                                            group,
+                                            next_group,
+                                            cls.tensor_dim,
+                                            leader_rank)
         elif rank in next_ranks:
-            return PipeLeaderStrategy(cls.neighbor_role,
-                                      cls.neighbor_module,
-                                      group,
-                                      next_group,
-                                      cls.tensor_dim,
-                                      cls.leader_rank).to(device)
+            return PipeLeaderStrategyModule(next_role,
+                                            next_module,
+                                            group,
+                                            next_group,
+                                            cls.tensor_dim,
+                                            leader_rank)
         else:
-            return PipeDummyModule(device).to(device)
+            return PipeDummyModule(device)
         
         
-class PipeBroadcastLeaderStrategyGenerator(PipeLeaderStrategyGenerator):
-    role: PipeRole = PipeRole.none
-    neighbor_role: PipeRole = None
-    neighbor_module: Module = None
-    group_info: Tuple[ProcessGroup, List[int]] = None
+class BroadcastLeaderStrategyGenerator(LeaderStrategyGenerator):
     tensor_dim: int = 3
-    leader_rank: int = 0
-
-    def __new__(cls, module: Module, device: torch.device) -> PipeModule:
-        rank = dist.get_rank()
-        group, ranks = cls.group_info
-        if rank in ranks:
-            return PipeBroadcastLeaderStrategy(cls.role,
-                                      module,
-                                      group,
-                                      None,
-                                      cls.tensor_dim,
-                                      cls.leader_rank).to(device)
+    def __new__(cls,
+                role: PipeRole,
+                module: Module,
+                next_role: PipeRole,
+                next_module: Module,
+                src_rank: int,
+                leader_rank: int) -> PipeModule:
+        if src_rank == dist.get_rank():
+            return PipeBroadcastLeaderStrategyModule(role,
+                                                     module,
+                                                     None,
+                                                     None,
+                                                     cls.tensor_dim,
+                                                     leader_rank)
         else:
-            return PipeBroadcastLeaderStrategy(cls.neighbor_role,
-                                      cls.neighbor_module,
-                                      group,
-                                      None,
-                                      cls.tensor_dim,
-                                      cls.leader_rank).to(device)
+            return PipeBroadcastLeaderStrategyModule(next_role,
+                                                     next_module,
+                                                     None,
+                                                     None,
+                                                     cls.tensor_dim,
+                                                     leader_rank)

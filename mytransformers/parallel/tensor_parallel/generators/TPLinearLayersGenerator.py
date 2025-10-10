@@ -2,7 +2,7 @@ import torch
 import torch.distributed as dist
 from torch.distributed import ProcessGroup
 from .TPModuleGenerator import  TPModuleGenerator
-from mytransformers.parallel.tensor_parallel.tp_layers import TPColumnLinear, TPRowLinear
+from mytransformers.parallel.tensor_parallel.layers import TPColumnLinear, TPRowLinear
 from torch.nn import Linear
 
     

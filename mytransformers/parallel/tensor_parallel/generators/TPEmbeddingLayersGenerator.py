@@ -2,7 +2,7 @@ import torch
 import torch.distributed as dist
 from torch.distributed import ProcessGroup
 from .TPModuleGenerator import  TPModuleGenerator
-from mytransformers.parallel.tensor_parallel.tp_layers import TPColumnEmbedding, TPRowEmbedding
+from mytransformers.parallel.tensor_parallel.layers import TPColumnEmbedding, TPRowEmbedding
 from torch.nn import Embedding
 
     

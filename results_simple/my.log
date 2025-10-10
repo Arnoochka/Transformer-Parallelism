@@ -40,8 +40,9 @@ model size: 4.902, dtype: float32
 mean inference time (s): 757.441
 mean throughput (token/s): 3.718
 num loops: 1, data size: 11, batch size: 11, max len: 64, max new tokens: 256
-    inference time (s): 757.441
-    throughput (token/s): 3.718
+
+inference time (s): 757.441
+throughput (token/s): 3.718
 
 max memory allocated per device for generator (GB):            
     device 0: 2.651
@@ -56,3 +57,26 @@ max memory allocated per device (GB):
     device 1: 4.331
 [2025-09-17 19:47:11,627] [INFO] [launch.py:351:main] Process 5153 exits successfully.
 [2025-09-17 19:47:11,627] [INFO] [launch.py:351:main] Process 5154 exits successfully.
+
+[OPTModel(
+  (decoder): OPTDecoder(
+    (embed_tokens): TPColumnEmbedding()
+    (embed_positions): (module): OPTLearnedPositionalEmbedding(2050, 2048)
+    (final_layer_norm): LayerNorm()
+    (layers): ModuleList(
+      (0-23): 24 x OPTDecoderLayer(
+        (self_attn): OPTAttention(
+          (k_proj): TPColumnLinear()
+          (v_proj): TPColumnLinear()
+          (q_proj): TPColumnLinear()
+          (out_proj): TPColumnLinear()
+        )
+        (activation_fn): ReLU()
+        (self_attn_layer_norm): LayerNorm()
+        (fc1): TPColumnLinear()
+        (fc2): TPRowLinear()
+        (final_layer_norm): LayerNorm()
+      )
+    )
+  )
+), TPСLinear()]

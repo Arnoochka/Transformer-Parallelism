@@ -3,16 +3,15 @@ from torch.nn import Module
 import torch.distributed as dist
 from torch.distributed import ProcessGroup
 from transformers import OPTForCausalLM
-from mytransformers.parallel.tensor_parallel.tp_generators import (TPModuleGenerator,
-                                                                   TPColumnLinearGenerator,
+from mytransformers.parallel.tensor_parallel.generators import (TPColumnLinearGenerator,
                                                                    TPRowLinearGenerator,
                                                                    TPColumnEmbeddingGenerator,
                                                                    TPLayerNormGenerator)
+from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from mytransformers.parallel.Reshaper import SimpleSplitter
 from torch.nn import ModuleList, Linear, LayerNorm, Embedding
 
 def set_tp_group(tp_group: ProcessGroup) -> None:
-    TPModuleGenerator.tp_group = tp_group
     TPColumnLinearGenerator.tp_group = tp_group
     TPRowLinearGenerator.tp_group = tp_group
     TPColumnEmbeddingGenerator.tp_group = tp_group
@@ -22,7 +21,7 @@ def set_tp_group(tp_group: ProcessGroup) -> None:
     OPTAttentionGenerator.tp_group = tp_group
     
 
-class OPTGenerator(TPModuleGenerator):
+class OPTGenerator(ParallelModuleGenerator):
     tp_group: ProcessGroup = None
     @torch.no_grad()
     def __new__(cls, module: OPTForCausalLM, device: torch.device) -> OPTForCausalLM:
@@ -49,7 +48,7 @@ class OPTGenerator(TPModuleGenerator):
         module.model.decoder = decoder
         return module
         
-class OPTDecoderLayerGenerator(TPModuleGenerator):
+class OPTDecoderLayerGenerator(ParallelModuleGenerator):
     tp_group: ProcessGroup = None
     def __new__(cls, module: Module, device: torch.device) -> Module:
         TPColumnLinearGenerator.use_all_gather = False
@@ -70,7 +69,7 @@ class OPTDecoderLayerGenerator(TPModuleGenerator):
             setattr(module, name, child)
         return module
         
-class OPTAttentionGenerator(TPModuleGenerator):
+class OPTAttentionGenerator(ParallelModuleGenerator):
     tp_group: ProcessGroup = None
     def __new__(cls, module: Module, device: torch.device) -> Module:
         TPColumnLinearGenerator.use_all_gather = False

@@ -1,2 +1,2 @@
-from .tp_generators import *
-from .tp_layers import *
+from .generators import *
+from .layers import *

@@ -1,4 +1,4 @@
-from mytransformers.parallel.tensor_parallel.tp_layers import TPLinear
+from mytransformers.parallel.tensor_parallel.layers import TPLinear
 from torch.distributed import ProcessGroup
 import torch.distributed as dist
 from torch.nn import Module

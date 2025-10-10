@@ -1,7 +1,7 @@
 from torch.distributed import ProcessGroup
 from torch.nn import Module
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
-from mytransformers.parallel.tensor_parallel.tp_layers import TPModule
+from mytransformers.parallel.tensor_parallel.layers import TPModule
 import warnings
 import torch
     

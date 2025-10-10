@@ -67,8 +67,9 @@ model size: 4.902, dtype: float32
 mean inference time (s): 592.807
 mean throughput (token/s): 4.750
 num loops: 1, data size: 11, batch size: 11, max len: 64, max new tokens: 256
-    inference time (s): 592.807
-    throughput (token/s): 4.750
+
+inference time (s): 592.807
+throughput (token/s): 4.750
 
 max memory allocated per device for generator (GB):            
     device 0: 2.706

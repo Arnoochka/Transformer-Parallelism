@@ -1,13 +1,14 @@
 import torch
 from torch import Tensor
-from torch.nn import Module
-from typing import Optional
+from .PipeModule import PipeModule, PipeRole
 
-class PipeDummyModule(Module):
+class PipeDummyModule(PipeModule):
     def __init__(self, device: torch.device):
-        super().__init__()
+        super().__init__(PipeRole.dummy)
         self.device = device
-    def forward(self, *args, **kwargs):
+        
+    @torch.no_grad()
+    def forward(self, *args, **kwargs) -> Tensor:
         for arg in args:
             if isinstance(arg, Tensor):
                 return arg
