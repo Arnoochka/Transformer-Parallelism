@@ -50,11 +50,16 @@ def init_distributed(backend: str = 'nccl') -> None:
     dist.init_process_group(backend=backend, world_size=world_size, rank=rank)
     group = dist.new_group(ranks=[k for k in range(world_size)], backend=backend)
     torch.manual_seed(0)
-    torch.cuda.manual_seed_all(0)
-    torch.cuda.set_device(rank)
     global GROUP,BACKEND
     BACKEND = backend
     GROUP = group
+    return group
+
+def init_distributed_cuda() -> None:
+    group = init_distributed('nccl')
+    rank = int(os.environ["RANK"])
+    torch.cuda.manual_seed_all(0)
+    torch.cuda.set_device(rank)
     return group
 
 def create_group(ranks: List[int]) -> dist.ProcessGroup:

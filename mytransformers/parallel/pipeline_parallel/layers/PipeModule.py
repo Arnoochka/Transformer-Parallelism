@@ -1,4 +1,4 @@
-from mytransformers.parallel import ParallelModule
+from mytransformers.parallel.ParallelModule import ParallelModule
 from enum import Enum
 
 class PipeRole(Enum):

@@ -1,4 +1,4 @@
-from typing import List, Tuple
+from typing import List
 from torch.nn import Module
 import torch.distributed as dist
 import torch

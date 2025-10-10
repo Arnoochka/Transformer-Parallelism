@@ -10,7 +10,7 @@ if __name__ == "__main__":
     model_name = "facebook/opt-1.3b"
     tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
     model = OPTForCausalLM.from_pretrained(model_name, torch_dtype=torch.float32).eval()
-    tp_group = utils.init_distributed()
+    tp_group = utils.init_distributed_cuda()
     tp_custom.set_tp_group(tp_group)
     benchmark = bench.BenchmarkModel(
         model,
