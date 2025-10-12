@@ -1,4 +1,3 @@
-from .ComputeModuleGenerator import *
 from .PipelineGenerator import *
 from .PipeModuleGenerator import *
-from .PipeStrategyGenerators import *
+from .layer_generators import *

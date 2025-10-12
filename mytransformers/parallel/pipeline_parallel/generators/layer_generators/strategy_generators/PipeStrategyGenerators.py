@@ -7,7 +7,8 @@ from mytransformers.parallel.pipeline_parallel.layers import (PipeModule,
                                                               PipeDummyModule,
                                                               PipeRole,
                                                               PipeLeaderStrategyModule,
-                                                              PipeBroadcastLeaderStrategyModule)
+                                                              PipeLeaderTupleStrategyModule)
+from mytransformers.parallel.pipeline_parallel.fake_output_generators import FakeGenerator
         
     
 
@@ -20,7 +21,7 @@ class LeaderStrategyGenerator:
                 next_role: PipeRole,
                 next_module: Module,
                 next_group_info: Tuple[ProcessGroup, List[int]],
-                device: torch.device,
+                fake_generator: FakeGenerator,
                 leader_rank: int) -> PipeModule:
         rank = dist.get_rank()
         group, ranks = group_info
@@ -40,29 +41,35 @@ class LeaderStrategyGenerator:
                                             cls.tensor_dim,
                                             leader_rank)
         else:
-            return PipeDummyModule(device)
+            return PipeDummyModule(fake_generator)
         
-        
-class BroadcastLeaderStrategyGenerator(LeaderStrategyGenerator):
+class LeaderTupleStrategyGenerator(LeaderStrategyGenerator):
     tensor_dim: int = 3
     def __new__(cls,
                 role: PipeRole,
                 module: Module,
+                group_info: Tuple[ProcessGroup, List[int]],
                 next_role: PipeRole,
                 next_module: Module,
-                src_rank: int,
+                next_group_info: Tuple[ProcessGroup, List[int]],
+                fake_generator: FakeGenerator,
                 leader_rank: int) -> PipeModule:
-        if src_rank == dist.get_rank():
-            return PipeBroadcastLeaderStrategyModule(role,
-                                                     module,
-                                                     None,
-                                                     None,
-                                                     cls.tensor_dim,
-                                                     leader_rank)
+        rank = dist.get_rank()
+        group, ranks = group_info
+        next_group, next_ranks = next_group_info
+        if rank in ranks:
+            return PipeLeaderTupleStrategyModule(role,
+                                                 module,
+                                                 group,
+                                                 next_group,
+                                                 cls.tensor_dim,
+                                                 leader_rank)
+        elif rank in next_ranks:
+            return PipeLeaderTupleStrategyModule(next_role,
+                                                 next_module,
+                                                 group,
+                                                 next_group,
+                                                 cls.tensor_dim,
+                                                 leader_rank)
         else:
-            return PipeBroadcastLeaderStrategyModule(next_role,
-                                                     next_module,
-                                                     None,
-                                                     None,
-                                                     cls.tensor_dim,
-                                                     leader_rank)
+            return PipeDummyModule(fake_generator)

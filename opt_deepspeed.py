@@ -28,5 +28,5 @@ if __name__ == "__main__":
         model_name="deepspeed_opt-1.3b")
     promts = utils.get_prompts("/home/victor/Transformer-Parallelism/Data/benchmark_mini.txt")
     results = benchmark(promts, tp_group)
-    utils.logger(results, rank)
+    utils.Logger.log_main_device(results, rank)
     

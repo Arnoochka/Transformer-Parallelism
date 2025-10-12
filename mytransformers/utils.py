@@ -6,9 +6,12 @@ from torch.nn import Module
 import torch.distributed as dist
 from typing import Any, List
 from enum import Enum
+from torch.distributed import ProcessGroup
+from torch.distributed import get_rank
 
-GROUP = None
-BACKEND = None
+GROUP: ProcessGroup = None
+RANKS: List = None
+BACKEND: str = None
 
 class MemoryUnits(Enum):
     GB = 1024**3
@@ -16,12 +19,22 @@ class MemoryUnits(Enum):
     KB = 1024
 
 
-def logger(log: Any, rank: int) -> None:
-    if rank == 0:
+class Logger:
+    @staticmethod
+    def log_main_device(log: Any, rank: int) -> None:
+        if rank == 0:
+            if not isinstance(log, str):
+                log = f"{log}"
+            print(log)
+            
+    @staticmethod
+    def log_all_device(log: Any) -> None:
         if not isinstance(log, str):
             log = f"{log}"
-        print(log)
-        
+        print(f"---device:{get_rank()}---:\n{log}")
+            
+            
+            
 def get_prompts(filename: str) -> List[str]:
     with open(filename, 'r') as file:
         promts = [line for line in file]
@@ -45,22 +58,20 @@ def get_model_size(model: Module, unit = MemoryUnits.GB):
     return total_size / unit.value
     
 def init_distributed(backend: str = 'nccl') -> None:
+    global GROUP, BACKEND, RANKS
+    BACKEND = backend
     rank = int(os.environ["RANK"])
     world_size = int(os.environ["WORLD_SIZE"])
-    dist.init_process_group(backend=backend, world_size=world_size, rank=rank)
-    group = dist.new_group(ranks=[k for k in range(world_size)], backend=backend)
-    torch.manual_seed(0)
-    global GROUP,BACKEND
-    BACKEND = backend
-    GROUP = group
-    return group
+    dist.init_process_group(backend=BACKEND, world_size=world_size, rank=rank)
+    RANKS = [k for k in range(world_size)]
+    GROUP = dist.new_group(ranks=RANKS, backend=BACKEND)
+    torch.manual_seed(0)  
 
 def init_distributed_cuda() -> None:
-    group = init_distributed('nccl')
+    init_distributed('nccl')
     rank = int(os.environ["RANK"])
     torch.cuda.manual_seed_all(0)
     torch.cuda.set_device(rank)
-    return group
 
 def create_group(ranks: List[int]) -> dist.ProcessGroup:
     group = dist.new_group(ranks=ranks, backend=BACKEND)

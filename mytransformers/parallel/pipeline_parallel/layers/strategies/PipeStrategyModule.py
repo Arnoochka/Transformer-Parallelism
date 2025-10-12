@@ -1,6 +1,7 @@
 from torch.distributed import ProcessGroup
 from mytransformers.parallel.pipeline_parallel.layers.PipeModule import PipeModule, PipeRole
 from torch.nn import Module
+from typing import Any
 
 class PipeStrategyModule(PipeModule):
     def __init__(self,
@@ -20,6 +21,16 @@ class PipeStrategyModule(PipeModule):
         self.recv_group = recv_group
         self.module = module
         self.tensor_dim = tensor_dim
+        
+    def forward(self, *args, **kwargs) -> Any:
+        output = self.module(*args, **kwargs)
+        return self.transfer_by_strategy(output)
+        
+    def transfer_by_strategy(self, output) -> Any:
+        return output
+    
+
+
         
                 
     

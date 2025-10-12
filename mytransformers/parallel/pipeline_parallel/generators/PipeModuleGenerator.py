@@ -9,5 +9,5 @@ class PipeModuleGenerator(ParallelModuleGenerator):
     gen_kwargs: Dict = {}
     
     def __new__(cls, module: Module, device: torch.device) -> PipeModule:
-        pipe_module = cls.generator(module=module, device=device, **cls.gen_kwargs)
+        pipe_module = cls.generator(module=module, **cls.gen_kwargs)
         return pipe_module.to(device)

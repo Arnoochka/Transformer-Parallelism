@@ -1,18 +1,13 @@
 import torch
 from torch import Tensor
+from mytransformers.parallel.pipeline_parallel.fake_output_generators import FakeGenerator
 from .PipeModule import PipeModule, PipeRole
 
 class PipeDummyModule(PipeModule):
-    def __init__(self, device: torch.device):
+    def __init__(self, fake_generator: FakeGenerator):
         super().__init__(PipeRole.dummy)
-        self.device = device
+        self.fake_generator = fake_generator
         
     @torch.no_grad()
     def forward(self, *args, **kwargs) -> Tensor:
-        for arg in args:
-            if isinstance(arg, Tensor):
-                return arg
-        for kwarg in kwargs.values():
-            if isinstance(kwarg, Tensor):
-                return kwarg
-        return torch.zeros(1, device=self.device)
+        return self.fake_generator()
