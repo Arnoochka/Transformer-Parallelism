@@ -44,7 +44,6 @@ class PipeLeaderStrategyModule(PipeStrategyModule):
                 output_local = torch.zeros(size_list, dtype=output.dtype, device=output.device)
                 dist.broadcast(output_local, src=self.recv_leader_rank, group=self.recv_group)
                 output = output_local
-        torch.cuda.synchronize(device=output.device)  
         return output
         
 class PipeLeaderTupleStrategyModule(PipeLeaderStrategyModule):

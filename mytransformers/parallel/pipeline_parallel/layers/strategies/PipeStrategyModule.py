@@ -11,10 +11,10 @@ class PipeStrategyModule(PipeModule):
                  recv_group: ProcessGroup,
                  tensor_dim: int = 3):
         super().__init__(role)
-        is_send = role in (PipeRole.send, PipeRole.computeAndSend)
-        is_recv = role in (PipeRole.recv, PipeRole.recvAndCompute)
+        is_send = (role == PipeRole.computeAndSend)
+        is_recv = (role  == PipeRole.recv)
         if not (is_send or is_recv):
-            raise AttributeError(f"role: {role}, but it is send strategy")
+            raise AttributeError(f"role: {role}, strategy type is not selected")
         
         self.is_send = is_send
         self.send_group = send_group
