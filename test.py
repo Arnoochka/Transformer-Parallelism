@@ -15,15 +15,16 @@ if __name__ == "__main__":
     first_stage = [utils.create_group([0]), [0]]
     second_stage = [utils.create_group([1]), [1]]
     pp_custom.OPTGenerator.groups_info = [first_stage, second_stage]
-    benchmark = bench.BenchmarkModel(
-        model,
-        pp_custom.OPTGenerator,
-        tokenizer,
-        model_name="my_opt-1.3b")
-    promts = utils.get_prompts("/home/victor/Transformer-Parallelism/Data/benchmark_mini.txt")
-    results = benchmark(promts, utils.GROUP)
-    utils.Logger.log_main_device(results, rank)
-    barrier(utils.GROUP)
+    pp_custom.OPTGenerator(model, torch.cuda.current_device())
+    # benchmark = bench.BenchmarkModel(
+    #     model,
+    #     pp_custom.OPTGenerator,
+    #     tokenizer,
+    #     model_name="my_opt-1.3b")
+    # promts = utils.get_prompts("/home/victor/Transformer-Parallelism/Data/benchmark_mini.txt")
+    # results = benchmark(promts, utils.GROUP)
+    # utils.Logger.log_main_device(results, rank)
+    # barrier(utils.GROUP)
     utils.Logger.log_all_device(model)
     
     

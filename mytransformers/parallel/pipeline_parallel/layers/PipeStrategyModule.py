@@ -1,5 +1,6 @@
 from torch.distributed import ProcessGroup
 from mytransformers.parallel.pipeline_parallel.layers.PipeModule import PipeModule, PipeRole
+from .strategies import StrategyModule
 from torch.nn import Module
 from typing import Any
 
@@ -9,7 +10,7 @@ class PipeStrategyModule(PipeModule):
                  module: Module,
                  send_group: ProcessGroup,
                  recv_group: ProcessGroup,
-                 tensor_dim: int = 3):
+                 strategy: StrategyModule):
         super().__init__(role)
         is_send = (role == PipeRole.computeAndSend)
         is_recv = (role  == PipeRole.recv)
@@ -20,14 +21,21 @@ class PipeStrategyModule(PipeModule):
         self.send_group = send_group
         self.recv_group = recv_group
         self.module = module
-        self.tensor_dim = tensor_dim
+        self.strategy = strategy
+        self.worker = None
         
     def forward(self, *args, **kwargs) -> Any:
         output = self.module(*args, **kwargs)
-        return self.transfer_by_strategy(output)
-        
-    def transfer_by_strategy(self, output) -> Any:
+        output, worker = self.strategy(output,
+                                       self.is_send,
+                                       self.send_group,
+                                       self.recv_group)
+        self.worker = worker
+        self.complete()
         return output
+    
+    def complete(self) -> None:
+        self.strategy.wait(self.worker)
     
 
 

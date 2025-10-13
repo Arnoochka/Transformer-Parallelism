@@ -1,0 +1,200 @@
+WARNING:torch.distributed.run:
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/_utils.py:776: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/_utils.py:776: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+start benchmark
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/cuda/memory.py:303: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
+  warnings.warn(
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/cuda/memory.py:303: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
+  warnings.warn(
+model:
+[OPTModel(
+  (decoder): OPTDecoder(
+    (embed_tokens): PipeComputeModule(
+      (module): Embedding(50272, 2048, padding_idx=1)
+    )
+    (embed_positions): PipeComputeModule(
+      (module): OPTLearnedPositionalEmbedding(2050, 2048)
+    )
+    (final_layer_norm): PipeDummyModule(
+      (fake_generator): FakeTupleTensorGenerator(device=0)
+    )
+    (layers): ModuleList(
+      (0-10): 11 x PipeComputeModule(
+        (module): OPTDecoderLayer(
+          (self_attn): OPTAttention(
+            (k_proj): Linear(in_features=2048, out_features=2048, bias=True)
+            (v_proj): Linear(in_features=2048, out_features=2048, bias=True)
+            (q_proj): Linear(in_features=2048, out_features=2048, bias=True)
+            (out_proj): Linear(in_features=2048, out_features=2048, bias=True)
+          )
+          (activation_fn): ReLU()
+          (self_attn_layer_norm): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+          (fc1): Linear(in_features=2048, out_features=8192, bias=True)
+          (fc2): Linear(in_features=8192, out_features=2048, bias=True)
+          (final_layer_norm): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+        )
+      )
+      (11): PipeLeaderTupleStrategyModule(
+        (module): OPTDecoderLayer(
+          (self_attn): OPTAttention(
+            (k_proj): Linear(in_features=2048, out_features=2048, bias=True)
+            (v_proj): Linear(in_features=2048, out_features=2048, bias=True)
+            (q_proj): Linear(in_features=2048, out_features=2048, bias=True)
+            (out_proj): Linear(in_features=2048, out_features=2048, bias=True)
+          )
+          (activation_fn): ReLU()
+          (self_attn_layer_norm): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+          (fc1): Linear(in_features=2048, out_features=8192, bias=True)
+          (fc2): Linear(in_features=8192, out_features=2048, bias=True)
+          (final_layer_norm): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+        )
+      )
+      (12-23): 12 x PipeDummyModule(
+        (fake_generator): FakeTupleTensorGenerator(device=0)
+      )
+    )
+  )
+), PipeLeaderStrategyModule(
+  (module): PipeDummyModule(
+    (fake_generator): FakeSeqGenerator(device=0)
+  )
+)]
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/cuda/memory.py:303: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
+  warnings.warn(
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/cuda/memory.py:303: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
+  warnings.warn(
+stop benchmark
+                                time  ...  max_memory_gpu_1
+name                                  ...                  
+start                   29893.876952  ...          0.000003
+generator               29897.870309  ...          2.634754
+max new tokens:8 start  29897.872587  ...          2.634755
+max new tokens:8 stop   29904.996508  ...          2.811635
+
+[4 rows x 5 columns]
+-------Benchmark results-------
+model name: my_opt-1.3b
+model size: 4.902, dtype: float32
+mean inference time (s): 7.124
+mean throughput (token/s): 13.476
+data size: 12, batch size: 12, max len: 64
+max new tokens: [8]
+    inference time (s): 7.124
+    throughput (token/s): 13.476
+
+max memory allocated per device for generator (GB):            
+    device 0: 2.650
+    device 1: 2.635
+
+max memory allocated per device for inference (GB):            
+    device 0: 2.834
+    device 1: 2.812
+
+max memory allocated per device (GB):            
+    device 0: 2.834
+    device 1: 2.812
+---device:1---:
+OPTForCausalLM(
+  (model): OPTModel(
+    (decoder): OPTDecoder(
+      (embed_tokens): PipeDummyModule(
+        (fake_generator): FakeSeqGenerator(device=1)
+      )
+      (embed_positions): PipeDummyModule(
+        (fake_generator): FakeSeqGenerator(device=1)
+      )
+      (final_layer_norm): PipeComputeModule(
+        (module): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+      )
+      (layers): ModuleList(
+        (0-10): 11 x PipeDummyModule(
+          (fake_generator): FakeTupleTensorGenerator(device=1)
+        )
+        (11): PipeLeaderTupleStrategyModule(
+          (module): PipeDummyModule(
+            (fake_generator): FakeTupleTensorGenerator(device=1)
+          )
+        )
+        (12-23): 12 x PipeComputeModule(
+          (module): OPTDecoderLayer(
+            (self_attn): OPTAttention(
+              (k_proj): Linear(in_features=2048, out_features=2048, bias=True)
+              (v_proj): Linear(in_features=2048, out_features=2048, bias=True)
+              (q_proj): Linear(in_features=2048, out_features=2048, bias=True)
+              (out_proj): Linear(in_features=2048, out_features=2048, bias=True)
+            )
+            (activation_fn): ReLU()
+            (self_attn_layer_norm): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+            (fc1): Linear(in_features=2048, out_features=8192, bias=True)
+            (fc2): Linear(in_features=8192, out_features=2048, bias=True)
+            (final_layer_norm): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+          )
+        )
+      )
+    )
+  )
+  (lm_head): PipeLeaderStrategyModule(
+    (module): Linear(in_features=2048, out_features=50272, bias=False)
+  )
+)
+---device:0---:
+OPTForCausalLM(
+  (model): OPTModel(
+    (decoder): OPTDecoder(
+      (embed_tokens): PipeComputeModule(
+        (module): Embedding(50272, 2048, padding_idx=1)
+      )
+      (embed_positions): PipeComputeModule(
+        (module): OPTLearnedPositionalEmbedding(2050, 2048)
+      )
+      (final_layer_norm): PipeDummyModule(
+        (fake_generator): FakeTupleTensorGenerator(device=0)
+      )
+      (layers): ModuleList(
+        (0-10): 11 x PipeComputeModule(
+          (module): OPTDecoderLayer(
+            (self_attn): OPTAttention(
+              (k_proj): Linear(in_features=2048, out_features=2048, bias=True)
+              (v_proj): Linear(in_features=2048, out_features=2048, bias=True)
+              (q_proj): Linear(in_features=2048, out_features=2048, bias=True)
+              (out_proj): Linear(in_features=2048, out_features=2048, bias=True)
+            )
+            (activation_fn): ReLU()
+            (self_attn_layer_norm): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+            (fc1): Linear(in_features=2048, out_features=8192, bias=True)
+            (fc2): Linear(in_features=8192, out_features=2048, bias=True)
+            (final_layer_norm): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+          )
+        )
+        (11): PipeLeaderTupleStrategyModule(
+          (module): OPTDecoderLayer(
+            (self_attn): OPTAttention(
+              (k_proj): Linear(in_features=2048, out_features=2048, bias=True)
+              (v_proj): Linear(in_features=2048, out_features=2048, bias=True)
+              (q_proj): Linear(in_features=2048, out_features=2048, bias=True)
+              (out_proj): Linear(in_features=2048, out_features=2048, bias=True)
+            )
+            (activation_fn): ReLU()
+            (self_attn_layer_norm): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+            (fc1): Linear(in_features=2048, out_features=8192, bias=True)
+            (fc2): Linear(in_features=8192, out_features=2048, bias=True)
+            (final_layer_norm): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+          )
+        )
+        (12-23): 12 x PipeDummyModule(
+          (fake_generator): FakeTupleTensorGenerator(device=0)
+        )
+      )
+    )
+  )
+  (lm_head): PipeLeaderStrategyModule(
+    (module): PipeDummyModule(
+      (fake_generator): FakeSeqGenerator(device=0)
+    )
+  )
+)

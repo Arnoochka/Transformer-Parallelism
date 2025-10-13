@@ -1,6 +1,6 @@
 from .PipeModule import PipeModule, PipeRole
 from torch.nn import Module
-from torch import Tensor
+from typing import Any
 import torch
 
 class PipeComputeModule(PipeModule):
@@ -10,7 +10,7 @@ class PipeComputeModule(PipeModule):
         super().__init__(role)
         self.module = module 
     @torch.no_grad()
-    def forward(self, *args, **kwargs) -> Tensor:
+    def forward(self, *args, **kwargs) -> Any:
         return self.module(*args, **kwargs)
 
 

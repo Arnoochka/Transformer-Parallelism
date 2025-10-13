@@ -1,9 +1,9 @@
 from typing import Optional, List, Tuple
 import torch
 from torch import Tensor
-from .FakeGenerator import FakeGenerator
+from .FakeModule import FakeModule
 
-class FakeTupleTensorGenerator(FakeGenerator):
+class FakeTupleTensorModule(FakeModule):
     def __init__(self,
                  tensor_shapes: List[Tuple[int]],
                  device: torch.device,
@@ -12,7 +12,7 @@ class FakeTupleTensorGenerator(FakeGenerator):
         self.tensor_shapes = tensor_shapes
         self.device = device
     
-    def generate(self, *args, **kwargs) -> Tuple[Tensor]:
+    def forward(self, *args, **kwargs) -> Tuple[Tensor]:
         outputs = [self.get_tensor(tensor_shape)
                    for tensor_shape in self.tensor_shapes]
         return tuple(outputs)
@@ -21,14 +21,14 @@ class FakeTupleTensorGenerator(FakeGenerator):
         return torch.zeros(tensor_shape, device=self.device, dtype=self.dtype)
     
     
-class FakeTupleOptionalTensorGenerator(FakeTupleTensorGenerator):
+class FakeTupleOptionalTensorModule(FakeTupleTensorModule):
     def __init__(self,
                  tensor_shapes: List[Optional[Tuple[int]]],
                  device: torch.device,
                  dtype: Optional[torch.dtype] = None):
         super().__init__(tensor_shapes, device, dtype)
         
-    def generate(self, *args, **kwargs) -> Tuple[Optional[Tensor]]:
+    def forward(self, *args, **kwargs) -> Tuple[Optional[Tensor]]:
         outputs = [self.get_tensor(tensor_shape) if tensor_shape is not None else None
                    for tensor_shape in self.tensor_shapes]
         return tuple(outputs)

@@ -1,9 +1,9 @@
-from .FakeGenerator import FakeGenerator
+from .FakeModule import FakeModule
 from typing import Optional, Tuple
 import torch
 from torch import Tensor
 
-class FakeTensorGenerator(FakeGenerator):
+class FakeTensorModule(FakeModule):
     def __init__(self,
                  tensor_shape: Tuple[int],
                  device: torch.device,
@@ -11,11 +11,11 @@ class FakeTensorGenerator(FakeGenerator):
         super().__init__(device, dtype)
         self.tensor_shape = tensor_shape
         
-    def generate(self, *args, **kwargs) -> Tensor:
+    def forward(self, *args, **kwargs) -> Tensor:
         return torch.zeros(self.tensor_shape, device=self.device, dtype=self.dtype)
         
         
-class FakeSeqGenerator(FakeTensorGenerator):
+class FakeSeqModule(FakeTensorModule):
     def __init__(self,
                  init_tensor_shape: Tuple[int],
                  seq_dim: int,
@@ -26,8 +26,8 @@ class FakeSeqGenerator(FakeTensorGenerator):
         self.seq_dim = seq_dim
         self.k = init_tensor_shape[1]
         
-    def generate(self, *args, **kwargs) -> Tensor:
-        output = super().generate()
+    def forward(self, *args, **kwargs) -> Tensor:
+        output = super().forward()
         self.k += 1
         self.tensor_shape = self.tensor_shape[:self.seq_dim]\
             + (self.k,) + self.tensor_shape[self.seq_dim + 1:]
@@ -35,6 +35,6 @@ class FakeSeqGenerator(FakeTensorGenerator):
         return output
         
     
-class FakeUnfixShapeTensorGenerator(FakeTensorGenerator):
+class FakeUnfixShapeTensorModule(FakeTensorModule):
     def set_tensor_shape(self, tensor_shape: Tuple[int]) -> None:
         self.tensor_shape = tensor_shape

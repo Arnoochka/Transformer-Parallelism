@@ -2,7 +2,7 @@ from typing import Any, Optional
 import torch
 from torch.nn import ReLU
 
-class FakeGenerator(torch.nn.Module):
+class FakeModule(torch.nn.Module):
     def __init__(self,
                  device: torch.device,
                  dtype: Optional[torch.dtype] = None):
@@ -11,9 +11,9 @@ class FakeGenerator(torch.nn.Module):
         self.device = device
         
     def __call__(self, *args, **kwargs):
-        return self.generate(*args, **kwargs)
+        return self.forward(*args, **kwargs)
     
-    def generate(self, *args, **kwargs) -> Any:
+    def forward(self, *args, **kwargs) -> Any:
         return torch.zeros((1, 1, 1), device=self.device, dtype=self.dtype)
     
     def __repr__(self) -> str:

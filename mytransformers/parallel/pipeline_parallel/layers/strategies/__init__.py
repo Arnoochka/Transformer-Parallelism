@@ -1,2 +1,2 @@
-from .PipeLeaderStrategyModule import *
-from .PipeStrategyModule import *
+from .LeaderStrategyModule import *
+from .StrategyModule import *
