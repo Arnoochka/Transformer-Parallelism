@@ -2,7 +2,7 @@ from torch.distributed import ProcessGroup
 from mytransformers.parallel.pipeline_parallel.layers.PipeModule import PipeModule, PipeRole
 from .strategies import StrategyModule
 from torch.nn import Module
-from typing import Any
+from typing import Any, List
 
 class PipeStrategyModule(PipeModule):
     def __init__(self,
@@ -22,20 +22,18 @@ class PipeStrategyModule(PipeModule):
         self.recv_group = recv_group
         self.module = module
         self.strategy = strategy
-        self.worker = None
         
     def forward(self, *args, **kwargs) -> Any:
         output = self.module(*args, **kwargs)
-        output, worker = self.strategy(output,
-                                       self.is_send,
-                                       self.send_group,
-                                       self.recv_group)
-        self.worker = worker
+        output = self.strategy(output,
+                               self.is_send,
+                               self.send_group,
+                               self.recv_group)
         self.complete()
         return output
     
     def complete(self) -> None:
-        self.strategy.wait(self.worker)
+        self.strategy.wait()
     
 
 

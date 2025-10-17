@@ -36,8 +36,6 @@ class PipelineGenerator:
             if is_last_stage:
                 # TODO: Add async strategy for real pipeline parallel or add 
                 strategy_kwargs["strategy"] = LeaderStrategyModule
-                
-                
             new_stage = PipelineGenerator.get_stage(
                 stage,
                 stage_fake_modules,
@@ -57,10 +55,10 @@ class PipelineGenerator:
                   last_gen_kwargs: Dict,
                   device: torch.device) -> List[Module]:
         stage = []
-        for module, fake_modules in zip(modules[:-1], fake_modules[:-1]):
-            gen_kwargs['fake_module'] = fake_modules
-            PipeModuleGenerator.generator = ComputeModuleGenerator
-            PipeModuleGenerator.gen_kwargs = gen_kwargs
+        PipeModuleGenerator.generator = ComputeModuleGenerator
+        PipeModuleGenerator.gen_kwargs = gen_kwargs
+        for module, fake_module in zip(modules[:-1], fake_modules[:-1]):
+            gen_kwargs['fake_module'] = fake_module
             stage.append(PipeModuleGenerator(module, device))
 
         last_gen_kwargs['fake_module'] = fake_modules[-1]

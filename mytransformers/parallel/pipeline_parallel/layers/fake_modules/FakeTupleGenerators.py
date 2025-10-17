@@ -32,5 +32,24 @@ class FakeTupleOptionalTensorModule(FakeTupleTensorModule):
         outputs = [self.get_tensor(tensor_shape) if tensor_shape is not None else None
                    for tensor_shape in self.tensor_shapes]
         return tuple(outputs)
+    
+class FakeTupleSeqModule(FakeTupleTensorModule):
+    def __init__(self, 
+                 tensor_shapes: List[Tuple[int]],
+                 seq_dims: List[int],
+                 device,
+                 dtype = None):
+        super().__init__(tensor_shapes, device, dtype)
+        self.seq_dims = seq_dims
+        self.ks = [tensor_shapes[idx][seq_dim]
+                   for idx, seq_dim in enumerate(seq_dims)]
+        
+    def forward(self, *args, **kwargs):
+        output  = super().forward(*args, **kwargs)
+        for idx in range(len(self.tensor_shapes)):
+            self.ks[idx] += 1
+            self.tensor_shapes[idx] = self.tensor_shapes[idx][:self.seq_dims[idx]] + \
+                (self.ks[idx], ) + self.tensor_shapes[idx][self.seq_dims[idx] + 1:]
                 
+        return output
         

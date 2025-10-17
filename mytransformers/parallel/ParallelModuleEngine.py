@@ -31,6 +31,6 @@ class ParallelModuleEngine(Module):
         if ParallelTypes.pipeline in self.parallel_types:
             self.reset_strategy(self.module)
             
-    def reset_fake_generators(self) -> None:
+    def reset_fake_modules(self) -> None:
         pass
             
