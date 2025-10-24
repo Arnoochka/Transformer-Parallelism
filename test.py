@@ -15,7 +15,7 @@ if __name__ == "__main__":
     first_stage = [utils.create_group([0]), [0]]
     second_stage = [utils.create_group([1]), [1]]
     pp_custom.OPTGenerator.groups_info = [first_stage, second_stage]
-    # pp_custom.OPTGenerator(model, torch.cuda.current_device())
+    pp_custom.OPTGenerator(model, torch.cuda.current_device())
     benchmark = bench.BenchmarkModel(
         model,
         pp_custom.OPTGenerator,

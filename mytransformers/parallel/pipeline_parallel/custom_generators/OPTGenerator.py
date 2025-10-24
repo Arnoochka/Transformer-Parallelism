@@ -2,11 +2,19 @@ from mytransformers.parallel.pipeline_parallel.generators import PipelineGenerat
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from mytransformers.parallel.pipeline_parallel.layers.fake_modules import (
     FakeModule, FakeSeqModule, FakeTupleSeqModule)
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Union, Any
 from torch.distributed import ProcessGroup
 from transformers import OPTForCausalLM
 import torch
 from torch.nn import Module, ModuleList
+from torch import LongTensor, FloatTensor
+from transformers.cache_utils import Cache
+
+def pipe_forward(self,
+                 input_ids: Optional[LongTensor] = None,
+                 past_key_values: Optional[Union[List[FloatTensor], Cache]] = None,
+                 **kwargs) -> Any:
+    pass
 
 class OPTGenerator(ParallelModuleGenerator):
     num_stages: int = 2
@@ -42,7 +50,6 @@ class OPTGenerator(ParallelModuleGenerator):
         return module.to(device)
     @staticmethod
     def get_stages_fake_modules(stages: List[List[Module]], device) -> List[List[FakeModule]]:
-        # TODO: Delete this and fix problem with fake generators
         first_stage = [FakeSeqModule((12, 64, 2048), seq_dim=1, device=device), 
                        FakeSeqModule((12, 64, 2048), seq_dim=1, device=device)] + \
                           [FakeTupleSeqModule([(12, 64, 2048)], [1], device=device)

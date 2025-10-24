@@ -1,3 +1,4 @@
 from .FakeModule import *
-from .FakeTensorGenerators import *
-from .FakeTupleGenerators import *
+from .FakeTensorModules import *
+from .FakeTupleModules import *
+from .FakeUnfixShapeModules import *
