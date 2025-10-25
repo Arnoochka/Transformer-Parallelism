@@ -4,6 +4,7 @@ import torch.distributed as dist
 from torch import Tensor
 from torch.nn import ModuleList, functional
 from mytransformers.parallel.ParallelModule import ParallelModule
+from mytransformers.utils import Logger
 
 class MoeExperts(ParallelModule):
     def __init__(self,
@@ -45,7 +46,7 @@ class MoeDPExperts(MoeExperts):
     def forward(self,
                 hidden_states: Tensor,
                 top_k_index: Tensor,
-                top_k_weights: Tensor) -> torch.Tensor:
+                top_k_weights: Tensor) -> Tensor:
         
         """
         Data: X = [X_1, X_2] (dim=0)
@@ -61,16 +62,19 @@ class MoeDPExperts(MoeExperts):
         
         dist.all_gather_into_tensor(full_top_k_index, top_k_index, group=self.moe_group)
         final_hidden_states = torch.zeros_like(hidden_states)
+        Logger.log_all_device(f"INDICES; {full_top_k_index}")
         for i in range(k):
             global_ranks = self.expert_to_rank[full_top_k_index[:, i]]
             local_ranks = global_ranks[num_tokens * self.rank: num_tokens * (self.rank + 1)]
             local_sorted_ranks, local_sorted_indices = torch.sort(local_ranks, stable=True)
             send_counts = torch.bincount(local_sorted_ranks, minlength=self.world_size)
             recv_counts = torch.empty_like(send_counts)
-            
+            Logger.log_all_device(f"RANKS: {global_ranks}, {local_ranks}")
             for rank in range(self.world_size):
-                device_ranks = global_ranks[num_tokens * self.rank: num_tokens * (self.rank + 1)]
+                device_ranks = global_ranks[num_tokens * rank: num_tokens * (rank + 1)]
                 recv_counts[rank] = (device_ranks == self.rank).sum().item()
+                
+            Logger.log_all_device(f"COUNTS: {send_counts}, {recv_counts}")
                 
             need_hidden_states = torch.empty(
                 size=(recv_counts.sum().item(), hidden_dim),
@@ -84,7 +88,7 @@ class MoeDPExperts(MoeExperts):
                 device=top_k_index.device,
                 dtype=top_k_index.dtype)
             
-            recv_cumsum = torch.cumsum(recv_counts)
+            recv_cumsum = torch.cumsum(recv_counts, dim=0)
             recv_global_indices = full_top_k_index[global_ranks == self.rank, i]
             start = 0
             for rank in range(self.world_size):
@@ -95,14 +99,16 @@ class MoeDPExperts(MoeExperts):
                     recv_rank_indices, stable=True)
                 need_indices[start:end] = recv_rank_sorted_indices
                 start = end
-                
-            expert_mask = functional.one_hot(need_indices, num_classes=len(self.local_experts)).T
+            Logger.log_all_device(f"NEED: {need_indices}, {recv_cumsum}")   
+            Logger.log_all_device(f"SHAPE: {need_hidden_states.shape}")   
+            expert_mask = functional.one_hot(need_indices, num_classes=len(self.local_experts)).T  
+            send_counts = send_counts.tolist()
+            recv_counts = recv_counts.tolist()
             dist.all_to_all_single(
                 need_hidden_states,
                 hidden_states[local_sorted_indices],
                 recv_counts, send_counts,
                 group=self.moe_group)
-
             need_hidden_states = self.compute(need_hidden_states, self.local_experts, expert_mask)
             computed_hidden_states = torch.empty_like(hidden_states[local_sorted_indices])
             dist.all_to_all_single(

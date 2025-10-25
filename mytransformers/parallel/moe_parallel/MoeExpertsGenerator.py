@@ -13,7 +13,7 @@ class MoeDataParallelExpertsGenerator(ParallelModuleGenerator):
     def __new__(cls, module: ModuleList, device: torch.device) -> MoeDPExperts:
         rank = dist.get_rank()
         expert_ranks = cls.expert_idxs[rank]
-        local_experts = ModuleList([module[r] for r in expert_ranks]).to(device)
+        local_experts = ModuleList([module[r.item()] for r in expert_ranks]).to(device)
         num_experts = module.num_experts
         local_expert_idxs = cls.expert_idxs[rank].to(device)
         expert_to_rank = torch.empty(num_experts, dtype=torch.int64)
@@ -25,5 +25,5 @@ class MoeDataParallelExpertsGenerator(ParallelModuleGenerator):
                             local_experts,
                             local_expert_idxs,
                             expert_to_rank,
-                            cls.moe_group)
+                            cls.moe_group).to(device)
         

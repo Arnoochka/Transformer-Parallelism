@@ -1,0 +1,74 @@
+WARNING:torch.distributed.run:
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/_utils.py:776: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/_utils.py:776: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+start benchmark
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/cuda/memory.py:303: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
+  warnings.warn(
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/cuda/memory.py:303: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
+  warnings.warn(
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/utils/_contextlib.py:115: UserWarning: this module is already converted in TPModule: TPColumnLinear
+  return func(*args, **kwargs)
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/utils/_contextlib.py:115: UserWarning: this module is already converted in TPModule: TPColumnLinear
+  return func(*args, **kwargs)
+model:
+[OPTModel(
+  (decoder): OPTDecoder(
+    (embed_tokens): TPColumnEmbedding()
+    (embed_positions): OPTLearnedPositionalEmbedding(2050, 2048)
+    (final_layer_norm): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+    (layers): ModuleList(
+      (0-23): 24 x OPTDecoderLayer(
+        (self_attn): OPTAttention(
+          (k_proj): TPColumnLinear()
+          (v_proj): TPColumnLinear()
+          (q_proj): TPColumnLinear()
+          (out_proj): TPRowLinear()
+        )
+        (activation_fn): ReLU()
+        (self_attn_layer_norm): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+        (fc1): TPColumnLinear()
+        (fc2): TPRowLinear()
+        (final_layer_norm): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+      )
+    )
+  )
+), TPColumnLinear()]
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/cuda/memory.py:303: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
+  warnings.warn(
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/cuda/memory.py:303: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
+  warnings.warn(
+stop benchmark
+                                time  ...  max_memory_gpu_1
+name                                  ...                  
+start                   12486.253749  ...          0.000003
+generator               12492.536450  ...          2.650944
+max new tokens:8 start  12492.538501  ...          2.650945
+max new tokens:8 stop   12500.164887  ...          2.746920
+
+[4 rows x 5 columns]
+-------Benchmark results-------
+model name: my_opt-1.3b
+model size: 4.902, dtype: float32
+mean inference time (s): 7.626
+mean throughput (token/s): 12.588
+data size: 12, batch size: 12, max len: 64
+max new tokens: [8]
+    inference time (s): 7.626
+    throughput (token/s): 12.588
+
+max memory allocated per device for generator (GB):            
+    device 0: 2.651
+    device 1: 2.651
+
+max memory allocated per device for inference (GB):            
+    device 0: 2.747
+    device 1: 2.747
+
+max memory allocated per device (GB):            
+    device 0: 2.747
+    device 1: 2.747

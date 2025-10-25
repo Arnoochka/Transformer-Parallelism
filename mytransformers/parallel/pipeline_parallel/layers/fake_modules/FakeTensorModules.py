@@ -33,8 +33,3 @@ class FakeSeqModule(FakeTensorModule):
             + (self.k,) + self.tensor_shape[self.seq_dim + 1:]
             
         return output
-    
-class FakeCacheTensorModule(FakeTensorModule):
-    def forward(self, *args, **kwargs):
-        output = super().forward(*args, **kwargs)
-        self.tensor_shape = (self.tensor_shape[0], 1, self.tensor_shape[2])

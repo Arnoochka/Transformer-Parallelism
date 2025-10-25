@@ -4,7 +4,6 @@ import torch.distributed as dist
 from torch.distributed import Work
 from torch import Tensor
 from typing import Tuple, List
-from mytransformers.utils import Logger
 
 class LeaderStrategyModule(StrategyModule):
     def __init__(self, leader_rank: int = 0):
@@ -21,16 +20,11 @@ class LeaderStrategyModule(StrategyModule):
         recv_leader_rank = dist.get_global_rank(recv_group, self.leader_rank)
         if is_send:
             if dist.get_rank() == send_leader_rank:
-                worker = dist.isend(output, recv_leader_rank, tag=0)
-            else: worker = None
-            self.workers.append(worker)
+                dist.send(output, recv_leader_rank, tag=0)
         else:
             if dist.get_rank() == recv_leader_rank:
-                worker = dist.irecv(output, src=send_leader_rank, tag=0)
-            else: worker = None
-            self.workers.append(worker)
-            worker = dist.broadcast(output, src=recv_leader_rank, group=recv_group, async_op=True)
-            self.workers.append(worker)
+                dist.recv(output, src=send_leader_rank, tag=0)
+            dist.broadcast(output, src=recv_leader_rank, group=recv_group)
         return output
         
 class LeaderTupleStrategyModule(LeaderStrategyModule):

@@ -1,29 +1,99 @@
-import os
 import torch
+from torch import nn
+from torch import Tensor, LongTensor
+from mytransformers.parallel import moe
 from mytransformers import utils
-from mytransformers import pp, pp_custom
-from transformers import (AutoTokenizer, OPTForCausalLM)
-from mytransformers import bench
-from torch.distributed import barrier
+from mytransformers.utils import Logger
+import os
+
+class Config:
+    num_experts_per_tok = 2
+    hidden_size = 8
+    num_experts = 8
+    intermediate_size = 16
+
+class MixtralMLP(nn.Module):
+    def __init__(self, config: Config):
+        super().__init__()
+        self.ffn_dim = config.intermediate_size
+        self.hidden_dim = config.hidden_size
+
+        self.w1 = nn.Linear(self.hidden_dim, self.ffn_dim, bias=False)
+        self.w2 = nn.Linear(self.ffn_dim, self.hidden_dim, bias=False)
+        self.w3 = nn.Linear(self.hidden_dim, self.ffn_dim, bias=False)
+
+        self.act_fn = nn.ReLU()
+
+    def forward(self, hidden_states):
+        current_hidden_states = self.act_fn(self.w1(hidden_states)) * self.w3(hidden_states)
+        current_hidden_states = self.w2(current_hidden_states)
+        return current_hidden_states
+
+class MixtralExperts(nn.ModuleList):
+    def __init__(self, config: Config):
+        super().__init__()
+        self.top_k = config.num_experts_per_tok
+        self.num_experts = config.num_experts
+        for _ in range(self.num_experts):
+            self.append(MixtralMLP(config))
+
+    def forward(
+        self, hidden_states: torch.Tensor, top_k_index: torch.Tensor, top_k_weights: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Args:
+            hidden_states: (batch_size * sequence_length, hidden_dim)
+            selected_experts: (batch_size * sequence_length, top_k)
+            routing_weights: (batch_size * sequence_length, top_k)
+        Returns:
+            (batch_size * sequence_length, hidden_dim)
+        """
+        final_hidden_states = torch.zeros_like(hidden_states)
+        expert_mask = torch.nn.functional.one_hot(top_k_index, num_classes=self.num_experts).permute(2, 1, 0)
+
+        expert_hit = torch.greater(expert_mask.sum(dim=(-1, -2)), 0).nonzero()
+        for expert_idx in expert_hit:
+            idx, top_x = torch.where(expert_mask[expert_idx].squeeze(0))
+            current_state = hidden_states[None, top_x].reshape(-1, hidden_states.shape[-1])
+            current_hidden_states = self[expert_idx](current_state) * top_k_weights[top_x, idx, None]
+            final_hidden_states.index_add_(0, top_x, current_hidden_states.to(hidden_states.dtype))
+        return final_hidden_states
+    
+    
+class MixtralSparseMoeBlock(nn.Module):
+    def __init__(self, config: Config):
+        super().__init__()
+        self.top_k = config.num_experts_per_tok
+        self.gate = nn.Linear(config.hidden_size, config.num_experts, bias=False)
+        self.experts = MixtralExperts(config)
+
+    def route_tokens_to_experts(self, router_logits):
+        routing_weights = torch.nn.functional.softmax(router_logits.float(), dim=-1)
+        top_k_weights, top_k_index = torch.topk(routing_weights, self.top_k, dim=-1)
+        top_k_weights /= top_k_weights.sum(dim=-1, keepdim=True)
+        return top_k_index, top_k_weights.to(router_logits.dtype)
+
+    def forward(self, hidden_states: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        batch_size, sequence_length, hidden_dim = hidden_states.shape
+        hidden_states = hidden_states.view(-1, hidden_states.shape[-1])
+        router_logits = self.gate(hidden_states)
+        top_k_index, top_k_weights = self.route_tokens_to_experts(router_logits)
+        hidden_states = self.experts(hidden_states, top_k_index, top_k_weights.to(hidden_states.dtype))
+        hidden_states = hidden_states.reshape(batch_size, sequence_length, hidden_dim)
+        return hidden_states
 
 if __name__ == "__main__":
+    torch.manual_seed(42)
+    torch.cuda.manual_seed(42)
+    model = MixtralSparseMoeBlock(Config)
     rank = int(os.environ["RANK"])
-    model_name = "facebook/opt-1.3b"
-    tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
-    model = OPTForCausalLM.from_pretrained(model_name, torch_dtype=torch.float32).eval()
-    utils.init_distributed_cuda()
-    first_stage = [utils.create_group([0]), [0]]
-    second_stage = [utils.create_group([1]), [1]]
-    pp_custom.OPTGenerator.groups_info = [first_stage, second_stage]
-    pp_custom.OPTGenerator(model, torch.cuda.current_device())
-    benchmark = bench.BenchmarkModel(
-        model,
-        pp_custom.OPTGenerator,
-        tokenizer,
-        model_name="my_opt-1.3b")
-    promts = utils.get_prompts("/home/victor/Transformer-Parallelism/Data/benchmark_mini.txt")
-    results = benchmark(promts, utils.GROUP)
-    utils.Logger.log_main_device(results, rank)
-    utils.Logger.log_all_device(model)
-    
-    
+    moe_group = utils.init_distributed_cuda()
+    device = torch.cuda.current_device()
+    expert_idxs = [LongTensor([0,1,2,3]).to(device), LongTensor([4, 5, 6, 7]).to(device)]
+    moe.MoeDataParallelExpertsGenerator.expert_idxs = expert_idxs
+    moe.MoeDataParallelExpertsGenerator.moe_group = moe_group
+    model.experts = moe.MoeDataParallelExpertsGenerator(model.experts, device)
+    model = model.to(device)
+    Logger.log_all_device(model)
+    input = torch.randn(2, 2, Config.hidden_size).to(device)
+    Logger.log_all_device(model(input))

@@ -10,12 +10,6 @@ from torch.nn import Module, ModuleList
 from torch import LongTensor, FloatTensor
 from transformers.cache_utils import Cache
 
-def pipe_forward(self,
-                 input_ids: Optional[LongTensor] = None,
-                 past_key_values: Optional[Union[List[FloatTensor], Cache]] = None,
-                 **kwargs) -> Any:
-    pass
-
 class OPTGenerator(ParallelModuleGenerator):
     num_stages: int = 2
     groups_info: List[Tuple[ProcessGroup, List[int]]]
@@ -48,6 +42,7 @@ class OPTGenerator(ParallelModuleGenerator):
         module.model.decoder = decoder
         
         return module.to(device)
+    
     @staticmethod
     def get_stages_fake_modules(stages: List[List[Module]], device) -> List[List[FakeModule]]:
         first_stage = [FakeSeqModule((12, 64, 2048), seq_dim=1, device=device), 
