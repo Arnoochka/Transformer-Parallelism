@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Optional
 import torch
 from torch import Tensor
 from torch.nn import Module
@@ -21,7 +21,9 @@ class MemoryUnits(Enum):
 
 class Logger:
     @staticmethod
-    def log_main_device(log: Any, rank: int) -> None:
+    def log_main_device(log: Any, rank: Optional[int] = None) -> None:
+        if rank is None:
+            rank = dist.get_rank()
         if rank == 0:
             if not isinstance(log, str):
                 log = f"{log}"
@@ -29,8 +31,6 @@ class Logger:
             
     @staticmethod
     def log_all_device(log: Any) -> None:
-        if not isinstance(log, str):
-            log = f"{log}"
         print(f"---device:{get_rank()}---:\n{log}")
             
             
