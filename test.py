@@ -85,7 +85,40 @@ class MixtralSparseMoeBlock(nn.Module):
         hidden_states = self.experts(hidden_states, top_k_index, top_k_weights.to(hidden_states.dtype))
         hidden_states = hidden_states.reshape(batch_size, sequence_length, hidden_dim)
         return hidden_states
-
+    
+def test_single(model: MixtralSparseMoeBlock, local_input: Tensor):
+    cuda.reset_max_memory_allocated(cuda.current_device())
+    model = model.to(device)
+    input = [torch.empty_like(local_input) for _ in range(2)]
+    dist.all_gather(input, local_input, group=moe_group)
+    input = torch.cat(input, dim=0)
+    output = None
+    start = time()
+    if dist.get_rank() == 0:
+        with torch.no_grad():
+            output = model(input)
+    end = time()
+    Logger.log_all_device(f"SINGLE STATS: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
+    Logger.log_main_device(output)
+    return output
+    
+def test_parallel(model: MixtralSparseMoeBlock, local_input: Tensor):
+    cuda.reset_max_memory_allocated(cuda.current_device())
+    expert_idxs = [LongTensor([0,1,2,3]).to(device), LongTensor([4, 5,6,7]).to(device)]
+    moe.MoeDataParallelExpertsGenerator.expert_idxs = expert_idxs
+    moe.MoeDataParallelExpertsGenerator.moe_group = moe_group
+    model.experts = moe.MoeDataParallelExpertsGenerator(model.experts, device)
+    model = model.to(device)
+    start = time()
+    local_output = model(local_input)
+    end = time()
+    output = [torch.empty_like(local_input) for _ in range(2)]
+    dist.all_gather(output, local_output)
+    output = torch.cat(output, dim=0)
+    Logger.log_all_device(f"PARALLEL STATS: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
+    Logger.log_main_device(output)
+    return output
+    
 if __name__ == "__main__":
     SEED = 42
     torch.manual_seed(SEED)
@@ -94,32 +127,8 @@ if __name__ == "__main__":
     rank = int(os.environ["RANK"])
     moe_group = utils.init_distributed_cuda()
     device = torch.cuda.current_device()
-    expert_idxs = [LongTensor([0,1,2,3]).to(device), LongTensor([4, 5,6,7]).to(device)]
-    moe.MoeDataParallelExpertsGenerator.expert_idxs = expert_idxs
-    moe.MoeDataParallelExpertsGenerator.moe_group = moe_group
     local_input = torch.randn(8, 2048, Config.hidden_size).to(device) + (dist.get_rank() + 1) * 7
-    input = [torch.empty_like(local_input) for _ in range(2)]
-    dist.all_gather(input, local_input, group=moe_group)
-    input = torch.cat(input, dim=0)
-    
-    cuda.reset_max_memory_allocated(cuda.current_device())
-    model = model.to(device)
-    start = time()
-    without_parallel = model(input)
-    end = time()
-    Logger.log_main_device(f"WITHOUT PARALLEL: {without_parallel}")
-    Logger.log_all_device(f"WITHOUT PARALLEL STATS: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
-    
-    model.experts = moe.MoeDataParallelExpertsGenerator(model.experts, device)
-    cuda.reset_max_memory_allocated(cuda.current_device())
-    model = model.to(device)
-    output = model(local_input)
-    with_parallel = [torch.empty_like(output) for _ in range(2)]
-    dist.all_gather(with_parallel, output, moe_group)
-    start = time()
-    with_parallel = torch.cat(with_parallel, dim=0)
-    end = time()
-    Logger.log_main_device(f"WITH PARALLEL: {with_parallel}")
-    Logger.log_all_device(f"WITH PARALLEL STATS: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
-    
-    Logger.log_main_device(without_parallel - with_parallel < 10e-3)
+    single_output = test_single(model, local_input)
+    parallel_output = test_parallel(model, local_input)
+    if dist.get_rank() == 0:
+        Logger.log_main_device(single_output - parallel_output < 1e-3)
