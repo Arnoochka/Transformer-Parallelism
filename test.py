@@ -8,8 +8,11 @@ import torch.distributed as dist
 from torch import cuda
 import os
 from time import time
+import pandas as pd
 
 GB = 1024**3
+
+pd.set_option('display.max_colwidth', None)
 
 class Config:
     num_experts_per_tok = 2
@@ -99,7 +102,6 @@ def test_single(model: MixtralSparseMoeBlock, local_input: Tensor):
             output = model(input)
     end = time()
     Logger.log_all_device(f"SINGLE STATS: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
-    Logger.log_main_device(output)
     return output
     
 def test_parallel(model: MixtralSparseMoeBlock, local_input: Tensor):
@@ -116,7 +118,7 @@ def test_parallel(model: MixtralSparseMoeBlock, local_input: Tensor):
     dist.all_gather(output, local_output)
     output = torch.cat(output, dim=0)
     Logger.log_all_device(f"PARALLEL STATS: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
-    Logger.log_main_device(output)
+    df = model.experts.tracker.stop().to_csv('results.csv', encoding='utf-8-sig')
     return output
     
 if __name__ == "__main__":
