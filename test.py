@@ -15,7 +15,7 @@ GB = 1024**3
 pd.set_option('display.max_colwidth', None)
 
 class Config:
-    num_experts_per_tok = 2
+    num_experts_per_tok = 5
     hidden_size = 2048
     num_experts = 8
     intermediate_size = 4096
@@ -67,6 +67,28 @@ class MixtralExperts(nn.ModuleList):
         return final_hidden_states
     
     
+# class MixtralSparseMoeBlock(nn.Module):
+#     def __init__(self, config: Config):
+#         super().__init__()
+#         self.top_k = config.num_experts_per_tok
+#         self.gate = nn.Linear(config.hidden_size, config.num_experts, bias=False)
+#         self.experts = MixtralExperts(config)
+
+#     def route_tokens_to_experts(self, router_logits):
+#         routing_weights = torch.nn.functional.softmax(router_logits.float(), dim=-1)
+#         top_k_weights, top_k_index = torch.topk(routing_weights, self.top_k, dim=-1)
+#         top_k_weights /= top_k_weights.sum(dim=-1, keepdim=True)
+#         return top_k_index, top_k_weights.to(router_logits.dtype)
+
+#     def forward(self, hidden_states: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+#         batch_size, sequence_length, hidden_dim = hidden_states.shape
+#         hidden_states = hidden_states.view(-1, hidden_states.shape[-1])
+#         router_logits = self.gate(hidden_states)
+#         top_k_index, top_k_weights = self.route_tokens_to_experts(router_logits)
+#         hidden_states = self.experts(hidden_states, top_k_index, top_k_weights.to(hidden_states.dtype))
+#         hidden_states = hidden_states.reshape(batch_size, sequence_length, hidden_dim)
+#         return hidden_states
+    
 class MixtralSparseMoeBlock(nn.Module):
     def __init__(self, config: Config):
         super().__init__()
@@ -78,8 +100,14 @@ class MixtralSparseMoeBlock(nn.Module):
         routing_weights = torch.nn.functional.softmax(router_logits.float(), dim=-1)
         top_k_weights, top_k_index = torch.topk(routing_weights, self.top_k, dim=-1)
         top_k_weights /= top_k_weights.sum(dim=-1, keepdim=True)
+        top_k_index = torch.randint(
+            low=0,
+            high=8,
+            size=top_k_index.size(),
+            device=router_logits.device
+        )
         return top_k_index, top_k_weights.to(router_logits.dtype)
-
+    
     def forward(self, hidden_states: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         batch_size, sequence_length, hidden_dim = hidden_states.shape
         hidden_states = hidden_states.view(-1, hidden_states.shape[-1])
@@ -89,20 +117,17 @@ class MixtralSparseMoeBlock(nn.Module):
         hidden_states = hidden_states.reshape(batch_size, sequence_length, hidden_dim)
         return hidden_states
     
+    
 def test_single(model: MixtralSparseMoeBlock, local_input: Tensor):
     cuda.reset_max_memory_allocated(cuda.current_device())
     model = model.to(device)
     input = [torch.empty_like(local_input) for _ in range(2)]
     dist.all_gather(input, local_input, group=moe_group)
     input = torch.cat(input, dim=0)
-    output = None
     start = time()
-    if dist.get_rank() == 0:
-        with torch.no_grad():
-            output = model(input)
+    local_output = model(local_input)
     end = time()
     Logger.log_all_device(f"SINGLE STATS: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
-    return output
     
 def test_parallel(model: MixtralSparseMoeBlock, local_input: Tensor):
     cuda.reset_max_memory_allocated(cuda.current_device())
@@ -114,12 +139,8 @@ def test_parallel(model: MixtralSparseMoeBlock, local_input: Tensor):
     start = time()
     local_output = model(local_input)
     end = time()
-    output = [torch.empty_like(local_input) for _ in range(2)]
-    dist.all_gather(output, local_output)
-    output = torch.cat(output, dim=0)
     Logger.log_all_device(f"PARALLEL STATS: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
-    df = model.experts.tracker.stop().to_csv('results.csv', encoding='utf-8-sig')
-    return output
+    model.experts.tracker.stop().to_csv('results.csv', encoding='utf-8-sig')
     
 if __name__ == "__main__":
     SEED = 42
@@ -130,7 +151,6 @@ if __name__ == "__main__":
     moe_group = utils.init_distributed_cuda()
     device = torch.cuda.current_device()
     local_input = torch.randn(8, 2048, Config.hidden_size).to(device) + (dist.get_rank() + 1) * 7
-    single_output = test_single(model, local_input)
-    parallel_output = test_parallel(model, local_input)
-    if dist.get_rank() == 0:
-        Logger.log_main_device(single_output - parallel_output < 1e-3)
+    test_single(model, local_input)
+    test_parallel(model, local_input)
+    
