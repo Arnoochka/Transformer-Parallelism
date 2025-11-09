@@ -12,11 +12,11 @@ class DummyModule(torch.nn.Module):
     def generate(tokens, *args, **kwargs):
         return tokens
 
-def inference_generator(model: PreTrainedModel, tp_group: ProcessGroup):
+def inference_generator(model: PreTrainedModel, device: torch.device):
     rank = comm.get_rank(tp_group)
     if rank == 0:
-        return model.to(torch.cuda.current_device())
-    else: return DummyModule().to(torch.cuda.current_device())
+        return model.to(device)
+    else: return DummyModule().to(device)
         
 if __name__ == "__main__":
     deepspeed.init_distributed('nccl')
@@ -33,5 +33,5 @@ if __name__ == "__main__":
         model_name="deepspeed_single-1.3b")
     promts = utils.get_prompts("/home/victor/Transformer-Parallelism/Data/benchmark_mini.txt")
     results = benchmark(promts, tp_group)
-    utils.logger(results, rank)
+    utils.Logger.log_main_device(results, rank)
     

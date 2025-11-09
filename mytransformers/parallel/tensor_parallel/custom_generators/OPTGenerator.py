@@ -3,75 +3,97 @@ from torch.nn import Module
 import torch.distributed as dist
 from torch.distributed import ProcessGroup
 from transformers import OPTForCausalLM
-from mytransformers.parallel.tensor_parallel.tp_generators import (TPModuleGenerator,
-                                                                   TPColumnLinearGenerator,
+from mytransformers.parallel.tensor_parallel.generators import (TPColumnLinearGenerator,
                                                                    TPRowLinearGenerator,
                                                                    TPColumnEmbeddingGenerator,
-                                                                   TPLayerNormGenerator)
+                                                                   TPSplittedLayerNormGenerator)
+from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from mytransformers.parallel.Reshaper import SimpleSplitter
-from torch.nn import ModuleList, Linear, LayerNorm, Embedding
+from torch.nn import ModuleList, Linear, Embedding
 
-class OPTGenerator(TPModuleGenerator):
-    def __new__(cls, module: OPTForCausalLM, tp_group: ProcessGroup) -> OPTForCausalLM:
-        TPColumnEmbeddingGenerator.use_all_gather = False
-        TPLayerNormGenerator.use_all_gather = False
-        TPColumnLinearGenerator.use_all_gather = True
+def set_tp_group(tp_group: ProcessGroup) -> None:
+    """устанавливает группу для всех слоев"""
+    TPColumnLinearGenerator.tp_group = tp_group
+    TPRowLinearGenerator.tp_group = tp_group
+    TPColumnEmbeddingGenerator.tp_group = tp_group
+    TPSplittedLayerNormGenerator.tp_group = tp_group
+    OPTGenerator.tp_group = tp_group
+    OPTDecoderLayerGenerator.tp_group = tp_group
+    OPTAttentionGenerator.tp_group = tp_group
+    
+
+class OPTGenerator(ParallelModuleGenerator):
+    """
+    кастомный генератор для OPTModel из huggingfacce
+    """
+    tp_group: ProcessGroup = None
+    @torch.no_grad()
+    def __new__(cls, module: OPTForCausalLM, device: torch.device) -> OPTForCausalLM:
+        TPColumnEmbeddingGenerator.use_all_gather = True
+        TPSplittedLayerNormGenerator.use_all_gather = False
+        TPColumnLinearGenerator.use_all_gather = False
         TPRowLinearGenerator.use_all_reduce = True
-        device = torch.cuda.current_device()
-        module.lm_head = TPRowLinearGenerator(module.lm_head, tp_group)
+        module.lm_head = TPColumnLinearGenerator(module.lm_head, device)
         decoder = module.model.decoder
         for name, child in decoder.named_children():
             if isinstance(child, ModuleList):
                 child = ModuleList([
-                    OPTDecoderLayerGenerator(layer, tp_group)
+                    OPTDecoderLayerGenerator(layer, device)
                     for layer in child])
             elif type(child) is Embedding:
-                child = TPColumnEmbeddingGenerator(child, tp_group)
+                child = TPColumnEmbeddingGenerator(child, device)
             elif name == "embed_positions":
-                child = SimpleSplitter(child, -1, tp_group).to(torch.cuda.current_device())
+                child = child.to(device)
             elif name == "final_layer_norm":
-                child = TPLayerNormGenerator(child, tp_group)
+                child = child.to(device)
             else:
                 child = child.to(device)
             setattr(decoder, name, child)
+            
+        TPColumnLinearGenerator.use_all_gather = True
+        module.lm_head = TPColumnLinearGenerator(module.lm_head, device)
         module.model.decoder = decoder
         return module
         
-class OPTDecoderLayerGenerator(TPModuleGenerator):
-    def __new__(cls, module: Module, tp_group: ProcessGroup) -> Module:
+class OPTDecoderLayerGenerator(ParallelModuleGenerator):
+    tp_group: ProcessGroup = None
+    def __new__(cls, module: Module, device: torch.device) -> Module:
         TPColumnLinearGenerator.use_all_gather = False
         TPRowLinearGenerator.use_all_reduce = True
-        TPLayerNormGenerator.use_all_gather = False
-        device = torch.cuda.current_device()
+        TPSplittedLayerNormGenerator.use_all_gather = True
         for name, child in module.named_children():
             if isinstance(child, Linear):
                 if name == 'fc1':
-                    child = TPRowLinearGenerator(child, tp_group)
+                    child = TPColumnLinearGenerator(child, device)
                 else:
-                    child = TPColumnLinearGenerator(child, tp_group)
-            elif isinstance(child, LayerNorm):
-                child = TPLayerNormGenerator(child, tp_group)
-            elif name == "activation_fn":
+                    child = TPRowLinearGenerator(child, device)
+            elif name == "self_attn_layer_norm":
+                child = child.to(device)
+            elif name == "activation_fn" or name == "final_layer_norm":
                 child = child.to(device)
             else:
-                child = OPTAttentionGenerator(child, tp_group)
+                child = OPTAttentionGenerator(child, device)
             setattr(module, name, child)
         return module
         
-class OPTAttentionGenerator(TPModuleGenerator):
-    def __new__(cls, module: Module, tp_group: ProcessGroup) -> Module:
+class OPTAttentionGenerator(ParallelModuleGenerator):
+    tp_group: ProcessGroup = None
+    def __new__(cls, module: Module, device: torch.device) -> Module:
         TPColumnLinearGenerator.use_all_gather = False
         TPRowLinearGenerator.use_all_reduce = True
         for name, child in module.named_children():
             if isinstance(child, Linear):
                 if name == "out_proj":
-                    child = TPColumnLinearGenerator(child, tp_group)
+                    child = TPRowLinearGenerator(child, device)
                 else:
-                    child = TPRowLinearGenerator(child, tp_group)
+                    child = TPColumnLinearGenerator(child, device)
             setattr(module, name, child)
-        world_size = dist.get_world_size(tp_group)
+        world_size = dist.get_world_size(cls.tp_group)
         assert module.num_heads % world_size == 0,\
             f"It is not possible to split query heads into {world_size} devices"
+        module.num_heads = module.num_heads // world_size
+        module.embed_dim = module.embed_dim // world_size
+        
         return module
 
     

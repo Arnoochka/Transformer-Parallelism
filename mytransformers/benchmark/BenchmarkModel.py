@@ -8,7 +8,7 @@ from transformers import PreTrainedModel, AutoTokenizer
 from .BenchmarkStats import BenchmarkStats
 from .Tracker import Tracker
 from mytransformers.parallel import ParallelModuleGenerator
-from mytransformers.utils import logger, get_model_size
+from mytransformers.utils import Logger, get_model_size
 import pandas as pd
 
 def get_synchronize_func(group: ProcessGroup):
@@ -71,26 +71,25 @@ class BenchmarkModel:
         sync_func = get_synchronize_func(group)
         tracker = Tracker(group, sync_func)
         self.stats['data_size'] = len(prompts)
-        logger("start benchmark", rank)
+        Logger.log_main_device("start benchmark", rank)
 
         tracker.start() 
-        model = self.generator(self.model, group)
+        model = self.generator(self.model, torch.cuda.current_device())
         tracker.snapshot("generator")
-        logger(f"model:\n{[child for child in model.children()]}", rank)
+        Logger.log_main_device(f"model:\n{[child for child in model.children()]}", rank)
         # self.generate(model, prompts, self.max_new_tokens_list[-1])
         for max_new_tokens in self.max_new_tokens_list:
             tracker.snapshot(f"max new tokens:{max_new_tokens} start")
             output = self.generate(model, prompts, max_new_tokens)
             tracker.snapshot(f"max new tokens:{max_new_tokens} stop")
-
-        logger("stop benchmark", rank)
+        Logger.log_main_device("stop benchmark", rank)
         if print_output_num > 0:
             outputs = self.tokenizer.batch_decode(output, skip_special_tokens=True)
             decoded_output = outputs[:print_output_num]
-            logger(f"output: {decoded_output}", rank)
+            Logger.log_main_device(f"output: {decoded_output}", rank)
 
         final_stats = tracker.stop()
-        logger(final_stats, rank)
+        Logger.log_main_device(final_stats, rank)
         self.calculate_statistics(final_stats, world_size)
         
         if self.save_stats:

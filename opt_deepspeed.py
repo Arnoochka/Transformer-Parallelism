@@ -6,7 +6,7 @@ import deepspeed
 from deepspeed import comm
 from transformers import AutoTokenizer, OPTForCausalLM, PreTrainedModel
 
-def inference_generator(model: PreTrainedModel, tp_group: ProcessGroup):
+def inference_generator(model: PreTrainedModel, device: torch.device):
     module = deepspeed.init_inference(model, 
                                     tensor_parallel={"tp_size": 2},
                                     replace_with_kernel_inject=True,
@@ -28,5 +28,5 @@ if __name__ == "__main__":
         model_name="deepspeed_opt-1.3b")
     promts = utils.get_prompts("/home/victor/Transformer-Parallelism/Data/benchmark_mini.txt")
     results = benchmark(promts, tp_group)
-    utils.logger(results, rank)
+    utils.Logger.log_main_device(results, rank)
     

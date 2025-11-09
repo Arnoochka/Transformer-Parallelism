@@ -1,0 +1,73 @@
+WARNING:torch.distributed.run:
+*****************************************
+Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+*****************************************
+[2025-10-24 21:14:14,066] [INFO] [real_accelerator.py:260:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-24 21:14:14,089] [INFO] [real_accelerator.py:260:get_accelerator] Setting ds_accelerator to cuda (auto detect)
+[2025-10-24 21:14:18,732] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-24 21:14:18,739] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-24 21:14:18,740] [INFO] [logging.py:107:log_dist] [Rank -1] [TorchCheckpointEngine] Initialized with serialization = False
+[2025-10-24 21:14:18,747] [INFO] [comm.py:821:init_distributed] cdb=None
+[2025-10-24 21:14:18,747] [INFO] [comm.py:852:init_distributed] Initializing TorchBackend in DeepSpeed with backend nccl
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/_utils.py:776: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/_utils.py:776: UserWarning: TypedStorage is deprecated. It will be removed in the future and UntypedStorage will be the only storage class. This should only matter to you if you are using storages directly.  To access UntypedStorage directly, use tensor.untyped_storage() instead of tensor.storage()
+  return self.fget.__get__(instance, owner)()
+start benchmark
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/cuda/memory.py:303: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
+  warnings.warn(
+/home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/cuda/memory.py:303: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
+  warnings.warn(
+model:
+[OPTModel(
+  (decoder): OPTDecoder(
+    (embed_tokens): Embedding(50272, 2048, padding_idx=1)
+    (embed_positions): OPTLearnedPositionalEmbedding(2050, 2048)
+    (final_layer_norm): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+    (layers): ModuleList(
+      (0-23): 24 x OPTDecoderLayer(
+        (self_attn): OPTAttention(
+          (k_proj): Linear(in_features=2048, out_features=2048, bias=True)
+          (v_proj): Linear(in_features=2048, out_features=2048, bias=True)
+          (q_proj): Linear(in_features=2048, out_features=2048, bias=True)
+          (out_proj): Linear(in_features=2048, out_features=2048, bias=True)
+        )
+        (activation_fn): ReLU()
+        (self_attn_layer_norm): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+        (fc1): Linear(in_features=2048, out_features=8192, bias=True)
+        (fc2): Linear(in_features=8192, out_features=2048, bias=True)
+        (final_layer_norm): LayerNorm((2048,), eps=1e-05, elementwise_affine=True)
+      )
+    )
+  )
+), Linear(in_features=2048, out_features=50272, bias=False)]
+stop benchmark
+                               time  ...  max_memory_gpu_1
+name                                 ...                  
+start                   4426.050122  ...          0.000003
+generator               4433.040911  ...          0.000004
+max new tokens:8 start  4433.043349  ...          0.000005
+max new tokens:8 stop   4438.059342  ...          0.000015
+
+[4 rows x 5 columns]
+-------Benchmark results-------
+model name: deepspeed_single-1.3b
+model size: 4.902, dtype: float32
+mean inference time (s): 5.016
+mean throughput (token/s): 19.139
+data size: 12, batch size: 12, max len: 64
+max new tokens: [8]
+    inference time (s): 5.016
+    throughput (token/s): 19.139
+
+max memory allocated per device for generator (GB):            
+    device 0: 4.902
+    device 1: 0.000
+
+max memory allocated per device for inference (GB):            
+    device 0: 5.078
+    device 1: 0.000
+
+max memory allocated per device (GB):            
+    device 0: 5.078
+    device 1: 0.000
