@@ -1,8 +1,15 @@
 from typing import Any, Optional
 import torch
-from torch.nn import ReLU
+from torch.nn import Module
 
-class FakeModule(torch.nn.Module):
+class FakeModule(Module):
+    """
+    базовый класс для "фейкового" слоя
+    
+    Args:
+        device (torch.device): устройство, на котором должен быть выходной тензор
+        dtype (torch.dtype): тип данных, с которым должен быть выходной тензор (по умолчанию акой же, как и тип данных, выставленный по умолчанию в torch)
+    """
     def __init__(self,
                  device: torch.device,
                  dtype: Optional[torch.dtype] = None):

@@ -7,7 +7,14 @@ from torch.nn import ModuleList
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from .MoeExperts import MoeDPExperts
 
-class MoeDataParallelExpertsGenerator(ParallelModuleGenerator):
+class MoeDPExpertsGenerator(ParallelModuleGenerator):
+    """
+    генерирует MoeDPExperts из модуля экспертов модели
+    
+    Args:
+        expert_idxs (List[Tensor]): план распределения экспертов по устройствам
+        moe_group: (ProcessGroup): Группа процессов MoE
+    """
     expert_idxs: List[Tensor] = None
     moe_group: ProcessGroup = None
     def __new__(cls, module: ModuleList, device: torch.device) -> MoeDPExperts:

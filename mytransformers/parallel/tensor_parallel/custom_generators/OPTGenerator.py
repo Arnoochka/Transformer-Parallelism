@@ -12,6 +12,7 @@ from mytransformers.parallel.Reshaper import SimpleSplitter
 from torch.nn import ModuleList, Linear, Embedding
 
 def set_tp_group(tp_group: ProcessGroup) -> None:
+    """устанавливает группу для всех слоев"""
     TPColumnLinearGenerator.tp_group = tp_group
     TPRowLinearGenerator.tp_group = tp_group
     TPColumnEmbeddingGenerator.tp_group = tp_group
@@ -22,6 +23,9 @@ def set_tp_group(tp_group: ProcessGroup) -> None:
     
 
 class OPTGenerator(ParallelModuleGenerator):
+    """
+    кастомный генератор для OPTModel из huggingfacce
+    """
     tp_group: ProcessGroup = None
     @torch.no_grad()
     def __new__(cls, module: OPTForCausalLM, device: torch.device) -> OPTForCausalLM:

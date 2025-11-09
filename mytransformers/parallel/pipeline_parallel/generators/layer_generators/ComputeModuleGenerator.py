@@ -7,6 +7,15 @@ from mytransformers.parallel.pipeline_parallel.layers import (PipeFakeModule, Pi
                                                               FakeModule)
 
 class ComputeModuleGenerator:
+    """
+    генератор, для вычислительного модуля. На нужно ппроцесса сзодает вычислительный модуль, на остальных - фейковый
+    
+    Args:
+        role (PipeRole): роль модуля (compute или recvAndCompute)
+        module (Module): модуль, который будет производить вычисления
+        group_ranks (List[int]): группа рангов, у которых должен быть вычислительный модуль
+        fake_module: (FakeModule): тип "фейкового" модуля для остальных рангов
+    """
     def __new__(cls,
                 role: PipeRole,
                 module: Module,

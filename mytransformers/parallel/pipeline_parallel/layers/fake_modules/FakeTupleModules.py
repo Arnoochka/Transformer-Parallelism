@@ -4,6 +4,14 @@ from torch import Tensor
 from .FakeModule import FakeModule
 
 class FakeTupleTensorModule(FakeModule):
+    """
+    генерирует кортеж фейковых тензоров необходимой размерности. 
+    
+    Args:
+        tensor_shape (List[Tuple[int]]): начальные размеры выходных тензоров
+        device (torch.device): устройство, на котором должен быть выходной тензор
+        dtype (torch.dtype): тип данных, с которым должен быть выходной тензор (по умолчанию акой же, как и тип данных, выставленный по умолчанию в torch)
+    """
     def __init__(self,
                  tensor_shapes: List[Tuple[int]],
                  device: torch.device,
@@ -22,6 +30,14 @@ class FakeTupleTensorModule(FakeModule):
     
     
 class FakeTupleOptionalTensorModule(FakeTupleTensorModule):
+    """
+    генерирует кортеж фейковых тензоров необходимой размерности. Однако, некоторые значения в кортеже могут быть None
+    
+    Args:
+        tensor_shape (List[Optional[Tuple[int]]]): начальные размеры выходных тензоров
+        device (torch.device): устройство, на котором должен быть выходной тензор
+        dtype (torch.dtype): тип данных, с которым должен быть выходной тензор (по умолчанию акой же, как и тип данных, выставленный по умолчанию в torch)
+    """
     def __init__(self,
                  tensor_shapes: List[Optional[Tuple[int]]],
                  device: torch.device,
@@ -34,14 +50,23 @@ class FakeTupleOptionalTensorModule(FakeTupleTensorModule):
         return tuple(outputs)
     
 class FakeTupleSeqModule(FakeTupleTensorModule):
+    """
+    генерирует кортеж фейковых тензоров необходимой размерности. Однако, при каждой новой генерации увеличивает нужные размерности на 1
+    
+    Args:
+        init_tensor_shape (Tuple[int]): начальные размеры выходных тензоров
+        seq_dims (int): размерности, которые будут увиличиваться
+        device (torch.device): устройство, на котором должен быть выходной тензор
+        dtype (torch.dtype): тип данных, с которым должен быть выходной тензор (по умолчанию акой же, как и тип данных, выставленный по умолчанию в torch)
+    """
     def __init__(self, 
-                 tensor_shapes: List[Tuple[int]],
+                 init_tensor_shapes: List[Tuple[int]],
                  seq_dims: List[int],
                  device,
                  dtype = None):
-        super().__init__(tensor_shapes, device, dtype)
+        super().__init__(init_tensor_shapes, device, dtype)
         self.seq_dims = seq_dims
-        self.ks = [tensor_shapes[idx][seq_dim]
+        self.ks = [init_tensor_shapes[idx][seq_dim]
                    for idx, seq_dim in enumerate(seq_dims)]
         
     def forward(self, *args, **kwargs):

@@ -10,6 +10,17 @@ import torch
 
 
 class PipelineGenerator:
+    
+    """
+    Генератор стадий конвейерного параллелизма
+    
+    Args:
+        stages (List[List[Module]]): Слои, разделенные ао стадиям
+        groups_info (List[Tuple[ProcessGroup, List[int]]]): информация о группах
+        stages_fake_modules (List[List[FakeModule]]): фейковые модули для подмены модулей
+        device (torch.device): текущее устройство
+    """
+    
     def __new__(cls,
                 stages: List[List[Module]],
                 groups_info: List[Tuple[ProcessGroup, List[int]]],
@@ -34,7 +45,6 @@ class PipelineGenerator:
                 "strategy": LeaderTupleStrategyModule}
                 
             if is_last_stage:
-                # TODO: Add async strategy for real pipeline parallel or add 
                 strategy_kwargs["strategy"] = LeaderStrategyModule
             new_stage = PipelineGenerator.get_stage(
                 stage,

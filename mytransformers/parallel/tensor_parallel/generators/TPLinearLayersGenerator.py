@@ -7,6 +7,14 @@ from torch.nn import Linear
 
     
 class TPColumnLinearGenerator(TPModuleGenerator):
+    """
+    генерирует TPColumnLinear из torch.nn.Linear
+
+    Args:
+        use_all_gather (bool, optional): Если ``True``, объединяет результаты со всех устройств
+            с помощью операции all_gather. По умолчанию ``True``.
+        tp_group (ProcessGroup): Группа процессов для тензорного параллелизма.
+    """
     use_all_gather: bool = True
     tp_group: ProcessGroup = None
     @torch.no_grad()  
@@ -36,6 +44,14 @@ class TPColumnLinearGenerator(TPModuleGenerator):
         return layer.to(device)
     
 class TPRowLinearGenerator(TPModuleGenerator):
+    """
+    генерирует TPRowLinear из torch.nn.Linear
+
+    Args:
+        use_all_reduce (bool, optional): Если ``True``, объединяет результаты со всех устройств
+            с помощью операции all_gather. По умолчанию ``True``.
+        tp_group (ProcessGroup): Группа процессов для тензорного параллелизма.
+    """
     use_all_reduce: bool = True
     tp_group: ProcessGroup = None
     @torch.no_grad()

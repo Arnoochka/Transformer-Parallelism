@@ -4,9 +4,12 @@ from typing import Any, List, Optional
 from torch.distributed import Work
 from itertools import count
 
-GLOBAL_COUNTER = count()
+GLOBAL_COUNTER = count() # глобальный счетчик для тегов
 
 class StrategyModule(Module):
+    """
+    Базовый класс стратегий
+    """
     def __init__(self):
         super().__init__()
         self.tag = None
@@ -16,6 +19,18 @@ class StrategyModule(Module):
                 is_send: bool,
                 send_group: ProcessGroup,
                 recv_group: ProcessGroup) -> Any:
+        
+        """
+        Args:
+            output (Any): выход, который необходимо передать не следующий процесс
+            is_send (bool): является ли процесс отправителем
+            send_group (ProcessGroup): группа, процессов, которая отправляет данные
+            recv_group (ProcessGroup): группа процессов, которая принимает данные
+            
+        Returns:
+            Any: выход, который необходимо быдло передать (output)
+        """
+        
         self.tag = next(GLOBAL_COUNTER)
         self.workers.append(None)
         return output

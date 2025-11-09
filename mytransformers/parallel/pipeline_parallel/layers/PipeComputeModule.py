@@ -4,6 +4,15 @@ from typing import Any
 import torch
 
 class PipeComputeModule(PipeModule):
+    """
+    Вычислительный модуль для конвейерного параллелизма.
+    
+    Задача: обработка слоем (module) входных данных
+    
+    Args:
+        role (PipeRole): роль модуля (compute или recvAndCompute) 
+        module (Module): слой, который должен произвести выччисление
+    """
     def __init__(self,
                  role: PipeRole,
                  module: Module):

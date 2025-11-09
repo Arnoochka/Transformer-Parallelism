@@ -4,6 +4,14 @@ import torch
 from torch import Tensor
 
 class FakeTensorModule(FakeModule):
+    """
+    генерирует фейковый тензор необходимой размерности
+    
+    Args:
+        tensor_shape (Tuple[int]): размер выходного тензора
+        device (torch.device): устройство, на котором должен быть выходной тензор
+        dtype (torch.dtype): тип данных, с которым должен быть выходной тензор (по умолчанию акой же, как и тип данных, выставленный по умолчанию в torch)
+    """
     def __init__(self,
                  tensor_shape: Tuple[int],
                  device: torch.device,
@@ -16,6 +24,15 @@ class FakeTensorModule(FakeModule):
         
         
 class FakeSeqModule(FakeTensorModule):
+    """
+    генерирует фейковый тензор необходимой размерность. Однако, при каждой новой генерации увеличивает нужную размерность на 1
+    
+    Args:
+        init_tensor_shape (Tuple[int]): начальный размер выходного тензора
+        seq_dim (int): размерность, которая будет увеличиваться
+        device (torch.device): устройство, на котором должен быть выходной тензор
+        dtype (torch.dtype): тип данных, с которым должен быть выходной тензор (по умолчанию акой же, как и тип данных, выставленный по умолчанию в torch)
+    """
     def __init__(self,
                  init_tensor_shape: Tuple[int],
                  seq_dim: int,

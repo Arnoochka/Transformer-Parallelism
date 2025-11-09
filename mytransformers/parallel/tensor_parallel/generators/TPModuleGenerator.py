@@ -13,6 +13,10 @@ class TPModuleGenerator(ParallelModuleGenerator):
     
     @staticmethod
     def already_converted(module: Module) -> bool:
+        """
+        проверяет, является ли модуль уже Тензорным слоем. 
+        Если да, то выкидывает warning
+        """
         if isinstance(module, TPModule):
             warnings.warn(
                 f"this module is already converted in TPModule: {type(module).__name__}",

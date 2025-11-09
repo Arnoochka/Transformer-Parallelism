@@ -7,10 +7,20 @@ from mytransformers.parallel.pipeline_parallel.layers import (PipeFakeModule, Pi
                                                               PipeStrategyModule,
                                                               StrategyModule,
                                                               FakeModule)
-        
-    
-
 class StrategyModuleGenerator:
+    """
+    генератор, для стратегического модуля. На нужных ппроцессах сзодает стратегический модуль, на остальных - фейковый
+    
+    Args:
+        role (PipeRole): роль модуля на текущем этапе(send, recv, computeAndSend)
+        module (Module): модуль, от которого получается тензор для передачи текущего этапа
+        group_info (Tuple[ProcessGroup, List[int]]): информация о текущей группе этапа
+        next_role (PipeRole): роль  модуля на следуюшей этапе (send, recv, computeAndSend)
+        next_module (Module): модуль, от которого получается тензор для передачи следующига этапа
+        next_group_info (Tuple[ProcessGroup, List[int]]): информация о следующей группе этапа
+        strategy (StrategyModule): стратегия передачи данных
+        strategy_kwargs (Dict): аргументы стратегии
+    """
     def __new__(cls,
                 role: PipeRole,
                 module: Module,

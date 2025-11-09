@@ -6,7 +6,20 @@ from .TPModule import TPModule
 import torch.nn.functional as F
 from typing import Optional
 
+
 class TPEmbedding(TPModule):
+    """
+    Базовый класс для тензорно-параллельной версии слоя `torch.nn.Embedding`.
+
+    Args:
+        num_embeddings (int): Размер словаря (количество токенов).
+        embedding_dim (int): Размерность вектора эмбеддинга.
+        tp_group (ProcessGroup): Группа процессов для тензорного параллелизма.
+        padding_idx (Optional[int], optional): Индекс для паддинга. По умолчанию ``None``.
+        max_norm (Optional[float], optional): Максимальная норма для эмбеддингов. По умолчанию ``None``.
+        norm_type (float, optional): Тип нормы, используемый при ограничении нормы. По умолчанию ``2.0``.
+        sparse (bool, optional): Использовать ли разреженное обновление. По умолчанию ``False``.
+    """
     def __init__(self,
                  num_embeddings: int,
                  embedding_dim: int,
@@ -27,13 +40,29 @@ class TPEmbedding(TPModule):
                                  num_embeddings,
                                  embedding_dim,
                                  requires_grad=False))
-        
+
+
 class TPColumnEmbedding(TPEmbedding):
+    """
+    Тензорно-параллельная версия эмбеддинга, где размерность `embedding_dim`
+    делится между устройствами (column parallel).
+
+    Args:
+        num_embeddings (int): Размер словаря.
+        embedding_dim (int): Полная размерность эмбеддинга до разбиения.
+        tp_group (ProcessGroup): Группа процессов для тензорного параллелизма.
+        padding_idx (Optional[int], optional): Индекс паддинга. По умолчанию ``None``.
+        max_norm (Optional[float], optional): Максимальная норма. По умолчанию ``None``.
+        norm_type (float, optional): Тип нормы. По умолчанию ``2.0``.
+        sparse (bool, optional): Использовать ли разреженные обновления. По умолчанию ``False``.
+        use_all_gather (bool, optional): Если ``True``, выполняется сборка выходов со всех устройств.
+            По умолчанию ``True``.
+    """
     def __init__(self,
                  num_embeddings: int,
                  embedding_dim: int,
                  tp_group: ProcessGroup,
-                 padding_idx: Optional[int]= None,
+                 padding_idx: Optional[int] = None,
                  max_norm: Optional[float] = None,
                  norm_type: float = 2.0,
                  sparse: bool = False,
@@ -48,26 +77,28 @@ class TPColumnEmbedding(TPEmbedding):
                          max_norm,
                          norm_type,
                          sparse)
-        
+
     @torch.no_grad()
     def forward(self, x: Tensor) -> Tensor:
         """
-        input: X
-        output = [Z_1, Z_2, ..., Z_n]
+        input: 
+            X = [X, X, ... X]  
+        output:
+            Z  = [Z_1, Z_2, ..., Z_n]
         """
         if not self.use_all_gather:
             return F.embedding(x,
-                                 self.weight,
-                                 padding_idx=self.padding_idx,
-                                 max_norm=self.max_norm,
-                                 norm_type=self.norm_type,
-                                 sparse=self.sparse)
-        logits_t =  F.embedding(x,
-                                self.weight,
-                                padding_idx=self.padding_idx,
-                                max_norm=self.max_norm,
-                                norm_type=self.norm_type,
-                                sparse=self.sparse).transpose(0, 2).contiguous()
+                               self.weight,
+                               padding_idx=self.padding_idx,
+                               max_norm=self.max_norm,
+                               norm_type=self.norm_type,
+                               sparse=self.sparse)
+        logits_t = F.embedding(x,
+                               self.weight,
+                               padding_idx=self.padding_idx,
+                               max_norm=self.max_norm,
+                               norm_type=self.norm_type,
+                               sparse=self.sparse).transpose(0, 2).contiguous()
         
         tp_size = dist.get_world_size(group=self.tp_group)
         all_logits_t = torch.empty((logits_t.shape[0] * tp_size, *logits_t.shape[1:]),
@@ -75,13 +106,29 @@ class TPColumnEmbedding(TPEmbedding):
         dist.all_gather_into_tensor(all_logits_t, logits_t, group=self.tp_group)
 
         return all_logits_t.transpose(0, 2).contiguous()
-    
+
+
 class TPRowEmbedding(TPEmbedding):
+    """
+    Тензорно-параллельная версия эмбеддинга, где размерность `num_embeddings`
+    делится между устройствами (row parallel).
+
+    Args:
+        num_embeddings (int): Полное количество токенов до разбиения.
+        embedding_dim (int): Размерность векторов эмбеддингов.
+        tp_group (ProcessGroup): Группа процессов для тензорного параллелизма.
+        padding_idx (Optional[int], optional): Индекс паддинга. По умолчанию ``None``.
+        max_norm (Optional[float], optional): Максимальная норма. По умолчанию ``None``.
+        norm_type (float, optional): Тип нормы. По умолчанию ``2.0``.
+        sparse (bool, optional): Использовать ли разреженные обновления. По умолчанию ``False``.
+        use_all_reduce (bool, optional): Если ``True``, выполняется суммирование выходов со всех устройств.
+            По умолчанию ``True``.
+    """
     def __init__(self,
                  num_embeddings: int,
                  embedding_dim: int,
                  tp_group: ProcessGroup,
-                 padding_idx: Optional[int]= None,
+                 padding_idx: Optional[int] = None,
                  max_norm: Optional[float] = None,
                  norm_type: float = 2.0,
                  sparse: bool = False,
@@ -100,12 +147,14 @@ class TPRowEmbedding(TPEmbedding):
                          max_norm,
                          norm_type,
                          sparse)
-    
+
     @torch.no_grad()
     def forward(self, x: Tensor) -> Tensor:
         """
-        input: X
-        output = Z_1 + Z_2 + ... +Z_n
+        input:
+            X = [X_1, X_2, ... X_n]  
+        output:
+            Z = Z_1 + Z_2 + ... + Z_n
         """
         mask = ((x >= self.start_idx) & (x < self.end_idx)).unsqueeze(-1).float()
         x_local = (x - self.start_idx).clamp(min=0, max=self.max_idx)
@@ -121,6 +170,3 @@ class TPRowEmbedding(TPEmbedding):
             dist.all_reduce(logits, group=self.tp_group)
 
         return logits
-        
-        
-        

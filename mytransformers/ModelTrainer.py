@@ -11,6 +11,9 @@ import matplotlib.pyplot as plt
 
 
 class ModelTrainer:
+    """
+    тренирует модель, сохраняет и визуализирует потери, проводит тесты
+    """
     def __init__(self,
                  num_epochs: int,
                  batch_size: int,
