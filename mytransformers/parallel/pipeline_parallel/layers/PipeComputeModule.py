@@ -13,10 +13,8 @@ class PipeComputeModule(PipeModule):
         role (PipeRole): роль модуля (compute или recvAndCompute) 
         module (Module): слой, который должен произвести выччисление
     """
-    def __init__(self,
-                 role: PipeRole,
-                 module: Module):
-        super().__init__(role)
+    def __init__(self, module: Module):
+        super().__init__(PipeRole.compute)
         self.module = module 
     @torch.no_grad()
     def forward(self, *args, **kwargs) -> Any:

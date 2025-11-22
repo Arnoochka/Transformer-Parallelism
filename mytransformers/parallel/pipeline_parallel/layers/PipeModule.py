@@ -4,11 +4,9 @@ from enum import Enum
 class PipeRole(Enum):
     dummy = 0
     recv = 1
-    send = 2
-    compute = 3
-    recvAndCompute = 3
-    computeAndSend = 4
-    none = 5
+    compute = 2
+    computeAndSend = 3
+    none = 4
 
 class PipeModule(ParallelModule):   
     """
@@ -17,7 +15,7 @@ class PipeModule(ParallelModule):
     def __init__(self, role: PipeRole):
         super().__init__()
         if role == PipeRole.none:
-            raise AttributeError(f"comm role is none")
+            raise AttributeError(f"role is none")
         self.role = role
         
     def __repr__(self) -> str:

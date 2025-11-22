@@ -1,3 +1,5 @@
 from .PipelineGenerator import *
 from .PipeModuleGenerator import *
-from .layer_generators import *
+from .PipeGenerator import *
+from .BoundaryPointModuleGenerator import *
+from .ComputeModuleGenerator import *

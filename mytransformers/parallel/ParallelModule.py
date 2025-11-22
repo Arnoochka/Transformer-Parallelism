@@ -1,13 +1,12 @@
 from torch.nn import Module
-from torch import Tensor
-import torch
+from typing import Any
 
 class ParallelModule(Module):
     """
     Базовый параллельный модуль
     """
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__()
         
-    def forward(self, *args, **kwargs) -> Tensor:
-        return torch.empty(1)
+    def forward(self, *args, **kwargs) -> Any:
+        return None

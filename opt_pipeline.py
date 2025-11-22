@@ -20,7 +20,8 @@ if __name__ == "__main__":
         model,
         pp_custom.OPTGenerator,
         tokenizer,
-        model_name="my_opt-1.3b")
+        model_name="my_opt-1.3b",
+        max_new_tokens_list=[8])
     promts = utils.get_prompts("/home/victor/Transformer-Parallelism/Data/benchmark_mini.txt")
     results = benchmark(promts, utils.GROUP)
     utils.Logger.log_main_device(results, rank)

@@ -1,9 +1,8 @@
 from torch.distributed import ProcessGroup
 from .StrategyModule import StrategyModule, GLOBAL_COUNTER
 import torch.distributed as dist
-from torch.distributed import Work
 from torch import Tensor
-from typing import Tuple, List
+from typing import Tuple
 
 class LeaderStrategyModule(StrategyModule):
     """
@@ -69,7 +68,7 @@ class LeaderTupleStrategyModule(LeaderStrategyModule):
             recv_group (ProcessGroup): группа процессов, которая принимает данные
             
         Returns:
-            Tuple[Tensor]: выход, который необходимо быдло передать (output)
+            Tuple[Tensor]: выход, который необходимо было передать (output)
         """
         new_output = []
         for out in output:

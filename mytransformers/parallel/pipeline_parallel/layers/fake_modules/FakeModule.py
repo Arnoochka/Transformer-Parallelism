@@ -21,7 +21,10 @@ class FakeModule(Module):
         return self.forward(*args, **kwargs)
     
     def forward(self, *args, **kwargs) -> Any:
-        return torch.zeros((1, 1, 1), device=self.device, dtype=self.dtype)
+        return None
     
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(device={self.device})"
+    
+    def set_gen_args(self, *args) -> None:
+        return None
