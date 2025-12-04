@@ -13,9 +13,8 @@ class PipeFakeModule(PipeModule):
         fame_module (FakeModule): тип фейкового модуля, который для подмены
     """
     def __init__(self, fake_module: FakeModule):
-        super().__init__(PipeRole.dummy)
-        self.fake_module = fake_module
+        super().__init__(PipeRole.dummy, fake_module)
         
     @torch.no_grad()
     def forward(self, *args, **kwargs) -> Any:
-        return self.fake_module()
+        return self.module()

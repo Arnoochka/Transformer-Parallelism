@@ -1,5 +1,5 @@
 from torch.distributed import ProcessGroup
-from .StrategyModule import StrategyModule, GLOBAL_COUNTER
+from .StrategyModule import StrategyModule
 import torch.distributed as dist
 from torch import Tensor
 from typing import Tuple
@@ -33,7 +33,6 @@ class LeaderStrategyModule(StrategyModule):
         Returns:
             Tensor: выход, который необходимо быдло передать (output)
         """
-        self.tag = next(GLOBAL_COUNTER)
         send_leader_rank = dist.get_global_rank(send_group, self.leader_rank)
         recv_leader_rank = dist.get_global_rank(recv_group, self.leader_rank)
         if is_send:

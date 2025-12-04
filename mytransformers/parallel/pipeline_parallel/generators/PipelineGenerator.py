@@ -1,97 +1,69 @@
-from mytransformers.parallel.pipeline_parallel.layers import (
-    PipeRole, FakeModule, LeaderStrategyModule, LeaderTupleStrategyModule)
-from mytransformers.parallel.ParallelModule import ParallelModule
-from .BoundaryPointModuleGenerator import BoundaryPointModuleGenerator
+from mytransformers.parallel.pipeline_parallel.layers import (FakeModule, StrategyModule)
+from .BoundaryPointModuleGenerator import BoundaryPointModuleGenerator, MainBoundaryPointModuleGenerator
 from .ComputeModuleGenerator import ComputeModuleGenerator
 from .PipeGenerator import PipeGenerator
-from .PipeModuleGenerator import PipeModuleGenerator
-from typing import List, Tuple, Dict, Callable
-from torch.nn import Module
+from typing import List, Tuple, Callable
+from torch.nn import Module, ModuleList
 from torch.distributed import ProcessGroup
 
-class StagesGenerator(PipeGenerator):
-    
-    """
-    Генератор стадий конвейерного параллелизма
-    
-    Args:
-        stages (List[List[Module]]): Слои, разделенные ао стадиям
-        groups_info (List[Tuple[ProcessGroup, List[int]]]): информация о группах
-        stages_fake_modules (List[List[FakeModule]]): фейковые модули для подмены модулей
-    """
-    
-    def __new__(cls,
-                stages_modules: List[List[Module]],
-                groups_info: List[Tuple[ProcessGroup, List[int]]],
-                stages_fake_modules: List[List[FakeModule]]) -> List[List[Module]]:
-        if len(groups_info) != len(stages_modules):
-            raise AttributeError("the number of groups does not match the number of stages")
-        stages = []
-        for idx, (group, ranks) in enumerate(groups_info):
-            is_last_stage = (idx == len(stages_modules) - 1)
-            stage = stages_modules[idx]
-            stage_fake_modules = stages_fake_modules[idx]
-            compute_kwargs = {
-                "group_ranks": ranks}
-            strategy_kwargs = {
-                "group_info": (group, ranks),
-                "next_role": PipeRole.recv,
-                "next_module": stage_fake_modules[-1],
-                "next_group_info": groups_info[0] if is_last_stage else groups_info[idx + 1],
-                "strategy": LeaderTupleStrategyModule}
-                
-            if is_last_stage:
-                strategy_kwargs["strategy"] = LeaderStrategyModule
-            new_stage = StagesGenerator.get_stage(
-                stage,
-                stage_fake_modules,
-                compute_kwargs,
-                strategy_kwargs)
-            
-            stages.append(new_stage)
-                
-        return stages
-
-    @classmethod
-    def get_stage(cls,
-                  modules: List[Module],
-                  fake_modules: List[FakeModule],
-                  gen_kwargs: Dict,
-                  last_gen_kwargs: Dict) -> List[Module]:
-        stage = []
-        PipeModuleGenerator.generator = ComputeModuleGenerator
-        PipeModuleGenerator.gen_kwargs = gen_kwargs
-        for module, fake_module in zip(modules[:-1], fake_modules[:-1]):
-            gen_kwargs['fake_module'] = fake_module
-            stage.append(ComputeModuleGenerator(module, **gen_kwargs))
-
-        last_gen_kwargs['fake_module'] = fake_modules[-1]
-        stage.append(BoundaryPointModuleGenerator(modules[-1], **last_gen_kwargs))
-
-        return stage
+from mytransformers.parallel.pipeline_parallel import Pipeline
     
 
 class PipelineGenerator(PipeGenerator):
+    """
+    Генератор для конвейера 
+    
+    Args:
+        model (Module): исходная модель
+        modules (List[Tuple[str, Module, FakeModule]]): модули на подмену, (имя, оригинальный модуль, фейковый модуль)
+        inner_boundary_points (List[int]): внутренние точки стадий
+        groups_info (List[Tuple[ProcessGroup, List[int]]]): информация о группах стадий (len(groups_info) == len(inner_boundary_points) + 1)
+        inner_strategies (List[StrategyModule]): стратегии для передачи данных между стадиями
+        bcast_groups (Tuple[ProcessGroup, ProcessGroup]): каждому процессу внутри группы рассылаются данные на начальном или конечном слое
+        bcast_strategies (Tuple[StrategyModule, StrategyModule]): стратегии для рассылки на начальном или конечном слое
+        fake_args (Callable): генератор аргкментов для "фейковых" слоев
+        num_microbatches (int): число микробатчей
+    """
     def __new__(cls,
-                module: Module,
-                stages_info: List[List[str, Module, FakeModule]],
-                groups_info: List[Tuple[ProcessGroup, List[int]]]) -> ParallelModule:
-        get_info = lambda t: [[info[t] for info in stage_info]
-                              for stage_info in stages_info]
-        stages_names = get_info(0)
-        stages_modules = get_info(1)
-        stages_fake_modules = get_info(2)
+                model: Module,
+                modules: List[Tuple[str, Module, FakeModule]],
+                inner_boundary_points: List[int],
+                groups_info: List[Tuple[ProcessGroup, List[int]]],
+                inner_strategies: List[StrategyModule],
+                bcast_groups: Tuple[ProcessGroup, ProcessGroup],
+                bcast_strategies: Tuple[StrategyModule, StrategyModule],
+                fake_args: Callable,
+                num_microbatches: int) -> Pipeline:
         
-        pipe_stages = StagesGenerator(stages_modules,
-                                      groups_info,
-                                      stages_fake_modules)
-        
-        
-        
-        for stage_names, pipe_stage in zip(stages_names, pipe_stages):
-            for name, pipe_module in zip(stage_names, pipe_stage):
-                setattr(module, name, pipe_module)
+        stage = ModuleList()
+        inner_point_idx = 0
+        for idx, (name, module, fake_module) in enumerate(modules):
+            if idx == 0:
+                pipe_module = MainBoundaryPointModuleGenerator(module,
+                                                               groups_info[0][0],
+                                                               bcast_groups[0],
+                                                               False,
+                                                               bcast_strategies[0])
+            elif idx == len(modules) - 1:
+                pipe_module = MainBoundaryPointModuleGenerator(module,
+                                                               groups_info[-1][0],
+                                                               bcast_groups[-1],
+                                                               True,
+                                                               bcast_strategies[-1])
+            elif idx in inner_boundary_points:
+                pipe_module = BoundaryPointModuleGenerator(module,
+                                                           groups_info[inner_point_idx],
+                                                           inner_boundary_points[inner_point_idx + 1],
+                                                           fake_module,
+                                                           inner_strategies[inner_point_idx])
+                inner_point_idx += 1
+            else:
+                pipe_module = ComputeModuleGenerator(module,
+                                                     groups_info[inner_point_idx],
+                                                     fake_module)
                 
-        return module
-                
-        
+            stage.append(pipe_module)
+            setattr(model, name, pipe_module)
+            
+        return Pipeline(model.forward, stage, fake_args, num_microbatches)
+            

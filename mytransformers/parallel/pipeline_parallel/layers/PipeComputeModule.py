@@ -14,8 +14,8 @@ class PipeComputeModule(PipeModule):
         module (Module): слой, который должен произвести выччисление
     """
     def __init__(self, module: Module):
-        super().__init__(PipeRole.compute)
-        self.module = module 
+        super().__init__(PipeRole.compute, module)
+        
     @torch.no_grad()
     def forward(self, *args, **kwargs) -> Any:
         return self.module(*args, **kwargs)

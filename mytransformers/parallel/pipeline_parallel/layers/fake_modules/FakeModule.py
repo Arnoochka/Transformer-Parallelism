@@ -26,5 +26,5 @@ class FakeModule(Module):
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(device={self.device})"
     
-    def set_gen_args(self, *args) -> None:
+    def set_gen_args(self, args: Any) -> None:
         return None

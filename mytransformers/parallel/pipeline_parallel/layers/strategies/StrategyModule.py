@@ -3,15 +3,13 @@ from torch.nn import Module
 from typing import Any
 from itertools import count
 
-GLOBAL_COUNTER = count() # глобальный счетчик для тегов
-
 class StrategyModule(Module):
     """
     Базовый класс стратегий
     """
     def __init__(self):
         super().__init__()
-        self.tag = None
+        
     def forward(self,
                 output: Any,
                 is_send: bool,
@@ -28,8 +26,6 @@ class StrategyModule(Module):
         Returns:
             Any: выход, который необходимо быдло передать (output)
         """
-        
-        self.tag = next(GLOBAL_COUNTER)
         return output
     
 
