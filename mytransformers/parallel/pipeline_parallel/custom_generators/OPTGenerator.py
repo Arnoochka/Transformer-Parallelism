@@ -1,7 +1,6 @@
 from mytransformers.parallel.pipeline_parallel.generators import PipelineGenerator
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
-from mytransformers.parallel.pipeline_parallel.layers.fake_modules import (
-    FakeModule, FakeSeqModule, FakeTupleSeqModule)
+from mytransformers.parallel.pipeline_parallel.layers.fake_modules import ( FakeModule)
 from typing import List, Tuple
 from torch.distributed import ProcessGroup
 from transformers import OPTForCausalLM

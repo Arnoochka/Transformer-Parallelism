@@ -1,7 +1,7 @@
 import torch
 from torch.nn import ModuleList
-from typing import Callable, Iterable, List
-from .layers import PipeModule, FakeModule
+from typing import Callable, List
+from .layers import FakeModule
 from .Microbatch import Microbatch
 from threading import Event
         
