@@ -1,7 +1,14 @@
 from torch.distributed import ProcessGroup
 from torch.nn import Module
-from typing import Any
-from itertools import count
+from typing import Any, Iterator
+
+def build_counter() -> Iterator:
+    count = 0
+    while True:
+        count = (count + 1) % 1000
+        yield count
+        
+COUNTER = build_counter()
 
 class StrategyModule(Module):
     """
@@ -26,6 +33,7 @@ class StrategyModule(Module):
         Returns:
             Any: выход, который необходимо быдло передать (output)
         """
+        next(COUNTER)
         return output
     
 

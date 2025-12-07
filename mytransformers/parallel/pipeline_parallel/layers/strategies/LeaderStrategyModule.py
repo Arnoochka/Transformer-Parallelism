@@ -1,5 +1,5 @@
 from torch.distributed import ProcessGroup
-from .StrategyModule import StrategyModule
+from .StrategyModule import StrategyModule, COUNTER
 import torch.distributed as dist
 from torch import Tensor
 from typing import Tuple
@@ -37,10 +37,10 @@ class LeaderStrategyModule(StrategyModule):
         recv_leader_rank = dist.get_global_rank(recv_group, self.leader_rank)
         if is_send:
             if dist.get_rank() == send_leader_rank:
-                dist.send(output, recv_leader_rank, tag=0)
+                dist.send(output, recv_leader_rank, tag=next(COUNTER))
         else:
             if dist.get_rank() == recv_leader_rank:
-                dist.recv(output, src=send_leader_rank, tag=0)
+                dist.recv(output, src=send_leader_rank, tag=next(COUNTER))
             dist.broadcast(output, src=recv_leader_rank, group=recv_group)
         return output
         
