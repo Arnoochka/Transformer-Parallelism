@@ -1,13 +1,13 @@
 from torch.nn import Module
 import torch.distributed as dist
 from torch.distributed import ProcessGroup
-from typing import List, Tuple, Dict
-from .PipeGenerator import PipeGenerator
+from typing import List, Tuple
+from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from mytransformers.parallel.pipeline_parallel.layers import (
-    PipeBoundaryPointModule, PipeMainBoundaryPointModule,
-    PipeFakeModule, PipeModule, PipeRole, StrategyModule, FakeModule)
+    PipeBoundaryPointModule, PipeFakeModule, PipeModule,
+    PipeRole, StrategyModule, FakeModule)
 
-class BoundaryPointModuleGenerator(PipeGenerator):
+class BoundaryPointModuleGenerator(ParallelModuleGenerator):
     """
     генератор, для модуля граничной точки внутри конвейерного паралллеизма. На нужных процессах создает модуль крайней точки, на остальных - фейковый
     
@@ -37,35 +37,3 @@ class BoundaryPointModuleGenerator(PipeGenerator):
                                            strategy)
         else:
             return PipeFakeModule(fake_module)
-        
-        
-class MainBoundaryPointModuleGenerator(PipeGenerator):
-    """
-    генератор, для модуля крайнкй точки  конвейерного параллелизма.
-    
-    Args:
-        module (Module): модуль, от которого получается тензор для передачи текущего этапа
-        group (ProcessGroup): текущая группа этапа
-        bcast_group (ProcessGroup): группа процессов, которой необходимо передать данные
-        is_finished (bool): является крайняя точка конечной (если False, то она начальная)
-        strategy (StrategyModule): стратегия передачи данных
-        strategy_kwargs (Dict): аргументы стратегии
-    """
-    def __new__(cls,
-                module: Module,
-                current_group_info: ProcessGroup,
-                bcast_group: ProcessGroup,
-                bcast_module: Module,
-                is_finished: bool,
-                strategy: StrategyModule) -> PipeModule:
-        
-        rank = dist.get_rank()
-        current_group, current_ranks = current_group_info
-        role = PipeRole.computeAndSend if rank in current_ranks else PipeRole.recv
-        compute_module = module if role == PipeRole.computeAndSend else bcast_module
-        return PipeMainBoundaryPointModule(role,
-                                           compute_module,
-                                           current_group,
-                                           bcast_group,
-                                           strategy,
-                                           is_finished)

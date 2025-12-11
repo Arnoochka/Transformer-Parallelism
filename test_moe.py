@@ -132,15 +132,12 @@ def test_single(model: MixtralSparseMoeBlock, local_input: Tensor):
 def test_parallel(model: MixtralSparseMoeBlock, local_input: Tensor):
     cuda.reset_max_memory_allocated(cuda.current_device())
     expert_idxs = [LongTensor([0,1,2,3]).to(device), LongTensor([4, 5,6,7]).to(device)]
-    moe.MoeDataParallelExpertsGenerator.expert_idxs = expert_idxs
-    moe.MoeDataParallelExpertsGenerator.moe_group = moe_group
-    model.experts = moe.MoeDataParallelExpertsGenerator(model.experts, device)
+    model.experts = moe.MoeDPExpertsGenerator(model.experts, expert_idxs, moe_group, device).to(device)
     model = model.to(device)
     start = time()
     local_output = model(local_input)
     end = time()
     Logger.log_all_device(f"PARALLEL STATS: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
-    model.experts.tracker.stop().to_csv('results.csv', encoding='utf-8-sig')
     
 if __name__ == "__main__":
     SEED = 42

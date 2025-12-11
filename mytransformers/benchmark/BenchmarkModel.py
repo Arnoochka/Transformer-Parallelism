@@ -23,7 +23,7 @@ class BenchmarkModel:
                  tokenizer: AutoTokenizer,
                  batch_size: Optional[int] = None,
                  max_prompt_len: int = 64,
-                 max_new_tokens_list: List[int] = [256],
+                 max_new_tokens_list: List[int] = [128],
                  model_name: Optional[str] = None,
                  description: Optional[str] = None,
                  tool: Optional[str] = None,
@@ -66,30 +66,29 @@ class BenchmarkModel:
                  prompts: List[str],
                  group: ProcessGroup,
                  print_output_num: int = 0) -> BenchmarkStats:
-        rank = dist.get_rank(group)
         world_size = dist.get_world_size(group)
         sync_func = get_synchronize_func(group)
         tracker = Tracker(group, sync_func)
         self.stats['data_size'] = len(prompts)
-        Logger.log_main_device("start benchmark", rank)
+        Logger.log_main_device("start benchmark")
 
         tracker.start() 
         model = self.generator(self.model, torch.cuda.current_device())
         tracker.snapshot("generator")
-        Logger.log_main_device(f"model:\n{[child for child in model.children()]}", rank)
+        Logger.log_main_device(f"model:\n{[child for child in model.children()]}")
         # self.generate(model, prompts, self.max_new_tokens_list[-1])
         for max_new_tokens in self.max_new_tokens_list:
             tracker.snapshot(f"max new tokens:{max_new_tokens} start")
             output = self.generate(model, prompts, max_new_tokens)
             tracker.snapshot(f"max new tokens:{max_new_tokens} stop")
-        Logger.log_main_device("stop benchmark", rank)
+        Logger.log_main_device("stop benchmark")
         if print_output_num > 0:
             outputs = self.tokenizer.batch_decode(output, skip_special_tokens=True)
             decoded_output = outputs[:print_output_num]
-            Logger.log_main_device(f"output: {decoded_output}", rank)
+            Logger.log_main_device(f"output: {decoded_output}")
 
         final_stats = tracker.stop()
-        Logger.log_main_device(final_stats, rank)
+        Logger.log_main_device(final_stats)
         self.calculate_statistics(final_stats, world_size)
         
         if self.save_stats:

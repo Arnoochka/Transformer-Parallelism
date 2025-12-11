@@ -1,13 +1,13 @@
 from typing import List
 from torch.nn import Module
 import torch.distributed as dist
-from .PipeGenerator import PipeGenerator
+from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from mytransformers.parallel.pipeline_parallel.layers import (PipeFakeModule,
                                                               PipeComputeModule,
                                                               PipeModule,
                                                               FakeModule)
 
-class ComputeModuleGenerator(PipeGenerator):
+class ComputeModuleGenerator(ParallelModuleGenerator):
     """
     генератор, для вычислительного модуля. На нужно ппроцесса сзодает вычислительный модуль, на остальных - фейковый
     

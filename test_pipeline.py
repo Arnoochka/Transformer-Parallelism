@@ -14,23 +14,24 @@ if __name__ == "__main__":
     utils.init_distributed_cuda()
     first_stage = [utils.create_group([0]), [0]]
     second_stage = [utils.create_group([1]), [1]]
-    pp_custom.OPTGenerator.num_stages = 2
-    pp_custom.OPTGenerator.groups_info = [first_stage, second_stage]
-    pp_custom.OPTGenerator.bcast_groups = [second_stage[0], first_stage[0]]
-    pp_custom.OPTGenerator.num_microbatches = 4
-    pp_custom.OPTGenerator.embed_size = 2048
-    pp_custom.OPTGenerator.vocab_size = 50272
-    pp_custom.OPTGenerator(model, torch.cuda.current_device())
+    pp_custom.OPTGenerator(module=model,
+                           num_stages=2,
+                           groups_info=[first_stage, second_stage],
+                           final_group=first_stage[0],
+                           embed_size=2048,
+                           vocab_size=50272,
+                           device=torch.cuda.current_device())
     utils.Logger.log_all_device(model)
     device = torch.cuda.current_device()
     inputs = tokenizer(text, return_tensors="pt", max_length=256).to(device)
+    inputs['use_cache'] = False
     input_ids = [pp.Microbatch(data=inputs,
                                idx=k,
                                stream=torch.cuda.Stream(),
                                event=torch.cuda.Event())
-                 for k in range(12)]
+                 for k in range(1)]
     
-    model(input_ids)
+    utils.Logger.log_main_device(model(input_ids)[0].data['logits'])
     utils.Logger.log_all_device(f"MODEL MEMORY: {utils.get_model_size(model):.3f}")
     utils.Logger.log_all_device(f"MEMORY: {torch.cuda.max_memory_allocated() / utils.MemoryUnits.GB.value:.3f}")
     

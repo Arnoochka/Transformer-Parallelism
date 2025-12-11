@@ -1,6 +1,4 @@
-import os
 import torch
-from torch.distributed import ProcessGroup
 from mytransformers import bench, utils
 import deepspeed
 from deepspeed import comm

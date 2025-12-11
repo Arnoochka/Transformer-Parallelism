@@ -2,8 +2,7 @@ from torch.distributed import ProcessGroup
 from .StrategyModule import StrategyModule, COUNTER
 import torch.distributed as dist
 from torch import Tensor
-from typing import Tuple
-from mytransformers.utils import Logger
+from typing import Tuple, Dict, Optional
 
 class LeaderStrategyModule(StrategyModule):
     """
@@ -57,22 +56,56 @@ class LeaderTupleStrategyModule(LeaderStrategyModule):
         leader_rank (int): локальный ранг процесса в группе, который будет "лидером"
     """
     def forward(self,
-                output: Tuple[Tensor],
+                output: Tuple[Optional[Tensor]],
                 is_send: bool,
                 send_group: ProcessGroup,
-                recv_group: ProcessGroup) -> Tuple[Tensor]:
+                recv_group: ProcessGroup) -> Tuple[Optional[Tensor]]:
         """
         Args:
-            output (Tuple[Tensor]): выход, который необходимо передать не следующий процесс
+            output (Tuple[Optional[Tensor]]): выход, который необходимо передать не следующий процесс
             is_send (bool): является ли процесс отправителем
             send_group (ProcessGroup): группа, процессов, которая отправляет данные
             recv_group (ProcessGroup): группа процессов, которая принимает данные
             
         Returns:
-            Tuple[Tensor]: выход, который необходимо было передать (output)
+            Tuple[Optional[Tensor]]: выход, который необходимо было передать (output)
         """
         new_output = []
         for out in output:
-            out = super().forward(out,is_send,send_group,recv_group)
+            if out is not None:
+                out = super().forward(out,is_send,send_group,recv_group)
             new_output.append(out)
         return tuple(new_output)
+    
+
+class LeaderStrategyDictModule(LeaderStrategyModule):
+    """
+    Стратегия передачи на основе выбора лидера, однако вместо тензора передается словарь
+        1. В каждой группе выбирается один процесс, который принимает или отправляет данные ("лидер")
+        2. Происходит передача данных
+        3. На принимающей группе делается операция broadcast для передачи данных всем процессам
+        
+    Args:
+        leader_rank (int): локальный ранг процесса в группе, который будет "лидером"
+    """
+    def forward(self, 
+                output: Dict[str, Optional[Tensor]],
+                is_send: bool,
+                send_group: ProcessGroup,
+                recv_group: ProcessGroup) -> Dict[str, Optional[Tensor]]:
+        """
+        Args:
+            output (Dict[str, Optional[Tensor]]): выход, который необходимо передать не следующий процесс
+            is_send (bool): является ли процесс отправителем
+            send_group (ProcessGroup): группа, процессов, которая отправляет данные
+            recv_group (ProcessGroup): группа процессов, которая принимает данные
+            
+        Returns:
+            Dict[str, Optional[Tensor]]: выход, который необходимо было передать (output)
+        """
+        new_output = {}
+        for name, out in output.items():
+            if out is not None:
+                out = super().forward(out,is_send,send_group,recv_group)
+            new_output[name] = out
+        return new_output

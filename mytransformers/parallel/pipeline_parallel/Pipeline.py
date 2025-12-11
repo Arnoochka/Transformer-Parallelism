@@ -1,9 +1,8 @@
-# TODO необходимо как-то передать pipeline и все-таки, наверное, убрать MainBoundary
-
 import torch
 from torch.nn import ModuleList
-from typing import Callable, List, Any
-from .layers import FakeModule
+from torch.distributed import ProcessGroup
+from typing import Callable, List, Any, Tuple
+from .layers import FakeModule, StrategyModule
 from .Microbatch import Microbatch
 from threading import BoundedSemaphore
 from mytransformers.utils import Logger
@@ -13,40 +12,28 @@ class Pipeline(ModuleList):
     класс конвейерного параллелизма
     
     Механизм работы (для каждого микробатч):
-        1. Устанавливаются арзементы для генерации "фейковых выходах"
-        2. дожидаемся, когда от финального слоя придет callback, о том, что предыдущий микробатч работу завершил 
-        3. Дожидаемся, что текущий микробатч прошел все стадии при предыдущем вызове forward
-        4. запускаем проход текущего микробатча в новом потоке
-        
+        1. Дожидаемся, что текущий микробатч прошел все стадии при предыдущем вызове forward
+        2. Дожидаемся, когда предыдущий микробатч пройдет стадию
+        3. Устанавливаем арзументы для "фейковых" тензоров
+        4. Запускаем микробатч
+            
     Args:
         model_forward (Callable): forward ункция исходной модели
         modules (Iterable[Module]): все подмененные слои модели
         fake_args (Callable): функция для вычисления арзументов для "фейковых" модулей по микробатчу
-        num_microbatches (int): число микробатчей
     """
     
     def __init__(self,
                  model_forward: Callable,
                  modules: ModuleList,
-                 fake_args: Callable,
-                 num_microbatches: int):
+                 final_strategy: StrategyModule,
+                 final_strategy_args: Tuple[bool, ProcessGroup, ProcessGroup],
+                 fake_args: Callable):
         super().__init__(modules)
+        self.final_stategy = self.build_final_strategy(final_strategy, final_strategy_args)
         self.compute = self.build_compute(model_forward)
         self.get_fake_args = fake_args
-        self.num_microbatches = num_microbatches
         self.can_push = BoundedSemaphore()
-        self.make_callback = None
-        
-        self.set_callback()
-        
-    def set_callback(self) -> None:
-        def _make_callback(is_finished: bool):
-            if is_finished:
-                self.can_push.release()
-                
-        self[0].set_callback(_make_callback)                    
-        self[-1].set_callback(_make_callback)
-        self.make_callback = _make_callback
         
     def set_fake_args(self, mbatch: Microbatch) -> None:
         fake_args_list: List = self.get_fake_args(mbatch.data)
@@ -54,17 +41,32 @@ class Pipeline(ModuleList):
             if isinstance(module.module, FakeModule):
                 module.module.set_gen_args(*fake_args)
                 
+    def build_final_strategy(self, 
+                             final_strategy: StrategyModule,
+                             final_strategy_args: Tuple[bool, ProcessGroup, ProcessGroup]
+                             ) -> Callable:
+        def _final_stategy(output: Any) -> Any:
+            return final_strategy(output, *final_strategy_args)
+        
+        return _final_stategy
+                
     def build_compute(self, model_forward: Callable) -> Callable:
         def _compute(*args, **kwargs) -> Any:
-            return model_forward(*args, **kwargs, use_cache=False)
+            output = model_forward(*args, **kwargs)
+            self.can_push.release()
+            self.final_stategy(output)
+            return output
+        
         return _compute
             
     @torch.no_grad()
     def forward(self, mbatches: List[Microbatch]) -> List[Microbatch]:
         for idx, mbatch in enumerate(mbatches):
-            self.set_fake_args(mbatch)
-            self.can_push.acquire()
             mbatch.wait()
+            self.can_push.acquire()
+            self.set_fake_args(mbatch)
             Logger.log_all_device(f"IDX={idx}")
             mbatches[idx] = mbatch.compute(self.compute)
+            
+        return mbatches
 

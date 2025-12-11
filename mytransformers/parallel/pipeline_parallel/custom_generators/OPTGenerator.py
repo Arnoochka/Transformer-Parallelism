@@ -1,25 +1,24 @@
-from mytransformers.parallel.pipeline_parallel.generators import PipelineGenerator, StageGenerator
+from mytransformers.parallel.pipeline_parallel.generators import PipelineGenerator
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from mytransformers.parallel.pipeline_parallel.layers import (
     FakeModule, FakeTensorModule, FakeTupleTensorModule,
-    StrategyModule, LeaderStrategyModule, LeaderTupleStrategyModule)
+    StrategyModule, LeaderTupleStrategyModule, LeaderStrategyDictModule)
 from typing import List, Tuple, Callable, Any, Dict
 from torch.distributed import ProcessGroup
 from transformers import OPTForCausalLM
 import torch
 from torch.nn import Module, ModuleList, ModuleDict
-from mytransformers.utils import Logger
 
 class OPTGenerator(ParallelModuleGenerator):
-    num_stages: int
-    groups_info: List[Tuple[ProcessGroup, List[int]]]
-    bcast_groups: Tuple[ProcessGroup, ProcessGroup]
-    num_microbatches: int
-    embed_size: int
-    vocab_size: int
     def __new__(cls,
                 module: OPTForCausalLM,
+                num_stages: int,
+                groups_info: List[Tuple[ProcessGroup, List[int]]],
+                final_group: ProcessGroup,
+                embed_size: int,
+                vocab_size: int,
                 device: torch.device) -> Module:
+        
         decoder = module.model.decoder
         num_layers = len(decoder.layers)
         
@@ -27,26 +26,25 @@ class OPTGenerator(ParallelModuleGenerator):
         fake_modules = OPTGenerator.get_fake_modules(num_layers, device)
         modules = [(name, orig_module, fake_module)
                    for (name, orig_module), fake_module in zip(orig_modules, fake_modules)]
-        num_modules_per_stage = len(modules) // cls.num_stages
-        inner_boundary_points = [num_modules_per_stage * k - 1 for k in range(cls.num_stages)][1:]
+        num_modules_per_stage = len(modules) // num_stages
+        inner_boundary_points = [num_modules_per_stage * k - 1 for k in range(num_stages)][1:]
         
-        strategies = OPTGenerator.get_strategies(len(inner_boundary_points))
-        bcast_stretegies = (strategies[0], strategies[-1])
-        inner_strategies = strategies[1:-1]
+        inner_strategies = OPTGenerator.get_inner_strategies(len(inner_boundary_points))
         
-        stage: ModuleDict = StageGenerator(modules,
-                                           inner_boundary_points,
-                                           cls.groups_info,
-                                           inner_strategies,
-                                           cls.bcast_groups,
-                                           bcast_stretegies)
+        stage: ModuleDict = PipelineGenerator.get_stage(modules,
+                                                        inner_boundary_points,
+                                                        groups_info,
+                                                        inner_strategies)
+        
         module = OPTGenerator.replace_modules(module, stage)
         modules = [module for name, module in stage.items()]
-        fake_args = OPTGenerator.build_fake_args(num_layers, cls.embed_size, cls.vocab_size)
+        fake_args = OPTGenerator.build_fake_args(num_layers, embed_size, vocab_size)
         pipeline = PipelineGenerator(module,
-                                     modules, 
-                                     fake_args,
-                                     cls.num_microbatches)
+                                     modules,
+                                     LeaderStrategyDictModule(),
+                                     groups_info[-1],
+                                     final_group,
+                                     fake_args)
         return pipeline.to(device)
         
     @staticmethod
@@ -79,9 +77,8 @@ class OPTGenerator(ParallelModuleGenerator):
         return module        
          
     @staticmethod
-    def get_strategies(num_points: int) -> List[StrategyModule]:
-        inner_strategies = [LeaderTupleStrategyModule() for _ in range(num_points)]
-        return [LeaderStrategyModule()] + inner_strategies + [LeaderStrategyModule()]
+    def get_inner_strategies(num_points: int) -> List[StrategyModule]:
+        return [LeaderTupleStrategyModule() for _ in range(num_points)]
     
     @staticmethod
     def build_fake_args(num_layers: int, embed_size: int, vocab_size: int) -> Callable:
