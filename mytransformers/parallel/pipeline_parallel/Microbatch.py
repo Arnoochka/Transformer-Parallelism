@@ -31,7 +31,6 @@ class Microbatch:
     def compute(self, compute_func: Callable) -> "Microbatch":
         with cuda.stream(self.stream):
             self.data = compute_func(**self.data)
-            self.event = cuda.Event()
             self.event.record(self.stream)
             
         return self

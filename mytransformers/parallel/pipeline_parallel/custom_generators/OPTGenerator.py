@@ -2,19 +2,21 @@ from mytransformers.parallel.pipeline_parallel.generators import PipelineGenerat
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from mytransformers.parallel.pipeline_parallel.layers import (
     FakeModule, FakeTensorModule, FakeTupleTensorModule,
-    StrategyModule, LeaderStrategyModule)
-from typing import List, Tuple, Callable, Any
+    StrategyModule, LeaderStrategyModule, LeaderTupleStrategyModule)
+from typing import List, Tuple, Callable, Any, Dict
 from torch.distributed import ProcessGroup
 from transformers import OPTForCausalLM
 import torch
 from torch.nn import Module, ModuleList, ModuleDict
-from torch import Tensor
+from mytransformers.utils import Logger
 
 class OPTGenerator(ParallelModuleGenerator):
     num_stages: int
     groups_info: List[Tuple[ProcessGroup, List[int]]]
     bcast_groups: Tuple[ProcessGroup, ProcessGroup]
     num_microbatches: int
+    embed_size: int
+    vocab_size: int
     def __new__(cls,
                 module: OPTForCausalLM,
                 device: torch.device) -> Module:
@@ -40,7 +42,7 @@ class OPTGenerator(ParallelModuleGenerator):
                                            bcast_stretegies)
         module = OPTGenerator.replace_modules(module, stage)
         modules = [module for name, module in stage.items()]
-        fake_args = OPTGenerator.build_fake_args(num_layers)
+        fake_args = OPTGenerator.build_fake_args(num_layers, cls.embed_size, cls.vocab_size)
         pipeline = PipelineGenerator(module,
                                      modules, 
                                      fake_args,
@@ -49,9 +51,9 @@ class OPTGenerator(ParallelModuleGenerator):
         
     @staticmethod
     def get_fake_modules(num_layers: int, device: torch.device) -> List[FakeModule]:
-        first_modules = [FakeTupleTensorModule(device), FakeTupleTensorModule(device)]
-        inner_modules = [FakeTensorModule(device) for _ in range(num_layers)]
-        last_modules = [FakeTupleTensorModule(device), FakeTupleTensorModule(device)]
+        first_modules = [FakeTensorModule(device), FakeTensorModule(device)]
+        inner_modules = [FakeTupleTensorModule(device) for _ in range(num_layers)]
+        last_modules = [FakeTensorModule(device), FakeTensorModule(device)]
         return first_modules + inner_modules + last_modules
     
     @staticmethod
@@ -78,15 +80,17 @@ class OPTGenerator(ParallelModuleGenerator):
          
     @staticmethod
     def get_strategies(num_points: int) -> List[StrategyModule]:
-        return [LeaderStrategyModule() for _ in range(num_points + 2)]
+        inner_strategies = [LeaderTupleStrategyModule() for _ in range(num_points)]
+        return [LeaderStrategyModule()] + inner_strategies + [LeaderStrategyModule()]
     
     @staticmethod
-    def build_fake_args(num_layers: int) -> Callable:
-        def _get_fake_args(input_ids: Tensor, **kwargs) -> List[Any]:
-            b, s, h = input_ids.size()
-            first_args = [[(b, s, h)], [(b, s, h)]] 
-            last_args = [[(b, s, h)], [(b, s, h)]] 
-            inner_args = [(b, s, h) for _ in range(num_layers)]
-            return first_args + inner_args + last_args
+    def build_fake_args(num_layers: int, embed_size: int, vocab_size: int) -> Callable:
+        def _get_fake_args(mbatch_data: Dict) -> List[Any]:
+            
+            b, s = mbatch_data['input_ids'].size()
+            first_args = [(b, s, embed_size), (b, s, embed_size)] 
+            last_args = [(b, s, embed_size), (b, s, vocab_size)] 
+            inner_args = [[(b, s, embed_size)] for _ in range(num_layers)]
+            return [(fake_args,)  for fake_args in first_args + inner_args + last_args]
         
         return _get_fake_args

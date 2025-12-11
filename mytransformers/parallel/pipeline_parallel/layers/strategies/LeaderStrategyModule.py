@@ -3,6 +3,7 @@ from .StrategyModule import StrategyModule, COUNTER
 import torch.distributed as dist
 from torch import Tensor
 from typing import Tuple
+from mytransformers.utils import Logger
 
 class LeaderStrategyModule(StrategyModule):
     """
@@ -33,14 +34,15 @@ class LeaderStrategyModule(StrategyModule):
         Returns:
             Tensor: выход, который необходимо быдло передать (output)
         """
+        tag = next(COUNTER)
         send_leader_rank = dist.get_global_rank(send_group, self.leader_rank)
         recv_leader_rank = dist.get_global_rank(recv_group, self.leader_rank)
         if is_send:
             if dist.get_rank() == send_leader_rank:
-                dist.send(output, recv_leader_rank, tag=next(COUNTER))
+                dist.send(output, recv_leader_rank, tag=tag)
         else:
             if dist.get_rank() == recv_leader_rank:
-                dist.recv(output, src=send_leader_rank, tag=next(COUNTER))
+                dist.recv(output, src=send_leader_rank, tag=tag)
             dist.broadcast(output, src=recv_leader_rank, group=recv_group)
         return output
         

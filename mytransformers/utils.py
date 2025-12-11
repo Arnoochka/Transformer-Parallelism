@@ -5,7 +5,7 @@ from torch import Tensor
 from torch.nn import Module
 import torch.distributed as dist
 from enum import Enum
-from torch.distributed import ProcessGroup, get_rank
+from torch.distributed import ProcessGroup
 
 
 # Глобальные переменные, используемые для распределённой инициализации
@@ -36,7 +36,7 @@ class Logger:
     """
 
     @staticmethod
-    def log_main_device(log: Any, rank: Optional[int] = None) -> None:
+    def log_main_device(log: Any) -> None:
         """
         Выводит данные только с процесса с определённым рангом.
 
@@ -46,8 +46,7 @@ class Logger:
                 Ранк процесса, с которого нужно вывести данные. 
                 Если не указан, по умолчанию используется текущий процесс (``dist.get_rank()``).
         """
-        if rank is None:
-            rank = dist.get_rank()
+        rank = dist.get_rank()
         if rank == 0:
             if not isinstance(log, str):
                 log = f"{log}"
@@ -61,7 +60,20 @@ class Logger:
         Args:
             log (Any): Данные, которые необходимо вывести.
         """
-        print(f"---device:{get_rank()}---:\n{log}")
+        print(f"---device:{dist.get_rank()}---:\n{log}")
+        
+    @staticmethod
+    def log(log: Any, rank: int) -> None:
+        """
+        Выводит данные c конкретного ранга, добавляя к выводу номер текущего ранга.
+
+        Args:
+            log (Any): Данные, которые необходимо вывести.
+            rank (int): ранг, с которого необходимо вывести данные.
+        """
+        if dist.get_rank() == rank:
+            print(f"---device:{rank}---:\n{log}")
+        
 
 
 def get_prompts(filename: str) -> List[str]:

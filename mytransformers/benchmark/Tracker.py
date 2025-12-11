@@ -41,10 +41,16 @@ class Tracker:
         assert self.is_started, "tracker is not started."
         self.is_started = False
         world_size = dist.get_world_size(self.group)
-        flat_stats = {'name': self.stats['name'], 'time': self.stats['time']}
+        flat_stats = {'name': self.stats['name'], 'time': [None] * len(self.stats['time'])}
+        
+        for k in range(1, len(self.stats['time'])):
+            flat_stats['time'][k] = self.stats['time'][k] - self.stats['time'][k - 1]
+        flat_stats['time'][0] = 0.0
+        
         for i in range(world_size):
             flat_stats[f'memory_gpu_{i}'] = [mem[i].item() for mem in self.stats['memory']]
             flat_stats[f'max_memory_gpu_{i}'] = [mem[i].item() for mem in self.stats['max_memory']]
+            
         df = pd.DataFrame(flat_stats)
         df = df.set_index("name")
         return df

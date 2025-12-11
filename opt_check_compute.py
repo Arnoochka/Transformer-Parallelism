@@ -20,11 +20,9 @@ def create_hook(name, step_dict):
 # Prompt
 prompt = ["Hello, my favorite model" for _ in range(11)]
 inputs = tokenizer(prompt, return_tensors="pt", max_length=64)
-input_ids = inputs["input_ids"]
 
 # Генерация пошагово
 max_new_tokens = 5
-generated = input_ids
 
 for step in range(max_new_tokens):
     step_activations = OrderedDict()
@@ -49,7 +47,7 @@ for step in range(max_new_tokens):
 
     # Forward для последнего токена
     with torch.no_grad():
-        outputs = model(input_ids=generated, use_cache=False)
+        outputs = model(**inputs, use_cache=False)
         next_token_logits = outputs.logits[:, -1, :]
         next_token = torch.argmax(next_token_logits, dim=-1, keepdim=True)
     
