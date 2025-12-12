@@ -2,15 +2,15 @@ import torch
 import torch.distributed as dist
 import torch.cuda as cuda
 from typing import Callable, Optional
-from mytransformers.utils import MemoryUnits
+from mytransformers import utils
 import pandas as pd
 import time
 
 class Tracker:
     def __init__(self,
-                 group: dist.ProcessGroup,
-                 sync_func: Optional[Callable] = None,
-                 unit = MemoryUnits.GB):
+                 group: Optional[dist.ProcessGroup] = None,
+                 sync_func: Optional[Callable] = dist.barrier,
+                 unit = utils.MemoryUnits.GB):
         self.group = group
         self.sync_func = sync_func
         self.is_started = False
@@ -41,11 +41,11 @@ class Tracker:
         assert self.is_started, "tracker is not started."
         self.is_started = False
         world_size = dist.get_world_size(self.group)
-        flat_stats = {'name': self.stats['name'], 'time': [None] * len(self.stats['time'])}
+        flat_stats = {'name': self.stats['name'],
+                      'time': [t - self.stats['time'][0] for t in self.stats['time']]}
         
-        for k in range(1, len(self.stats['time'])):
-            flat_stats['time'][k] = self.stats['time'][k] - self.stats['time'][k - 1]
-        flat_stats['time'][0] = 0.0
+        for k in range(len(self.stats['time'])):
+            flat_stats['time'][k] = self.stats['time'][k] - self.stats['time'][0]
         
         for i in range(world_size):
             flat_stats[f'memory_gpu_{i}'] = [mem[i].item() for mem in self.stats['memory']]
@@ -62,3 +62,15 @@ class Tracker:
         memories = [torch.zeros_like(memory_tensor) for _ in range(world_size)]
         dist.all_gather(memories, memory_tensor, self.group)
         return torch.stack(memories) / self.unit.value
+    
+TRACKER: Optional[Tracker] = None
+def get_global_tracker() -> Tracker:
+    global TRACKER
+    return TRACKER
+
+def init_global_tracker() -> Tracker:
+    global TRACKER
+    TRACKER = Tracker()
+    return TRACKER
+    
+    

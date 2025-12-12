@@ -3,9 +3,9 @@ from torch.nn import ModuleList
 from torch.distributed import ProcessGroup
 from typing import Callable, List, Any, Tuple
 from .layers import FakeModule, StrategyModule
-from .Microbatch import Microbatch
+from .Batches import Microbatch
 from threading import BoundedSemaphore
-from mytransformers.utils import Logger
+from mytransformers.benchmark import get_global_tracker
         
 class Pipeline(ModuleList):
     """
@@ -52,7 +52,10 @@ class Pipeline(ModuleList):
                 
     def build_compute(self, model_forward: Callable) -> Callable:
         def _compute(*args, **kwargs) -> Any:
+            TRACKER = get_global_tracker()
+            TRACKER.snapshot("START compute")
             output = model_forward(*args, **kwargs)
+            TRACKER.snapshot("END compute")
             self.can_push.release()
             self.final_stategy(output)
             return output
@@ -61,12 +64,13 @@ class Pipeline(ModuleList):
             
     @torch.no_grad()
     def forward(self, mbatches: List[Microbatch]) -> List[Microbatch]:
+        TRACKER = get_global_tracker()
+        TRACKER.snapshot("START forward")
         for idx, mbatch in enumerate(mbatches):
             mbatch.wait()
             self.can_push.acquire()
             self.set_fake_args(mbatch)
-            Logger.log_all_device(f"IDX={idx}")
             mbatches[idx] = mbatch.compute(self.compute)
-            
+        TRACKER.snapshot("END forward")   
         return mbatches
 

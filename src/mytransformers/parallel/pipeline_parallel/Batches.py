@@ -1,4 +1,4 @@
-from typing import Dict, Callable
+from typing import Dict, Callable, List, Any
 from torch import cuda
 
 class Microbatch:
@@ -34,3 +34,36 @@ class Microbatch:
             self.event.record(self.stream)
             
         return self
+    
+class Batch:
+    def __init__(self, split_func: Callable, cat_func: Callable):
+        self.mbatches: List[Microbatch] = None
+        self.split = split_func
+        self.cat = cat_func
+    
+    def __call__(self, *args, **kwargs) -> "Batch":
+        self.mbatches = self.split(*args, **kwargs)
+        return self
+    
+    def __iter__(self):
+        for mbatch in self.mbatches:
+            mbatch.wait()
+            yield mbatch
+
+    def __getitem__(self, i: int) -> Microbatch:
+        mbatch = self.mbatches[i]
+        mbatch.wait()
+        return mbatch
+
+    def __setitem__(self, i: int, value: Microbatch) -> None:
+        self.mbatches[i] = value
+        
+    @property
+    def data(self) -> Any:
+        return self.cat(self.mbatches)
+        
+    
+        
+
+        
+    

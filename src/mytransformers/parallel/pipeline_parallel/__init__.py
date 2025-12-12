@@ -1,4 +1,4 @@
 from .layers import *
 from .generators import *
-from .Microbatch import *
+from .Batches import *
 from .Pipeline import *

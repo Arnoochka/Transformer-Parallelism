@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional, Any
+from typing import List, Any
 import torch
 from torch import Tensor
 from torch.nn import Module

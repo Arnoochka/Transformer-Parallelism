@@ -3,6 +3,7 @@ from .StrategyModule import StrategyModule, COUNTER
 import torch.distributed as dist
 from torch import Tensor
 from typing import Tuple, Dict, Optional
+from mytransformers.benchmark import get_global_tracker
 
 class LeaderStrategyModule(StrategyModule):
     """
@@ -71,10 +72,13 @@ class LeaderTupleStrategyModule(LeaderStrategyModule):
             Tuple[Optional[Tensor]]: выход, который необходимо было передать (output)
         """
         new_output = []
+        TRACKER = get_global_tracker()
+        TRACKER.snapshot("START inner strategy")
         for out in output:
             if out is not None:
                 out = super().forward(out,is_send,send_group,recv_group)
             new_output.append(out)
+        TRACKER.snapshot("END inner strategy")
         return tuple(new_output)
     
 
@@ -103,9 +107,12 @@ class LeaderStrategyDictModule(LeaderStrategyModule):
         Returns:
             Dict[str, Optional[Tensor]]: выход, который необходимо было передать (output)
         """
+        TRACKER = get_global_tracker()
+        TRACKER.snapshot("START final strategy")
         new_output = {}
         for name, out in output.items():
             if out is not None:
                 out = super().forward(out,is_send,send_group,recv_group)
             new_output[name] = out
+        TRACKER.snapshot("END final strategy")
         return new_output
