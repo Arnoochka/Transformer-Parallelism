@@ -2,7 +2,21 @@ from torch.distributed import ProcessGroup
 from .PipeModule import PipeModule, PipeRole
 from .strategies import StrategyModule
 from torch.nn import Module
-from typing import Any
+from typing import Any, Callable
+from threading import Lock
+
+
+class Mutex:
+    lock = Lock()
+    
+    @staticmethod
+    def callback(is_completed: bool) -> None:
+        if is_completed:
+            Mutex.lock.release()
+        else:
+            Mutex.lock.acquire()
+            
+    
 
 
 class PipeBoundaryPointModule(PipeModule):
@@ -34,20 +48,14 @@ class PipeBoundaryPointModule(PipeModule):
         self.send_group = send_group
         self.recv_group = recv_group
         self.strategy = strategy
-        self.callback = None
+        self.callback: Callable[[bool], None] = None
         
     def forward(self, *args, **kwargs) -> Any:
         output = self.module(*args, **kwargs)
+        self.callback(False)
         output = self.strategy(output,
                                self.is_send,
                                self.send_group,
                                self.recv_group)
-        
-        
+        self.callback(True)
         return output
-    
-
-
-        
-                
-    

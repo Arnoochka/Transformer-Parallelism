@@ -1,4 +1,4 @@
-from typing import Dict, Callable, List, Any
+from typing import Callable, List, Any
 from torch import cuda
 
 class Microbatch:
@@ -13,7 +13,7 @@ class Microbatch:
     """
     
     def __init__(self,
-                 data: Dict,
+                 data: Any,
                  idx: int,
                  stream: cuda.Stream,
                  event: cuda.Event):
@@ -35,13 +35,12 @@ class Microbatch:
             
         return self
     
-class Batch:
-    def __init__(self, split_func: Callable, cat_func: Callable):
+class MBatches:
+    def __init__(self, split_func: Callable):
         self.mbatches: List[Microbatch] = None
         self.split = split_func
-        self.cat = cat_func
     
-    def __call__(self, *args, **kwargs) -> "Batch":
+    def __call__(self, *args, **kwargs) -> "MBatches":
         self.mbatches = self.split(*args, **kwargs)
         return self
     
@@ -57,10 +56,6 @@ class Batch:
 
     def __setitem__(self, i: int, value: Microbatch) -> None:
         self.mbatches[i] = value
-        
-    @property
-    def data(self) -> Any:
-        return self.cat(self.mbatches)
         
     
         

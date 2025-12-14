@@ -9,7 +9,7 @@ import time
 class Tracker:
     def __init__(self,
                  group: Optional[dist.ProcessGroup] = None,
-                 sync_func: Optional[Callable] = dist.barrier,
+                 sync_func: Optional[Callable] = None,
                  unit = utils.MemoryUnits.GB):
         self.group = group
         self.sync_func = sync_func
@@ -36,6 +36,7 @@ class Tracker:
         self.stats['memory'].append(self._get_memories(cuda.memory_allocated))
         self.stats['max_memory'].append(self._get_memories(cuda.max_memory_allocated))
         cuda.reset_max_memory_allocated(cuda.current_device())
+        utils.Logger.log_all_device(f"STATS: name={self.stats['name'][-1]}")
         
     def stop(self) -> pd.DataFrame:
         assert self.is_started, "tracker is not started."
@@ -68,9 +69,11 @@ def get_global_tracker() -> Tracker:
     global TRACKER
     return TRACKER
 
-def init_global_tracker() -> Tracker:
+def init_global_tracker(group: Optional[dist.ProcessGroup] = None,
+                        sync_func: Optional[Callable] = None,
+                        unit = utils.MemoryUnits.GB) -> Tracker:
     global TRACKER
-    TRACKER = Tracker()
+    TRACKER = Tracker(group, sync_func, unit)
     return TRACKER
     
     
