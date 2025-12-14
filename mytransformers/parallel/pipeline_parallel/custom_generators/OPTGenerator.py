@@ -45,16 +45,16 @@ class OPTGenerator(ParallelModuleGenerator):
     
     @staticmethod
     def get_stages_fake_modules(stages: List[List[Module]], device) -> List[List[FakeModule]]:
-        first_stage = [FakeSeqModule((12, 64, 2048), seq_dim=1, device=device), 
-                       FakeSeqModule((12, 64, 2048), seq_dim=1, device=device)] + \
-                          [FakeTupleSeqModule([(12, 64, 2048)], [1], device=device)
+        first_stage = [FakeSeqModule((64, 256, 2048), seq_dim=1, device=device), 
+                       FakeSeqModule((64, 256, 2048), seq_dim=1, device=device)] + \
+                          [FakeTupleSeqModule([(64, 256, 2048)], [1], device=device)
                            for _ in range(len(stages[0][2:]))] 
-        last_stage = [FakeTupleSeqModule([(12, 64, 2048)], [1], device=device)
+        last_stage = [FakeTupleSeqModule([(64, 256, 2048)], [1], device=device)
                            for _ in range(len(stages[-1][:-1]))] + \
-                               [FakeSeqModule((12, 64, 50272), seq_dim=1, device=device)]
+                               [FakeSeqModule((64, 256, 50272), seq_dim=1, device=device)]
         fake_modules = [first_stage, last_stage]
         for stage in stages[1:-1]:
-            fake_modules.append([FakeSeqModule((12, 64, 2048), seq_dim=1, device=device)
+            fake_modules.append([FakeSeqModule((64, 256, 2048), seq_dim=1, device=device)
                                     for _ in range(len(stage))])
             
         return fake_modules
