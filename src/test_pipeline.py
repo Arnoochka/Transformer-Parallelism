@@ -17,7 +17,6 @@ if __name__ == "__main__":
     first_stage = [utils.create_group([0]), [0]]
     second_stage = [utils.create_group([1]), [1]]
     comm_groups = [utils.create_group([0, 1]), utils.create_group([0, 1])]
-    utils.Logger.log_all_device(f"({dist.get_rank(comm_groups[0])}, {dist.get_rank(comm_groups[1])})")
     pp_custom.OPTGenerator(module=model,
                            num_stages=2,
                            groups_info=[first_stage, second_stage],
@@ -27,14 +26,14 @@ if __name__ == "__main__":
                            device=torch.cuda.current_device())
     utils.Logger.log_all_device(model)
     device = torch.cuda.current_device()
-    texts =[text for _ in range(1)]
+    texts =[text for _ in range(4)]
     inputs = tokenizer(texts, return_tensors="pt", max_length=256).to(device)
     inputs['use_cache'] = False
     input_ids = [pp.MBatch(data=inputs,
                                idx=k,
                                stream=torch.cuda.Stream(),
                                event=torch.cuda.Event())
-                 for k in range(64)]
+                 for k in range(16)]
     TRACKER = init_global_tracker()
     TRACKER.start()
     output = model(input_ids)[0].data

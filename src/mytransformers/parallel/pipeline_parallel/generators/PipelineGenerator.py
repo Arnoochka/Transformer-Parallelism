@@ -5,7 +5,7 @@ from typing import List, Tuple, Callable
 from torch.nn import Module, ModuleList, ModuleDict
 from torch.distributed import ProcessGroup
 import torch.distributed as dist
-from mytransformers.parallel.pipeline_parallel.Pipeline import Pipeline
+from mytransformers.parallel.pipeline_parallel.pipeline import Pipeline
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
     
     
@@ -14,7 +14,13 @@ class PipelineGenerator(ParallelModuleGenerator):
     Генератор конвейерного параллелизма
     
     Args:
-        TODO
+        model (Module): модель с подмененными слоями
+        modules (ModuleList): модули, которые получены из get_stage
+        final_strategy (StrategyModule): финальная стратегия для актуализации данных на GPU
+        groups_info (Tuple[ProcessGroup, Tuple[int]]): информация о группах стадий
+        final_comm_group (ProcessGroup): финальная группа для передачи данных
+        fake_args (Callable): генератор аргументов для FakeModule
+        
     """
     def __new__(cls,
                 model: Module,
@@ -45,14 +51,18 @@ class PipelineGenerator(ParallelModuleGenerator):
     @staticmethod
     def get_stage(modules: List[Tuple[str, Module, FakeModule]],
                   inner_boundary_points: List[int],
-                  inner_groups_info: List[Tuple[ProcessGroup, List[int]]],
-                  comm_groups: List[ProcessGroup],
+                  groups_info: List[Tuple[ProcessGroup, List[int]]],
+                  inner_comm_groups: List[ProcessGroup],
                   inner_strategies: List[StrategyModule]) -> ModuleDict:
         """
         Генерирует фактическую стадию
 
         Args:
-        TODO
+            modules (List[Tuple[str, Module, FakeModule]]): (название исходного модуля, исходный модуль, модуль на подмену)
+            inner_boundary_points (List[int]): индексы внутренних точек (модуей), где начинается (заверщается) "фактическая" стадия
+            inner_groups_info (List[Tuple[ProcessGroup, List[int]]]): информация о группах процессов стадий
+            inner_comm_groups (List[ProcessGroup]): внутренние группы для передачи данных
+            inner_strategies (List[StrategyModule]): внутренние стратегии передачи данных
         """
         
         stage = ModuleDict()
@@ -60,15 +70,15 @@ class PipelineGenerator(ParallelModuleGenerator):
         for idx, (name, module, fake_module) in enumerate(modules):
             if idx in inner_boundary_points:
                 pipe_module = BoundaryPointModuleGenerator(module,
-                                                           inner_groups_info[inner_point_idx],
-                                                           inner_groups_info[inner_point_idx + 1],
-                                                           comm_groups[inner_point_idx],
+                                                           groups_info[inner_point_idx],
+                                                           groups_info[inner_point_idx + 1],
+                                                           inner_comm_groups[inner_point_idx],
                                                            fake_module,
                                                            inner_strategies[inner_point_idx])
                 inner_point_idx += 1
             else:
                 pipe_module = ComputeModuleGenerator(module,
-                                                     inner_groups_info[inner_point_idx][1],
+                                                     groups_info[inner_point_idx][1],
                                                      fake_module)
                 
             stage[name] = pipe_module

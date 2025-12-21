@@ -1,4 +1,5 @@
-from typing import Callable, List, Any
+from typing import Callable, Any
+from threading import Condition
 from torch import cuda
 
 class MBatch:
@@ -34,31 +35,31 @@ class MBatch:
             self.event.record(self.stream)
             
         return self
-    
-class MBatches:
-    def __init__(self, split_func: Callable[..., List[MBatch]]):
-        self.mbatches: List[MBatch] = None
-        self.split = split_func
-    
-    def __call__(self, *args, **kwargs) -> "MBatches":
-        self.mbatches = self.split(*args, **kwargs)
-        return self
-    
-    def __iter__(self):
-        for mbatch in self.mbatches:
+
+
+class CondWorker:
+    """
+    класс для работы с потоками так, чтобы они выполнялись последовательно
+    """
+    def __init__(self):
+        self.cond = Condition()
+        self.curr_idx = 0
+        
+    def __call__(self,
+                 mbatch: MBatch,
+                 func: Callable[[MBatch], MBatch]) -> MBatch:
+        
+        with self.cond:
+            while self.curr_idx < mbatch.idx:
+                self.cond.wait()
+                
             mbatch.wait()
-            yield mbatch
-
-    def __getitem__(self, i: int) -> MBatch:
-        mbatch = self.mbatches[i]
-        mbatch.wait()
+            mbatch = func(mbatch)  
+            
+            self.curr_idx += 1
+            self.cond.notify_all()  
+            
         return mbatch
-
-    def __setitem__(self, i: int, value: MBatch) -> None:
-        self.mbatches[i] = value
-        
     
-        
-
-        
-    
+    def reset(self) -> None:
+        self.curr_idx = 0

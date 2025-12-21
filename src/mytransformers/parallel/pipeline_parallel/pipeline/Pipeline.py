@@ -2,43 +2,19 @@ import torch
 from torch.nn import ModuleList
 from torch.distributed import ProcessGroup
 from typing import Callable, List, Tuple
-from .layers import FakeModule, StrategyModule
-from .MBatch import MBatch, MBatches
-from threading import Thread, Condition
-
-class CondWorker:
-    """
-    класс для работы с потоками так, чтобы они выполнялись последовательно
-    """
-    def __init__(self):
-        self.cond = Condition()
-        self.curr_idx = 0
-        
-    def __call__(self,
-                 mbatch: MBatch,
-                 func: Callable[[MBatch], MBatch]) -> MBatch:
-        
-        with self.cond:
-            while self.curr_idx < mbatch.idx:
-                self.cond.wait()
-                
-            mbatch.wait()
-            mbatch = func(mbatch)  
-            
-            self.curr_idx += 1
-            self.cond.notify_all()  
-            
-        return mbatch
-    
-    def reset(self) -> None:
-        self.curr_idx = 0
+from mytransformers.parallel.pipeline_parallel.layers import FakeModule, StrategyModule
+from .utils import MBatch, CondWorker
+from threading import Thread
         
 class Pipeline(ModuleList):
     """
     класс конвейерного параллелизма
     
-    Механизм работы (для каждого микробатч):
-        TODO
+    Механизм работы:
+        1. запуск потока с mbatch. Это необходимо для пернкрытия CPU операций
+        2. внутри каждого потока выполнение оборачивается в cuda поток. Это необходимо для перекрытия CPU-GPU операций
+        3. Для того, чтобы потоки не мешали друг другу, вычисления в потоках происходят последовательно при помощи CondWorker
+        4. Применям финальную стратегию, чтобы на необходимых GPU были актуальные данные
             
     Args:
         model_forward (Callable): forward ункция исходной модели
@@ -60,7 +36,6 @@ class Pipeline(ModuleList):
         self.get_fake_args = fake_args
         
         self.compute_cond = CondWorker()
-        self.final_cond = CondWorker()
         
     def set_fake_args(self, mbatch: MBatch) -> None:
         fake_args_list: List = self.get_fake_args(mbatch.data)
@@ -70,22 +45,19 @@ class Pipeline(ModuleList):
          
            
     @torch.no_grad()
-    def forward(self, mbatches: MBatches) -> MBatches:
-        self.compute_cond.reset()
-        self.final_cond.reset()
+    def forward(self, mbatches: List[MBatch]) -> List[MBatch]:
         
+        self.compute_cond.reset()
         def _forward(mbatch: MBatch) -> None:
             def _compute(mbatch: MBatch) -> MBatch:
                 self.set_fake_args(mbatch)
-                return mbatch.compute(self.model_forward)
-                
+                return mbatch.compute(self.model_forward)  
             mbatches[mbatch.idx] = self.compute_cond(mbatch, _compute)
             
         threads: List[Thread] = []
         for mbatch in mbatches:
             threads.append(Thread(target=_forward, args=(mbatch,), daemon=True))
             threads[-1].start()
-            threads[-1].join()
             
         for thread in threads:
             thread.join()
