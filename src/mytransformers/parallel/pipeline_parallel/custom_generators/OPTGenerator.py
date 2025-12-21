@@ -14,7 +14,7 @@ class OPTGenerator(ParallelModuleGenerator):
                 module: OPTForCausalLM,
                 num_stages: int,
                 groups_info: List[Tuple[ProcessGroup, List[int]]],
-                final_group: ProcessGroup,
+                comm_groups: List[ProcessGroup],
                 embed_size: int,
                 vocab_size: int,
                 device: torch.device) -> Module:
@@ -34,6 +34,7 @@ class OPTGenerator(ParallelModuleGenerator):
         stage: ModuleDict = PipelineGenerator.get_stage(modules,
                                                         inner_boundary_points,
                                                         groups_info,
+                                                        comm_groups[:-1],
                                                         inner_strategies)
         
         module = OPTGenerator.replace_modules(module, stage)
@@ -41,9 +42,9 @@ class OPTGenerator(ParallelModuleGenerator):
         fake_args = OPTGenerator.build_fake_args(num_layers, embed_size, vocab_size)
         pipeline = PipelineGenerator(module,
                                      modules,
-                                     LeaderStrategyDictModule(),
-                                     groups_info[-1],
-                                     final_group,
+                                     LeaderStrategyDictModule(send_leader=1, recv_leader=0),
+                                     groups_info,
+                                     comm_groups[-1],
                                      fake_args)
         return pipeline.to(device)
         

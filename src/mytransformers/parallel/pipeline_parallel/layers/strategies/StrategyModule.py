@@ -20,15 +20,15 @@ class StrategyModule(Module):
     def forward(self,
                 output: Any,
                 is_send: bool,
-                send_group: ProcessGroup,
-                recv_group: ProcessGroup) -> Any:
+                current_group: ProcessGroup,
+                comm_group: ProcessGroup) -> Any:
         
         """
         Args:
             output (Any): выход, который необходимо передать не следующий процесс
             is_send (bool): является ли процесс отправителем
-            send_group (ProcessGroup): группа, процессов, которая отправляет данные
-            recv_group (ProcessGroup): группа процессов, которая принимает данные
+            current_group (ProcessGroup): текущая группа процессов
+            comm_group (ProcessGroup): группа процессов для коммуникации
             
         Returns:
             Any: выход, который необходимо быдло передать (output)

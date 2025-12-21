@@ -1,7 +1,7 @@
 from typing import Callable, List, Any
 from torch import cuda
 
-class Microbatch:
+class MBatch:
     """
     обертка для данных конвейерного параллелизма
     
@@ -23,12 +23,12 @@ class Microbatch:
         self.event = event
         
     def __repr__(self) -> str:
-        return f"Microbatch(value={super().__repr__()}, idx={self.idx})"
+        return f"MBatch(value={super().__repr__()}, idx={self.idx})"
     
     def wait(self) -> None:
         self.stream.wait_event(self.event)
         
-    def compute(self, compute_func: Callable) -> "Microbatch":
+    def compute(self, compute_func: Callable) -> "MBatch":
         with cuda.stream(self.stream):
             self.data = compute_func(**self.data)
             self.event.record(self.stream)
@@ -36,8 +36,8 @@ class Microbatch:
         return self
     
 class MBatches:
-    def __init__(self, split_func: Callable):
-        self.mbatches: List[Microbatch] = None
+    def __init__(self, split_func: Callable[..., List[MBatch]]):
+        self.mbatches: List[MBatch] = None
         self.split = split_func
     
     def __call__(self, *args, **kwargs) -> "MBatches":
@@ -49,12 +49,12 @@ class MBatches:
             mbatch.wait()
             yield mbatch
 
-    def __getitem__(self, i: int) -> Microbatch:
+    def __getitem__(self, i: int) -> MBatch:
         mbatch = self.mbatches[i]
         mbatch.wait()
         return mbatch
 
-    def __setitem__(self, i: int, value: Microbatch) -> None:
+    def __setitem__(self, i: int, value: MBatch) -> None:
         self.mbatches[i] = value
         
     

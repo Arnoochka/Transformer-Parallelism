@@ -14,23 +14,24 @@ class PipelineGenerator(ParallelModuleGenerator):
     Генератор конвейерного параллелизма
     
     Args:
-        model (Module): исходная модель
-        modules (ModuleList): модули, которые подменили
-        fake_args (Callable): генератор аргкментов для "фейковых" слоев
+        TODO
     """
     def __new__(cls,
                 model: Module,
                 modules: ModuleList,
                 final_strategy: StrategyModule,
-                last_group_info: Tuple[ProcessGroup, Tuple[int]],
-                final_group: Tuple[ProcessGroup, Tuple[int]],
+                groups_info: Tuple[ProcessGroup, Tuple[int]],
+                final_comm_group: ProcessGroup,
                 fake_args: Callable) -> Module:
         rank = dist.get_rank()
-        last_group, last_ranks = last_group_info
+        for (curr_group, curr_ranks) in groups_info:
+            if rank in curr_ranks: break
+            
+        final_group, final_ranks = groups_info[-1]
         final_strategy_args = (
-            True if rank in last_ranks else False,
-            last_group,
-            final_group)
+            True if rank in final_ranks else False,
+            curr_group,
+            final_comm_group)
         
         pipeline = Pipeline(model.forward,
                             modules,
@@ -44,21 +45,14 @@ class PipelineGenerator(ParallelModuleGenerator):
     @staticmethod
     def get_stage(modules: List[Tuple[str, Module, FakeModule]],
                   inner_boundary_points: List[int],
-                  groups_info: List[Tuple[ProcessGroup, List[int]]],
+                  inner_groups_info: List[Tuple[ProcessGroup, List[int]]],
+                  comm_groups: List[ProcessGroup],
                   inner_strategies: List[StrategyModule]) -> ModuleDict:
         """
         Генерирует фактическую стадию
 
         Args:
-            model (Module): исходная модель
-            modules (List[Tuple[str, Module, FakeModule]]): модули на подмену, (имя, оригинальный модуль, фейковый модуль)
-            inner_boundary_points (List[int]): внутренние точки стадий
-            groups_info (List[Tuple[ProcessGroup, List[int]]]): информация о группах стадий (len(groups_info) == len(inner_boundary_points) + 1)
-            inner_strategies (List[StrategyModule]): стратегии для передачи данных между стадиями
-            bcast_groups (Tuple[ProcessGroup, ProcessGroup]): каждому процессу внутри группы рассылаются данные на начальном или конечном слое
-            bcast_strategies (Tuple[StrategyModule, StrategyModule]): стратегии для рассылки на начальном или конечном слое
-            fake_args (Callable): генератор аргкментов для "фейковых" слоев
-            num_microbatches (int): число микробатчей
+        TODO
         """
         
         stage = ModuleDict()
@@ -66,14 +60,15 @@ class PipelineGenerator(ParallelModuleGenerator):
         for idx, (name, module, fake_module) in enumerate(modules):
             if idx in inner_boundary_points:
                 pipe_module = BoundaryPointModuleGenerator(module,
-                                                           groups_info[inner_point_idx],
-                                                           groups_info[inner_point_idx + 1],
+                                                           inner_groups_info[inner_point_idx],
+                                                           inner_groups_info[inner_point_idx + 1],
+                                                           comm_groups[inner_point_idx],
                                                            fake_module,
                                                            inner_strategies[inner_point_idx])
                 inner_point_idx += 1
             else:
                 pipe_module = ComputeModuleGenerator(module,
-                                                     groups_info[inner_point_idx][1],
+                                                     inner_groups_info[inner_point_idx][1],
                                                      fake_module)
                 
             stage[name] = pipe_module

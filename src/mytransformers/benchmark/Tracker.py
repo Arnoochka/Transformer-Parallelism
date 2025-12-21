@@ -40,6 +40,7 @@ class Tracker:
         
     def stop(self) -> pd.DataFrame:
         assert self.is_started, "tracker is not started."
+        self.snapshot("stop")
         self.is_started = False
         world_size = dist.get_world_size(self.group)
         flat_stats = {'name': self.stats['name'],
