@@ -8,7 +8,7 @@ from mytransformers.parallel.tensor_parallel.generators import (TPColumnLinearGe
                                                                    TPColumnEmbeddingGenerator,
                                                                    TPSplittedLayerNormGenerator)
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
-from mytransformers.parallel.Reshaper import SimpleSplitter
+from mytransformers.parallel.tensor_parallel.Reshaper import SimpleSplitter
 from torch.nn import ModuleList, Linear, Embedding
 
 def set_tp_group(tp_group: ProcessGroup) -> None:

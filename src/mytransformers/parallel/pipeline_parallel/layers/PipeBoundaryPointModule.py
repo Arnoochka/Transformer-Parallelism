@@ -4,8 +4,6 @@ from .strategies import StrategyModule
 from torch.nn import Module
 from typing import Any
     
-
-
 class PipeBoundaryPointModule(PipeModule):
     """
     крайняя точка (начальная или конечная) внутри конвейера.

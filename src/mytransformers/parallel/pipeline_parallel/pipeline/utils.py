@@ -24,7 +24,7 @@ class MBatch:
         self.event = event
         
     def __repr__(self) -> str:
-        return f"MBatch(value={super().__repr__()}, idx={self.idx})"
+        return f"MBatch(value={self.data}, idx={self.idx})"
     
     def wait(self) -> None:
         self.stream.wait_event(self.event)
@@ -35,6 +35,7 @@ class MBatch:
             self.event.record(self.stream)
             
         return self
+    
 
 
 class CondWorker:

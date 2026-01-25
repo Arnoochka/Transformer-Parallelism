@@ -1,6 +1,8 @@
 from mytransformers.parallel.ParallelModule import ParallelModule
+import torch
 from torch.nn import Module
 from enum import Enum
+from typing import Any
 
 class PipeRole(Enum):
     dummy = "dummy"
@@ -21,6 +23,10 @@ class PipeModule(ParallelModule):
             raise AttributeError(f"role is none")
         self.role = role
         self.module = module
+        
+    @torch.no_grad()
+    def forward(self, *args, **kwargs) -> Any:
+        return self.module(*args, **kwargs)
         
     def __repr__(self) -> str:
         repr = super().__repr__()

@@ -45,12 +45,13 @@ class Pipeline(ModuleList):
          
            
     @torch.no_grad()
-    def forward(self, mbatches: List[MBatch]) -> List[MBatch]:
+    def forward(self, mbatches: List[MBatch], **forward_kwargs) -> List[MBatch]:
         
         self.compute_cond.reset()
         def _forward(mbatch: MBatch) -> None:
             def _compute(mbatch: MBatch) -> MBatch:
                 self.set_fake_args(mbatch)
+                mbatch.data.update(forward_kwargs)
                 return mbatch.compute(self.model_forward)  
             mbatches[mbatch.idx] = self.compute_cond(mbatch, _compute)
             

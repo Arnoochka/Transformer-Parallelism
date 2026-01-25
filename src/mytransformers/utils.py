@@ -51,7 +51,7 @@ class Logger:
             if not isinstance(log, str):
                 log = f"{log}"
             print(log)
-
+            
     @staticmethod
     def log_all_device(log: Any) -> None:
         """
@@ -61,6 +61,8 @@ class Logger:
             log (Any): Данные, которые необходимо вывести.
         """
         print(f"---device:{dist.get_rank()}---:\n{log}")
+    
+    
         
     @staticmethod
     def log(log: Any, rank: int) -> None:
@@ -129,7 +131,7 @@ def get_model_size(model: Module, unit: MemoryUnits = MemoryUnits.GB) -> float:
     return total_size / unit.value
 
 
-def init_distributed(backend: str = 'nccl') -> None:
+def init_distributed(backend: str) -> None:
     """
     Инициализирует распределённое окружение PyTorch.
 
@@ -146,8 +148,8 @@ def init_distributed(backend: str = 'nccl') -> None:
     RANKS = [k for k in range(world_size)]
     GROUP = dist.new_group(ranks=RANKS, backend=BACKEND)
     torch.manual_seed(0)
-
-
+    
+    
 def init_distributed_cuda() -> None:
     """
     Инициализирует распределённое окружение с использованием CUDA.

@@ -2,6 +2,7 @@ from .FakeModule import FakeModule
 from typing import Optional, Tuple, List
 import torch
 from torch import Tensor
+from transformers.cache_utils import Cache
 
 class FakeTensorModule(FakeModule):
     """
@@ -15,7 +16,7 @@ class FakeTensorModule(FakeModule):
                  device: torch.device,
                  dtype: Optional[torch.dtype] = None):
         super().__init__(device, dtype)
-        self.tensor_shape = None
+        self.tensor_shape: Tuple[int] = None
         
     def forward(self, *args, **kwargs) -> Tensor:
         return self.get_tensor(self.tensor_shape)
@@ -38,9 +39,8 @@ class FakeTupleTensorModule(FakeTensorModule):
     def __init__(self,
                  device: torch.device,
                  dtype: Optional[torch.dtype] = None):
-        super().__init__(dtype)
-        self.tensor_shapes = None
-        self.device = device
+        super().__init__(device, dtype)
+        self.tensor_shapes: List[Tuple[int]] = None
     
     def forward(self, *args, **kwargs) -> Tuple[Tensor]:
         outputs = [self.get_tensor(tensor_shape)
@@ -49,4 +49,10 @@ class FakeTupleTensorModule(FakeTensorModule):
     
     def set_gen_args(self, tensor_shapes: List[Tuple[int]]) -> None:
         self.tensor_shapes = tensor_shapes
+        
+class FakeTupleTensorWithCacheModule(FakeTupleTensorModule):
+    def forward(self, *args, **kwargs) -> Tuple[Tensor, Cache]:
+        tensor_output = super().forward(*args, **kwargs)
+        cache = kwargs['past_key_value']
+        return tensor_output + (cache,)
     

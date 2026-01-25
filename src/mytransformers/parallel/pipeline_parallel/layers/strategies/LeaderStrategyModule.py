@@ -2,9 +2,9 @@ from torch.distributed import ProcessGroup
 from .StrategyModule import StrategyModule, COUNTER
 import torch.distributed as dist
 from torch import Tensor
+import torch
 from typing import Tuple, Dict, Optional
-from mytransformers.benchmark import get_global_tracker
-from mytransformers.utils import Logger
+from mytransformers import utils
 
 class LeaderStrategyModule(StrategyModule):
     """
@@ -44,6 +44,7 @@ class LeaderStrategyModule(StrategyModule):
             Tensor: выход, который необходимо быдло передать (output)
         """
         tag = next(COUNTER)
+        torch.cuda.synchronize()
         if is_send:
             if dist.get_rank(comm_group) == self.send_leader:
                 dst_rank = dist.get_global_rank(comm_group, self.recv_leader)
@@ -51,7 +52,7 @@ class LeaderStrategyModule(StrategyModule):
         else:
             if dist.get_rank(comm_group) == self.recv_leader:
                 src_rank = dist.get_global_rank(comm_group, self.send_leader)
-                dist.recv(output, src=src_rank, group=comm_group, tag=tag)
+                dist.recv(output, src=src_rank, group=comm_group, tag=tag) 
                 
             src_rank = dist.get_global_rank(current_group, self.bcast_leader)
             dist.broadcast(output, src=src_rank, group=current_group)
@@ -87,9 +88,10 @@ class LeaderTupleStrategyModule(LeaderStrategyModule):
         """
         new_output = []
         for out in output:
-            if out is not None:
+            if isinstance(out, Tensor):
                 out = super().forward(out, is_send, current_group, comm_group)
             new_output.append(out)
+
         return tuple(new_output)
     
 
@@ -123,7 +125,7 @@ class LeaderStrategyDictModule(LeaderStrategyModule):
         """
         new_output = {}
         for name, out in output.items():
-            if out is not None:
+            if isinstance(out, Tensor):
                 out = super().forward(out, is_send, current_group, comm_group)
             new_output[name] = out
         return new_output

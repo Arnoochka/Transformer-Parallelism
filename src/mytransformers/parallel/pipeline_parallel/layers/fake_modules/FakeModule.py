@@ -17,7 +17,7 @@ class FakeModule(Module):
         self.dtype = dtype
         self.device = device
         
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs) -> Any:
         return self.forward(*args, **kwargs)
     
     def forward(self, *args, **kwargs) -> Any:
