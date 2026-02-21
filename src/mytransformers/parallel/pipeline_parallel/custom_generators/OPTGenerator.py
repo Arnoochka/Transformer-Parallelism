@@ -42,7 +42,7 @@ class OPTGenerator(ParallelModuleGenerator):
         fake_args = OPTGenerator.build_fake_args(num_layers, embed_size, vocab_size)
         pipeline = PipelineGenerator(module,
                                      modules,
-                                     LeaderStrategyDictModule(send_leader=1, recv_leader=0),
+                                     LeaderStrategyDictModule(send_leader=num_stages - 1, recv_leader=0),
                                      groups_info,
                                      comm_groups[-1],
                                      fake_args)

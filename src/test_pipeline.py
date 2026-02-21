@@ -13,12 +13,14 @@ if __name__ == "__main__":
     tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
     model = OPTForCausalLM.from_pretrained(model_name, torch_dtype=torch.float32).eval()
     utils.init_distributed_cuda()
-    first_stage = [utils.create_group([0]), [0]]
-    second_stage = [utils.create_group([1]), [1]]
+    stages = [
+        (utils.create_group([0]), [0]),
+        (utils.create_group([1]), [1]),
+    ]
     comm_groups = [utils.create_group([0, 1]), utils.create_group([0, 1])]
     pp_custom.OPTGenerator(module=model,
                            num_stages=2,
-                           groups_info=[first_stage, second_stage],
+                           groups_info=stages,
                            comm_groups=comm_groups,
                            embed_size=2048,
                            vocab_size=50272,
@@ -33,15 +35,11 @@ if __name__ == "__main__":
                                event=torch.cuda.Event())
                  for k in range(4)]
     utils.Logger.log_all_device(f"INPUTS: {inputs}")
-    TRACKER = init_global_tracker()
-    TRACKER.start()
     outputs = GenerationFunc.pipeline_generate(model=model,
                                               mbatches=mbatches,
                                               max_new_tokens=48,
                                               eos_token_id=0,
                                               pad_token_id=0,
                                               use_cache=True)
-    df = TRACKER.stop()
-    df.to_csv("one-batch-results.csv")
     utils.Logger.log_all_device(f"MODEL MEMORY: {utils.get_model_size(model):.3f}")
     utils.Logger.log_all_device(f"OUTPUTS: {outputs}")

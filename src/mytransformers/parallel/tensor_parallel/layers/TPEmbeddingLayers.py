@@ -43,41 +43,6 @@ class TPEmbedding(TPModule):
 
 
 class TPColumnEmbedding(TPEmbedding):
-    """
-    Тензорно-параллельная версия эмбеддинга, где размерность `embedding_dim`
-    делится между устройствами (column parallel).
-
-    Args:
-        num_embeddings (int): Размер словаря.
-        embedding_dim (int): Полная размерность эмбеддинга до разбиения.
-        tp_group (ProcessGroup): Группа процессов для тензорного параллелизма.
-        padding_idx (Optional[int], optional): Индекс паддинга. По умолчанию ``None``.
-        max_norm (Optional[float], optional): Максимальная норма. По умолчанию ``None``.
-        norm_type (float, optional): Тип нормы. По умолчанию ``2.0``.
-        sparse (bool, optional): Использовать ли разреженные обновления. По умолчанию ``False``.
-        use_all_gather (bool, optional): Если ``True``, выполняется сборка выходов со всех устройств.
-            По умолчанию ``True``.
-    """
-    def __init__(self,
-                 num_embeddings: int,
-                 embedding_dim: int,
-                 tp_group: ProcessGroup,
-                 padding_idx: Optional[int] = None,
-                 max_norm: Optional[float] = None,
-                 norm_type: float = 2.0,
-                 sparse: bool = False,
-                 use_all_gather: bool = True):
-        self.use_all_gather = use_all_gather
-        tp_size = dist.get_world_size(tp_group)
-        embedding_dim_per_device = embedding_dim // tp_size
-        super().__init__(num_embeddings,
-                         embedding_dim_per_device,
-                         tp_group,
-                         padding_idx,
-                         max_norm,
-                         norm_type,
-                         sparse)
-
     @torch.no_grad()
     def forward(self, x: Tensor) -> Tensor:
         """

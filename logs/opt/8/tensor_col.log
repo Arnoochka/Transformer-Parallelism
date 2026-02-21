@@ -15,6 +15,8 @@ start benchmark
   return func(*args, **kwargs)
 /home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/utils/_contextlib.py:115: UserWarning: this module is already converted in TPModule: TPColumnLinear
   return func(*args, **kwargs)
+
+  
 model:
 [OPTModel(
   (decoder): OPTDecoder(
@@ -38,6 +40,8 @@ model:
     )
   )
 ), TPColumnLinear()]
+
+
 /home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/cuda/memory.py:303: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
   warnings.warn(
 /home/victor/anaconda3/envs/nir/lib/python3.11/site-packages/torch/cuda/memory.py:303: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
