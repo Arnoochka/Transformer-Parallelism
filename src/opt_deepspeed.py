@@ -3,10 +3,10 @@ import torch
 import torch.distributed as dist
 from typing import List
 from mytransformers import utils
-from mytransformers import pp_custom_1 as pp_custom
-from mytransformers.parallel import pp_1 as pp
 from transformers import AutoTokenizer, OPTForCausalLM
 from mytransformers.benchmark import BenchmarkModel, GenerationFunc
+import deepspeed
+from deepspeed import comm
 
 def pipeline_batch_func(prompts: List[str],
                         batch_size: int,
@@ -32,7 +32,7 @@ def start(prompts: List[str],
     benchmark = BenchmarkModel(
     model=model,
     tokenizer=tokenizer,
-    generate_func=GenerationFunc.simple_generate,
+    generate_func=GenerationFunc.deepspeed_generate,
     batch_func=pipeline_batch_func,
     warm_up=True,
     model_name="opt-1.3b-pipeline",
@@ -51,42 +51,27 @@ def start(prompts: List[str],
     use_cache=True)
     utils.Logger.log_main_device(stats)
 
-
+def inference_generator(model):
+    module = deepspeed.init_inference(model, 
+                                    tensor_parallel={"tp_size": 2},
+                                    replace_with_kernel_inject=True,
+                                    dtype=torch.float32).module
+    return module
+        
 if __name__ == "__main__":
-
-    utils.init_distributed_cuda()
-    rank = dist.get_rank()
-    world_size = dist.get_world_size()
-
-    device = torch.cuda.current_device()
-
+    deepspeed.init_distributed('nccl')
+    rank = comm.get_rank()
+    torch.cuda.set_device(rank)
     model_name = "facebook/opt-1.3b"
-
-    tokenizer = AutoTokenizer.from_pretrained(
-        model_name,
-        padding_side="left"
-    )
-
-    stages = [
-        (utils.create_group([0]), [0]),
-        (utils.create_group([1]), [1]),
-    ]
-    
     with open('test.txt', 'r', encoding='utf-8') as file:
         text = file.read()
+        
+    tokenizer = AutoTokenizer.from_pretrained(model_name, padding_side="left")
+    model = OPTForCausalLM.from_pretrained(model_name, torch_dtype=torch.float32).eval()
+    model = inference_generator(model)
 
-    for batch_size in range(40, 64 + 1, 8):
+    for batch_size in range(8, 64 + 1, 8):
         prompts = [text for _ in range(batch_size)]
         for max_prompt_len in range(16, 128 + 1, 16):
-            model = OPTForCausalLM.from_pretrained(
-                model_name,
-                torch_dtype=torch.float32).eval()
-            pp_custom.OPTGenerator.batch_size = batch_size
-            pp_custom.OPTGenerator.seq_len = max_prompt_len
-            pp_custom.OPTGenerator(
-                module=model,
-                num_stages=2,
-                groups_info=stages,
-                device=device
-            )
-            start(prompts, batch_size, max_prompt_len, 1)
+            for max_new_tokens in range(16, 128 + 1, 16):
+                start(prompts, batch_size, max_prompt_len, max_new_tokens)
