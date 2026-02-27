@@ -1,0 +1,17 @@
+{
+    "description": "Pipeline parallel OPT-1.3B benchmark",
+    "model_name": "opt-1.3b-pipeline",
+    "model_size": 2.6347503662109375,
+    "max_prompt_len": 80,
+    "max_new_tokens": 128,
+    "dtype": "float32",
+    "model_config_dir": null,
+    "data_size": 8,
+    "batch_size": 2,
+    "inference_time": 9.460215856999639,
+    "throughput": 108.2427732600139,
+    "max_memory_allocated_per_device": [
+        3.499246597290039,
+        3.459920883178711
+    ]
+}

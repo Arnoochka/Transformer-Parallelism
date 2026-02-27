@@ -1,64 +1,77 @@
 import torch
-from torch import LongTensor, Tensor
+from torch import LongTensor
 from torch.nn import Module
 from typing import List
-from mytransformers.parallel.pipeline_parallel.pipeline.utils import MBatch
+from mytransformers.parallel.pipeline_parallel_2.pipeline.utils import MBatch
+from mytransformers.parallel.pipeline_parallel_1.layers import FakeSeqModule, FakeTupleSeqModule
 from transformers.cache_utils import DynamicCache
-from mytransformers import utils
 
 class GenerationFunc:
-    
     @staticmethod
     def simple_generate(model: Module,
-                        input_ids: LongTensor,
-                        attention_mask: LongTensor,
+                        batches: List,
                         max_new_tokens: int,
                         eos_token_id: int,
                         pad_token_id: int,
-                        use_cache: bool = False):
+                        use_cache: bool = False,
+                        offload_batches: bool = False):
+        for batch_idx, batch in enumerate(batches):
+            for module in model.modules():
+                if isinstance(module, FakeTupleSeqModule):
+                    module.reset()
+                elif isinstance(module, FakeSeqModule):
+                    module.reset()
+                    
+            input_ids: LongTensor  = batch['input_ids']
+            attention_mask: LongTensor = batch['attention_mask']
+            if offload_batches:
+                input_ids = input_ids.to(torch.cuda.current_device())
+                attention_mask = attention_mask.to(torch.cuda.current_device())
+            past_key_values = DynamicCache() if use_cache else None
+            unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
 
-        past_key_values = None
-        unfinished_sequences = input_ids.new(input_ids.shape[0]).fill_(1)
+            for step in range(max_new_tokens):
+                if use_cache and step > 0:
+                    model_inputs = input_ids[:, -1:]
+                else:
+                    model_inputs = input_ids
+                outputs = model(
+                    input_ids=model_inputs,
+                    attention_mask=attention_mask,
+                    past_key_values=past_key_values, 
+                    use_cache=use_cache
+                )
 
-        for step in range(max_new_tokens):
-            if use_cache and step > 0:
-                model_inputs = input_ids[:, -1:]
-            else:
-                model_inputs = input_ids
+                logits = outputs.logits
+                past_key_values = outputs.past_key_values
 
-            outputs = model(
-                input_ids=model_inputs,
-                attention_mask=attention_mask,
-                past_key_values=past_key_values, 
-                use_cache=use_cache
-            )
+                next_token_logits = logits[:, -1, :]
+                next_token = torch.argmax(next_token_logits, dim=-1)
 
-            logits = outputs.logits
-            past_key_values = outputs.past_key_values
+                eos_in_sents = next_token == eos_token_id
+                unfinished_sequences = unfinished_sequences.mul((~eos_in_sents).long())
+                next_token = next_token * unfinished_sequences + pad_token_id * (1 - unfinished_sequences)
 
-            next_token_logits = logits[:, -1, :]
-            next_token = torch.argmax(next_token_logits, dim=-1)
-            
-            eos_in_sents = next_token == eos_token_id
-            unfinished_sequences = unfinished_sequences.mul((~eos_in_sents).long())
-            next_token = next_token * unfinished_sequences + pad_token_id * (1 - unfinished_sequences)
+                next_token = next_token.unsqueeze(-1)
+                input_ids = torch.cat([input_ids, next_token], dim=-1)
 
-            next_token = next_token.unsqueeze(-1)
-            input_ids = torch.cat([input_ids, next_token], dim=-1)
-            
-            new_mask_values = unfinished_sequences.unsqueeze(-1)
-            attention_mask = torch.cat([attention_mask, new_mask_values], dim=-1)
+                new_mask_values = unfinished_sequences.unsqueeze(-1)
+                attention_mask = torch.cat([attention_mask, new_mask_values], dim=-1)
 
 
-            if unfinished_sequences.max() == 0:
-                print(f"Все предложения завершены на шаге {step+1}")
-                break
+                if unfinished_sequences.max() == 0:
+                    print(f"Все предложения завершены на шаге {step+1}")
+                    break
+            if offload_batches:
+                input_ids = input_ids.to('cpu')
+                attention_mask = attention_mask.to('cpu')
+            batches[batch_idx] = input_ids
 
         return input_ids
     
     @staticmethod
     def pipeline_generate(model: Module,
-                          mbatches: List[MBatch],
+                          batches: List[MBatch],
                           max_new_tokens: int,
                           eos_token_id: int,
                           pad_token_id: int,
@@ -67,7 +80,7 @@ class GenerationFunc:
         unfinished_sequences = []
         inputs_ids = []
         attention_masks = []
-        for idx, mbatch in enumerate(mbatches):
+        for idx, mbatch in enumerate(batches):
             ids = mbatch.data['input_ids']
             attn_mask = mbatch.data['attention_mask']
             inputs_ids.append(ids)
@@ -75,7 +88,7 @@ class GenerationFunc:
             attention_masks.append(attn_mask)
 
         for step in range(max_new_tokens):
-            for idx, mbatch in enumerate(mbatches):
+            for idx, mbatch in enumerate(batches):
                 if use_cache:
                     if step > 0:
                         past_key_values = outputs[idx].data['past_key_values']
@@ -86,12 +99,12 @@ class GenerationFunc:
                 else:
                     ids = inputs_ids[idx]
                     past_key_values = None  
-                mbatches[idx].data = {
+                batches[idx].data = {
                     "input_ids": ids,
                     "attention_mask": attention_masks[idx],
                     "past_key_values": past_key_values
                 }
-            outputs: List[MBatch] = model(mbatches, use_cache=use_cache)
+            outputs: List[MBatch] = model(batches, use_cache=use_cache)
             for idx, out in enumerate(outputs):
                 logits = out.data['logits']
                 
