@@ -46,7 +46,7 @@ def start(prompts: List[str],
     dtype=torch.float32,
     save_model_config=False,
     save_stats=True,
-    save_dir=f"results/opt/pipeline_1/batch_size={batch_size}-max_prompt_leb={max_prompt_len}-max_new_tokens={max_new_tokens}")
+    save_dir=f"results/opt/pipeline_1/batch_size={batch_size}-max_prompt_len={max_prompt_len}")
     stats = benchmark(
     prompts=prompts,
     batch_size=batch_size,
@@ -94,5 +94,4 @@ if __name__ == "__main__":
                 groups_info=stages,
                 device=device
             )
-            for max_new_tokens in range(16, 128 + 1, 16):
-                start(prompts, batch_size, max_prompt_len, max_new_tokens)
+            start(prompts, batch_size, max_prompt_len, 1)
