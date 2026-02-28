@@ -3,9 +3,9 @@ import torch
 import torch.distributed as dist
 from typing import List
 from mytransformers import utils
-from mytransformers import pp_custom_2 as pp_custom
-from mytransformers.parallel import pp_2 as pp
-from transformers import AutoTokenizer, OPTForCausalLM
+from mytransformers import pp_custom_1 as pp_custom
+from mytransformers.parallel import pp_1 as pp
+from transformers import AutoTokenizer, AutoModel
 from mytransformers.benchmark import BenchmarkModel, GenerationFunc
 
 def pipeline_batch_func(prompts: List[str],
@@ -20,39 +20,32 @@ def pipeline_batch_func(prompts: List[str],
         texts = prompts[i:i + batch_size]
 
         inputs = tokenizer(texts, return_tensors="pt", max_length=max_prompt_len).to(device)
-        batches.append(pp.MBatch(data=inputs,
-                                   idx=batch_id,
-                                   stream=torch.cuda.Stream(),
-                                   event=torch.cuda.Event()))
+        batches.append(inputs)
         batch_id += 1
     return batches
 
+
 def start(prompts: List[str],
           batch_size: int,
-          num_microbatches: int, 
-          max_prompt_len: int,
-          max_new_tokens: int):
+          max_prompt_len: int):
     
     benchmark = BenchmarkModel(
     model=model,
     tokenizer=tokenizer,
-    generate_func=GenerationFunc.pipeline_generate,
+    generate_func=GenerationFunc.encode_generate,
     batch_func=pipeline_batch_func,
     warm_up=True,
-    model_name="opt-1.3b-pipeline",
-    description="Pipeline parallel OPT-1.3B benchmark",
+    model_name="deverta",
+    description="deberta",
     max_prompt_len=max_prompt_len,
-    max_new_tokens=max_new_tokens,
+    max_new_tokens=1,
     dtype=torch.float32,
     save_model_config=False,
     save_stats=True,
-    save_dir=f"results/opt/pipeline_2/batch_size={batch_size}-num_microbatch={num_microbatches}-max_prompt_len={max_prompt_len}")
+    save_dir=f"results/deberta/pipeline_1/batch_size={batch_size}-max_prompt_len={max_prompt_len}")
     stats = benchmark(
     prompts=prompts,
-    batch_size=batch_size // num_microbatches,
-    eos_token_id=0,
-    pad_token_id=0,
-    use_cache=True)
+    batch_size=batch_size)
     utils.Logger.log_main_device(stats)
 
 
@@ -64,42 +57,31 @@ if __name__ == "__main__":
 
     device = torch.cuda.current_device()
 
-    model_name = "facebook/opt-1.3b"
+    model_name = "microsoft/deberta-v2-xxlarge"
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
         padding_side="left"
     )
 
-    model = OPTForCausalLM.from_pretrained(
-        model_name,
-        torch_dtype=torch.float32
-    ).eval()
-
     stages = [
         (utils.create_group([0]), [0]),
         (utils.create_group([1]), [1]),
     ]
-
-    comm_groups = [
-        utils.create_group([0, 1]),
-        utils.create_group([0, 1])
-    ]
-
-    pp_custom.OPTGenerator(
-        module=model,
-        num_stages=2,
-        groups_info=stages,
-        comm_groups=comm_groups,
-        embed_size=2048,
-        vocab_size=50272,
-        device=device
-    )
+    
     with open('test.txt', 'r', encoding='utf-8') as file:
         text = file.read()
-        
+
     for batch_size in range(64, 64 + 1, 8):
         prompts = [text for _ in range(batch_size)]
         for max_prompt_len in range(128, 128 + 1, 16):
-            for num_microbatches in [1, 2, 4, 8]:
-                start(prompts, batch_size, num_microbatches, max_prompt_len, 1)
+            model = AutoModel.from_pretrained(
+                model_name,
+                torch_dtype=torch.float32).eval()
+            pp_custom.DebertaGenerator.batch_size = batch_size
+            pp_custom.DebertaGenerator.seq_len = max_prompt_len
+            pp_custom.DebertaGenerator(module=model,
+                                       num_stages=2,
+                                       groups_info=stages,
+                                       device=device)
+            start(prompts, batch_size, max_prompt_len)

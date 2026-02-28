@@ -130,12 +130,19 @@ class GenerationFunc:
     def deepspeed_generate(model: Module,
                         batches: List,
                         max_new_tokens: int,
-                        eos_token_id: int,
-                        pad_token_id: int,
-                        use_cache: bool = False,
-                        offload_batches: bool = False):
+                        use_cache: bool = False):
         for idx, batch in enumerate(batches):
             batch[idx] = model.generate(**batch, max_new_tokens=max_new_tokens, use_cache=use_cache)
             
         return batches
+    
+    @staticmethod
+    def encode_generate(model: Module,
+                        batches: List,
+                        *args) -> List:
+        for idx, batch in enumerate(batches):
+            batch[idx] = model(**batch)
+            
+        return batches
+        
             

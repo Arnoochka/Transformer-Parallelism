@@ -1,6 +1,6 @@
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from mytransformers.parallel.pipeline_parallel_1.layers import (
-    PipeRole, FakeModule, LeaderStrategyModule, LeaderTupleStrategyModule)
+    PipeRole, FakeModule, LeaderStrategyModule, LeaderTupleStrategyModule, StrategyModule)
 from .layer_generators import StrategyModuleGenerator, ComputeModuleGenerator
 from .PipeModuleGenerator import PipeModuleGenerator
 from typing import List, Tuple, Dict
@@ -25,6 +25,7 @@ class PipelineGenerator:
                 stages: List[List[Module]],
                 groups_info: List[Tuple[ProcessGroup, List[int]]],
                 stages_fake_modules: List[List[FakeModule]],
+                leader_strategy: StrategyModule,
                 device: torch.device) -> List[List[Module]]:
         if len(groups_info) != len(stages):
             raise AttributeError("the number of groups does not match the number of stages")
@@ -45,7 +46,7 @@ class PipelineGenerator:
                 "strategy": LeaderTupleStrategyModule}
                 
             if is_last_stage:
-                strategy_kwargs["strategy"] = LeaderStrategyModule
+                strategy_kwargs["strategy"] = leader_strategy
             new_stage = PipelineGenerator.get_stage(
                 stage,
                 stage_fake_modules,
