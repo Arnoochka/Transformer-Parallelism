@@ -1,18 +1,22 @@
-from transformers import AutoTokenizer, AutoModel, DebertaV2Model
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import torch
 
-model_name = "microsoft/deberta-v2-xlarge"
-device = torch.cuda.current_device()
+model_name = "t5-large"
 
 tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModel.from_pretrained(
+model = AutoModelForSeq2SeqLM.from_pretrained(
     model_name,
     torch_dtype=torch.float32
-).to(device)
+).to("cuda")
 
-inputs = tokenizer("Distributed inference is cool! fdgdfaghsdjfkj gredhgjdshaR HTDHA. rehtsjkjshg rghsags", return_tensors="pt").to(device)
+text = "translate English to German: Machine learning is amazing."
+
+inputs = tokenizer(text, return_tensors="pt").to("cuda")
 
 with torch.no_grad():
-    outputs = model(**inputs)
+    outputs = model.generate(**inputs, max_new_tokens=20)
 
-print(outputs)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+
+print(f"{torch.cuda.max_memory_allocated() / 1024**3:.3f} GB")
+print(model)
