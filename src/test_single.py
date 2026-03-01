@@ -1,22 +1,27 @@
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import AutoImageProcessor, AutoModel
+from PIL import Image
 import torch
+import requests
 
-model_name = "t5-large"
+model_name = "google/vit-huge-patch14-224-in21k"
 
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSeq2SeqLM.from_pretrained(
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+processor = AutoImageProcessor.from_pretrained(model_name)
+model = AutoModel.from_pretrained(
     model_name,
-    torch_dtype=torch.float32
-).to("cuda")
+    dtype=torch.float32,
+).to(device)
 
-text = "translate English to German: Machine learning is amazing."
+image = [Image.open(requests.get(
+    "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/cats.png",
+    stream=True
+).raw).convert("RGB") for _ in range(8)]
 
-inputs = tokenizer(text, return_tensors="pt").to("cuda")
+inputs = processor(images=image, return_tensors="pt").to(device)
 
 with torch.no_grad():
-    outputs = model.generate(**inputs, max_new_tokens=20)
+    outputs = model(**inputs)
 
-print(tokenizer.decode(outputs[0], skip_special_tokens=True))
-
-print(f"{torch.cuda.max_memory_allocated() / 1024**3:.3f} GB")
+print(outputs.last_hidden_state.shape)
 print(model)
