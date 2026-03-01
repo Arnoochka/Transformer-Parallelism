@@ -1,16 +1,27 @@
 from transformers import AutoImageProcessor, AutoModel
 from PIL import Image
+import torch
 import requests
 
-url = 'http://images.cocodataset.org/val2017/000000039769.jpg'
-image = [Image.open(requests.get(url, stream=True).raw) for _ in range(8)]
+model_name = "facebook/dinov2-giant"
 
-processor = AutoImageProcessor.from_pretrained('facebook/dinov2-giant')
-model = AutoModel.from_pretrained('facebook/dinov2-giant')
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-inputs = processor(images=image, return_tensors="pt")
-outputs = model(**inputs)
-last_hidden_states = outputs.last_hidden_state
+processor = AutoImageProcessor.from_pretrained(model_name)
+model = AutoModel.from_pretrained(
+    model_name,
+).to(device)
 
-print(last_hidden_states.shape)
+image = [Image.open(requests.get(
+    "https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/cats.png",
+    stream=True
+).raw).convert("RGB") for _ in range(8)]
+
+inputs = processor(images=image, return_tensors="pt").to(device)
+
+with torch.no_grad():
+    outputs = model(**inputs)
+
+print(outputs.last_hidden_state.shape, inputs.pixel_values.shape)
+print(f"{torch.cuda.max_memory_allocated() / 1024**3:.3f} GB")
 print(model)

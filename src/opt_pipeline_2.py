@@ -46,7 +46,7 @@ def start(prompts: List[str],
     dtype=torch.float32,
     save_model_config=False,
     save_stats=True,
-    save_dir=f"results/opt/pipeline_2/batch_size={batch_size}-num_microbatch={num_microbatches}-max_prompt_len={max_prompt_len}")
+    save_dir=f"results/opt/pipeline_2/batch_size={batch_size}-num_microbatch={num_microbatches}-max_prompt_len={max_prompt_len}-max_new_tokens={max_new_tokens}")
     stats = benchmark(
     prompts=prompts,
     batch_size=batch_size // num_microbatches,
@@ -98,8 +98,9 @@ if __name__ == "__main__":
     with open('test.txt', 'r', encoding='utf-8') as file:
         text = file.read()
         
-    for batch_size in range(64, 64 + 1, 8):
+    for batch_size in range(56, 64 + 1, 8):
         prompts = [text for _ in range(batch_size)]
-        for max_prompt_len in range(128, 128 + 1, 16):
-            for num_microbatches in [1, 2, 4, 8]:
-                start(prompts, batch_size, num_microbatches, max_prompt_len, 1)
+        for max_prompt_len in range(16, 112 + 1, 32):
+            for max_new_tokens in range(16, 112 + 1, 32):
+                for num_microbatches in [1, 2, 4, 8]:
+                    start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)

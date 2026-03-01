@@ -75,7 +75,7 @@ if __name__ == "__main__":
     with open('test.txt', 'r', encoding='utf-8') as file:
         text = file.read()
 
-    for batch_size in range(40, 64 + 1, 8):
+    for batch_size in range(8, 64 + 1, 8):
         prompts = [text for _ in range(batch_size)]
         for max_prompt_len in range(16, 128 + 1, 16):
             model = OPTForCausalLM.from_pretrained(

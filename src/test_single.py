@@ -10,7 +10,6 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 processor = AutoImageProcessor.from_pretrained(model_name)
 model = AutoModel.from_pretrained(
     model_name,
-    dtype=torch.float32,
 ).to(device)
 
 image = [Image.open(requests.get(
@@ -24,4 +23,5 @@ with torch.no_grad():
     outputs = model(**inputs)
 
 print(outputs.last_hidden_state.shape)
+print(f"{torch.cuda.max_memory_allocated() / 1024**3} GB")
 print(model)

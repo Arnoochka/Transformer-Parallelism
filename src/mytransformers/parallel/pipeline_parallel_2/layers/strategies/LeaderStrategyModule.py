@@ -48,14 +48,14 @@ class LeaderStrategyModule(StrategyModule):
         if is_send:
             if dist.get_rank(comm_group) == self.send_leader:
                 dst_rank = dist.get_global_rank(comm_group, self.recv_leader)
-                dist.send(output, dst=dst_rank, group=comm_group, tag=tag)
+                dist.send(output.contiguous(), dst=dst_rank, group=comm_group, tag=tag)
         else:
             if dist.get_rank(comm_group) == self.recv_leader:
                 src_rank = dist.get_global_rank(comm_group, self.send_leader)
-                dist.recv(output, src=src_rank, group=comm_group, tag=tag) 
+                dist.recv(output.contiguous(), src=src_rank, group=comm_group, tag=tag) 
                 
             src_rank = dist.get_global_rank(current_group, self.bcast_leader)
-            dist.broadcast(output, src=src_rank, group=current_group)
+            dist.broadcast(output.contiguous(), src=src_rank, group=current_group)
         return output
         
 class LeaderTupleStrategyModule(LeaderStrategyModule):
