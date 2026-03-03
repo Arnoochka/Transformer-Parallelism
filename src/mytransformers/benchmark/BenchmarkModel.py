@@ -75,6 +75,8 @@ class BenchmarkModel:
 
         self.stats['data_size'] = len(prompts)
         self.stats['batch_size'] = batch_size
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats()
         if self.warm_up:
             batches = self.batch_func(prompts, batch_size, self.max_prompt_len, self.tokenizer)
             self.generation_func(

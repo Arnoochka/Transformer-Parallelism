@@ -5,7 +5,7 @@ from typing import List
 from mytransformers import utils
 from mytransformers import pp_custom_1 as pp_custom
 from mytransformers.parallel import pp_1 as pp
-from transformers import AutoTokenizer, OPTForCausalLM
+from transformers import AutoTokenizer, BloomForCausalLM
 from mytransformers.benchmark import BenchmarkModel, GenerationFunc
 
 def pipeline_batch_func(prompts: List[str],
@@ -35,14 +35,14 @@ def start(prompts: List[str],
     generate_func=GenerationFunc.simple_generate,
     batch_func=pipeline_batch_func,
     warm_up=True,
-    model_name="opt-2.7b-pipeline",
-    description="Pipeline parallel OPT-2.7B benchmark",
+    model_name="bloom-3b",
+    description="Pipeline parallel Bloom-3B benchmark",
     max_prompt_len=max_prompt_len,
     max_new_tokens=max_new_tokens,
     dtype=torch.float32,
     save_model_config=False,
     save_stats=True,
-    save_dir=f"results/opt/pipeline_1/batch_size={batch_size}-max_prompt_len={max_prompt_len}-max_new_tokens={max_new_tokens}")
+    save_dir=f"results/bloom/pipeline_1/batch_size={batch_size}-max_prompt_len={max_prompt_len}-max_new_tokens={max_new_tokens}")
     stats = benchmark(
     prompts=prompts,
     batch_size=batch_size,
@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     device = torch.cuda.current_device()
 
-    model_name = "facebook/opt-2.7b"
+    model_name = "bigscience/bloom-3b"
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
@@ -75,19 +75,18 @@ if __name__ == "__main__":
     with open('test.txt', 'r', encoding='utf-8') as file:
         text = file.read()
 
-    for batch_size in range(24, 24 + 1, 8):
+    for batch_size in range(8, 16 + 1, 8):
         prompts = [text for _ in range(batch_size)]
-        for max_prompt_len in range(80, 96 + 1, 16):
-            model = OPTForCausalLM.from_pretrained(
+        for max_prompt_len in range(8, 24 + 1, 8):
+            model = BloomForCausalLM.from_pretrained(
                 model_name,
                 torch_dtype=torch.float32).eval()
-            pp_custom.OPTGenerator.batch_size = batch_size
-            pp_custom.OPTGenerator.seq_len = max_prompt_len
-            pp_custom.OPTGenerator(
+            pp_custom.BloomGenerator.batch_size = batch_size
+            pp_custom.BloomGenerator.seq_len = max_prompt_len
+            pp_custom.BloomGenerator(
                 module=model,
                 num_stages=2,
                 groups_info=stages,
                 device=device
             )
-            for max_new_tokens in range(16, 96 + 1, 16):
-                start(prompts, batch_size, max_prompt_len, max_new_tokens)
+            start(prompts, batch_size, max_prompt_len, 1)

@@ -39,8 +39,8 @@ def start(prompts: List[str],
     generate_func=GenerationFunc.pipeline_generate,
     batch_func=pipeline_batch_func,
     warm_up=True,
-    model_name="opt-1.3b-pipeline",
-    description="Pipeline parallel OPT-1.3B benchmark",
+    model_name="opt-2.7b",
+    description="Pipeline parallel OPT-2.7B benchmark",
     max_prompt_len=max_prompt_len,
     max_new_tokens=max_new_tokens,
     dtype=torch.float32,
@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     device = torch.cuda.current_device()
 
-    model_name = "facebook/opt-1.3b"
+    model_name = "facebook/opt-2.7b"
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
@@ -91,16 +91,16 @@ if __name__ == "__main__":
         num_stages=2,
         groups_info=stages,
         comm_groups=comm_groups,
-        embed_size=2048,
+        embed_size=2560,
         vocab_size=50272,
         device=device
     )
     with open('test.txt', 'r', encoding='utf-8') as file:
         text = file.read()
         
-    for batch_size in range(56, 64 + 1, 8):
+    for batch_size in range(16, 16 + 1, 8):
         prompts = [text for _ in range(batch_size)]
-        for max_prompt_len in range(16, 112 + 1, 32):
-            for max_new_tokens in range(16, 112 + 1, 32):
-                for num_microbatches in [1, 2, 4, 8]:
+        for max_prompt_len in range(96, 96 + 1, 16):
+            for max_new_tokens in range(80, 80 + 1, 16):
+                for num_microbatches in [2, 4]:
                     start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)

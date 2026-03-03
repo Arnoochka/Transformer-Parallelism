@@ -51,8 +51,15 @@ class FakeTupleTensorModule(FakeTensorModule):
         self.tensor_shapes = tensor_shapes
         
 class FakeTupleTensorWithCacheModule(FakeTupleTensorModule):
+    def __init__(self,
+                 device: torch.device,
+                 dtype: Optional[torch.dtype] = None,
+                 cache_name: str = 'past_key_value'):
+        super().__init__(device, dtype)
+        self.cache_name = cache_name
+        
     def forward(self, *args, **kwargs) -> Tuple[Tensor, Cache]:
         tensor_output = super().forward(*args, **kwargs)
-        cache = kwargs['past_key_value']
+        cache = kwargs[self.cache_name]
         return tensor_output + (cache,)
     

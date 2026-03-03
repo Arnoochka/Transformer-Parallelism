@@ -64,11 +64,13 @@ class FakeTupleSeqModule(FakeTupleTensorModule):
                  init_tensor_shapes: List[Tuple[int]],
                  seq_dims: List[int],
                  device,
-                 dtype = None):
+                 dtype = None,
+                 cache_name: str = "past_key_value"):
         super().__init__(init_tensor_shapes, device, dtype)
         self.seq_dims = seq_dims
         self.ks = [init_tensor_shapes[idx][seq_dim]
                    for idx, seq_dim in enumerate(seq_dims)]
+        self.cache_name = cache_name
         self.i = [0] * len(self.ks)
         
     def forward(self, *args, **kwargs):
@@ -77,7 +79,7 @@ class FakeTupleSeqModule(FakeTupleTensorModule):
             self.i[idx] += 1
             self.tensor_shapes[idx] = self.tensor_shapes[idx][:self.seq_dims[idx]] + \
                 (self.ks[idx] if self.i[idx] == 0 else 1, ) + self.tensor_shapes[idx][self.seq_dims[idx] + 1:]
-        cache = kwargs['past_key_value']
+        cache = kwargs[self.cache_name]
                 
         return output + (cache,)
     

@@ -57,10 +57,3 @@ class FakeSeqModule(FakeTensorModule):
         self.i = 0
         self.tensor_shape = self.tensor_shape[:self.seq_dim]\
             + (self.k,) + self.tensor_shape[self.seq_dim + 1:]
-            
-            
-class FakeTensorWithCacheModule(FakeTensorModule):
-    def forward(self, *args, **kwargs) -> Tuple[Tensor, Cache]:
-        tensor_output = super().forward(*args, **kwargs)
-        cache = kwargs['past_key_value']
-        return (tensor_output, cache)
