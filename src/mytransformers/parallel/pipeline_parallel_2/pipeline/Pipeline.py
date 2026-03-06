@@ -2,7 +2,7 @@ import torch
 from torch.nn import ModuleList
 from torch.distributed import ProcessGroup
 from typing import Callable, List, Tuple
-from mytransformers.parallel.pipeline_parallel_2.layers import FakeModule, StrategyModule
+from mytransformers.parallel.pipeline_parallel_2.layers import FakeModule, FinalStrategyModule
 from .utils import MBatch, CondWorker
 from threading import Thread
         
@@ -19,19 +19,19 @@ class Pipeline(ModuleList):
     Args:
         model_forward (Callable): forward ункция исходной модели
         modules (ModuleList): все подмененные слои модели
-        final_strategy (StrategyModule): финальная передача между процессами
-        final_strategy_args (Tuple[bool, ProcessGroup, ProcessGroup]): аргументы финальной передачи
+        final_strategy (FinalStrategyModule): финальная передача между процессами
+        final_comm_group (ProcessGroup): финальная группа передачи данных
         fake_args (Callable): функция для вычисления арзументов для "фейковых" модулей по микробатчу
     """
     
     def __init__(self,
                  model_forward: Callable,
                  modules: ModuleList,
-                 final_strategy: StrategyModule,
-                 final_strategy_args: Tuple[bool, ProcessGroup, ProcessGroup],
+                 final_strategy: FinalStrategyModule,
+                 final_comm_group: ProcessGroup,
                  fake_args: Callable):
         super().__init__(modules)
-        self.final_stategy = lambda output: final_strategy(output, *final_strategy_args)
+        self.final_stategy = lambda output: final_strategy(output, final_comm_group)
         self.model_forward = model_forward
         self.get_fake_args = fake_args
         

@@ -54,7 +54,7 @@ class FakeTupleTensorWithCacheModule(FakeTupleTensorModule):
     def __init__(self,
                  device: torch.device,
                  dtype: Optional[torch.dtype] = None,
-                 cache_name: str = 'past_key_value'):
+                 cache_name: str = 'past_key_values'):
         super().__init__(device, dtype)
         self.cache_name = cache_name
         

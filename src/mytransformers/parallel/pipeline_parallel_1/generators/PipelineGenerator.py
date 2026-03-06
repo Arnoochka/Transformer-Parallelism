@@ -1,12 +1,13 @@
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
-from mytransformers.parallel.pipeline_parallel_1.layers import (
-    PipeRole, FakeModule, LeaderStrategyModule, LeaderTupleStrategyModule, StrategyModule)
+from mytransformers.parallel.pipeline_parallel_1.layers import (PipeRole, FakeModule)
+from mytransformers.parallel.pipeline_parallel_1.layers.strategies import LeaderStrategyModule, LeaderTupleStrategyModule, StrategyModule
 from .layer_generators import StrategyModuleGenerator, ComputeModuleGenerator
 from .PipeModuleGenerator import PipeModuleGenerator
 from typing import List, Tuple, Dict
 from torch.nn import Module
 from torch.distributed import ProcessGroup
 import torch
+from mytransformers.utils import Logger
 
 
 class PipelineGenerator:
@@ -24,8 +25,11 @@ class PipelineGenerator:
     def __new__(cls,
                 stages: List[List[Module]],
                 groups_info: List[Tuple[ProcessGroup, List[int]]],
+                comm_groups: List[ProcessGroup],
+                final_group_info: Tuple[ProcessGroup, List[int]],
+                final_comm_group: ProcessGroup,
                 stages_fake_modules: List[List[FakeModule]],
-                leader_strategy: StrategyModule,
+                final_strategy: StrategyModule,
                 device: torch.device) -> List[List[Module]]:
         if len(groups_info) != len(stages):
             raise AttributeError("the number of groups does not match the number of stages")
@@ -42,11 +46,12 @@ class PipelineGenerator:
                 "group_info": (group, ranks),
                 "next_role": PipeRole.recv,
                 "next_module": stage_fake_modules[-1],
-                "next_group_info": groups_info[0] if is_last_stage else groups_info[idx + 1],
-                "strategy": LeaderTupleStrategyModule}
-                
+                "next_group_info": final_group_info if is_last_stage else groups_info[idx + 1],
+                "comm_group": final_comm_group if is_last_stage else comm_groups[idx],
+                "strategy": LeaderTupleStrategyModule}  
             if is_last_stage:
-                strategy_kwargs["strategy"] = leader_strategy
+                strategy_kwargs["strategy"] = final_strategy
+                strategy_kwargs["strategy_kwargs"] = {"send_rank": len(stages) - 1}
             new_stage = PipelineGenerator.get_stage(
                 stage,
                 stage_fake_modules,

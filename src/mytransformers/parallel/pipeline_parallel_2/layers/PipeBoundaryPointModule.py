@@ -1,10 +1,10 @@
 from torch.distributed import ProcessGroup
 from .PipeModule import PipeModule, PipeRole
-from .strategies import StrategyModule
+from .strategies import InnerStrategyModule
 from torch.nn import Module
 from typing import Any
     
-class PipeBoundaryPointModule(PipeModule):
+class PipeInnerBoundaryPointModule(PipeModule):
     """
     крайняя точка (начальная или конечная) внутри конвейера.
     
@@ -15,14 +15,14 @@ class PipeBoundaryPointModule(PipeModule):
         module (Module): модуль, от которого получается тензор для передачи
         current_group (ProcessGroup): текущая группа процессов
         comm_group (ProcessGroup): группа процессов для коммуникации
-        strategy (StrategyModule): стратегия передачи данных
+        strategy (InnerStrategyModule): стратегия передачи данных
     """
     def __init__(self,
                  role: PipeRole,
                  module: Module,
                  current_group: ProcessGroup,
                  comm_group: ProcessGroup,
-                 strategy: StrategyModule):
+                 strategy: InnerStrategyModule):
         super().__init__(role, module)
         is_send = (role == PipeRole.computeAndSend)
         is_recv = (role  == PipeRole.recv)

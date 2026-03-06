@@ -18,7 +18,8 @@ class StrategyModule(Module):
                 output: Any,
                 is_send: bool,
                 send_group: ProcessGroup,
-                recv_group: ProcessGroup) -> Any:
+                recv_group: ProcessGroup,
+                comm_group: ProcessGroup) -> Any:
         
         """
         Args:

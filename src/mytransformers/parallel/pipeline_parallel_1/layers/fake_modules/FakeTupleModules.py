@@ -65,7 +65,7 @@ class FakeTupleSeqModule(FakeTupleTensorModule):
                  seq_dims: List[int],
                  device,
                  dtype = None,
-                 cache_name: str = "past_key_value"):
+                 cache_name: str = "past_key_values"):
         super().__init__(init_tensor_shapes, device, dtype)
         self.seq_dims = seq_dims
         self.ks = [init_tensor_shapes[idx][seq_dim]

@@ -3,6 +3,7 @@ from mytransformers.parallel.pipeline_parallel_1.layers.PipeModule import PipeMo
 from .strategies import StrategyModule
 from torch.nn import Module
 from typing import Any
+from mytransformers.utils import Logger
 
 class PipeStrategyModule(PipeModule):
     """
@@ -22,6 +23,7 @@ class PipeStrategyModule(PipeModule):
                  module: Module,
                  send_group: ProcessGroup,
                  recv_group: ProcessGroup,
+                 comm_group: ProcessGroup,
                  strategy: StrategyModule):
         super().__init__(role)
         is_send = (role == PipeRole.computeAndSend)
@@ -32,6 +34,7 @@ class PipeStrategyModule(PipeModule):
         self.is_send = is_send
         self.send_group = send_group
         self.recv_group = recv_group
+        self.comm_group = comm_group
         self.module = module
         self.strategy = strategy
         
@@ -40,7 +43,8 @@ class PipeStrategyModule(PipeModule):
         output = self.strategy(output,
                                self.is_send,
                                self.send_group,
-                               self.recv_group)
+                               self.recv_group,
+                               self.comm_group)
         self.complete()
         return output
     

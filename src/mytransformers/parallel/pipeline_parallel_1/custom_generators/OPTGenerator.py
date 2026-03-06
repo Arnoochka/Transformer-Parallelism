@@ -2,7 +2,7 @@ from mytransformers.parallel.pipeline_parallel_1.generators import PipelineGener
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from mytransformers.parallel.pipeline_parallel_1.layers.fake_modules import (
     FakeModule, FakeSeqModule, FakeTupleSeqModule)
-from mytransformers.parallel.pipeline_parallel_1.layers.strategies import LeaderStrategyModule
+from mytransformers.parallel.pipeline_parallel_1.layers.strategies import FinalStrategyModule
 from typing import List, Tuple
 from torch.distributed import ProcessGroup
 from transformers import OPTForCausalLM
@@ -18,6 +18,9 @@ class OPTGenerator(ParallelModuleGenerator):
                 module: OPTForCausalLM,
                 num_stages: int,
                 groups_info: List[Tuple[ProcessGroup, List[int]]],
+                comm_groups: List[ProcessGroup],
+                final_group_info: Tuple[ProcessGroup, List[int]],
+                final_comm_group: ProcessGroup,
                 device: torch.device) -> Module:
         stages_info = [[] for _ in range(num_stages)]
 
@@ -33,7 +36,14 @@ class OPTGenerator(ParallelModuleGenerator):
         stages_info[-1] = stages_info[-1] + [decoder.final_layer_norm, module.lm_head]
         stages = [stages_info[idx] for idx in range(num_stages)]
         stages_fake_generators = OPTGenerator.get_stages_fake_modules(stages, device)
-        pipeline = PipelineGenerator(stages, groups_info, stages_fake_generators, LeaderStrategyModule, device)
+        pipeline = PipelineGenerator(stages=stages,
+                                     groups_info=groups_info,
+                                     final_group_info=final_group_info,
+                                     stages_fake_modules=stages_fake_generators,
+                                     final_strategy=FinalStrategyModule,
+                                     device=device,
+                                     comm_groups=comm_groups,
+                                     final_comm_group=final_comm_group)
         setattr(decoder, 'embed_tokens', pipeline[0][0])
         setattr(decoder, 'embed_positions', pipeline[0][1])
         setattr(decoder, 'final_layer_norm', pipeline[-1][-2])
@@ -50,7 +60,7 @@ class OPTGenerator(ParallelModuleGenerator):
     def get_stages_fake_modules(stages: List[List[Module]], device) -> List[List[FakeModule]]:
         batch_size = OPTGenerator.batch_size
         seq_len = OPTGenerator.seq_len
-        embed_size = 2560
+        embed_size = 5120
         first_stage = [FakeSeqModule((batch_size, seq_len, embed_size), seq_dim=1, device=device), 
                        FakeSeqModule((batch_size, seq_len, embed_size), seq_dim=1, device=device)] + \
                           [FakeTupleSeqModule([(batch_size, seq_len, embed_size)], [1], device=device)
@@ -59,13 +69,10 @@ class OPTGenerator(ParallelModuleGenerator):
                            for _ in range(len(stages[-1][:-2]))] + \
                                [FakeSeqModule((batch_size, seq_len, embed_size), seq_dim=1, device=device),
                                 FakeSeqModule((batch_size, seq_len, 50272), seq_dim=1, device=device)]
-        fake_modules = [first_stage, last_stage]
+        fake_modules = [first_stage]
         for stage in stages[1:-1]:
-            fake_modules.append([FakeSeqModule((batch_size, seq_len, embed_size), seq_dim=1, device=device)
+            fake_modules.append([FakeTupleSeqModule([(batch_size, seq_len, embed_size)], [1], device=device)
                                     for _ in range(len(stage))])
+        fake_modules.append(last_stage)
             
         return fake_modules
-                
-                
-                    
-                

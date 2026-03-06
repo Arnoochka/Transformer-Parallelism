@@ -29,6 +29,7 @@ class StrategyModuleGenerator:
                 next_module: Module,
                 next_group_info: Tuple[ProcessGroup, List[int]],
                 fake_module: FakeModule,
+                comm_group: ProcessGroup,
                 strategy: StrategyModule,
                 strategy_kwargs: Dict = {}) -> PipeModule:
         rank = dist.get_rank()
@@ -39,12 +40,14 @@ class StrategyModuleGenerator:
                                       module,
                                       group,
                                       next_group,
+                                      comm_group,
                                       strategy(**strategy_kwargs))
         elif rank in next_ranks:
             return PipeStrategyModule(next_role,
                                       next_module,
                                       group,
                                       next_group,
+                                      comm_group,
                                       strategy(**strategy_kwargs))
         else:
             return PipeFakeModule(fake_module)

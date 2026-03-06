@@ -2,7 +2,7 @@ from mytransformers.parallel.pipeline_parallel_2.generators import PipelineGener
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from mytransformers.parallel.pipeline_parallel_2.layers import (
     FakeModule, FakeTensorModule, FakeTupleTensorWithCacheModule,
-    StrategyModule, LeaderTupleStrategyModule, LeaderStrategyDictModule)
+    InnerStrategyModule, LeaderTupleStrategyModule, FinalStrategyDictModule)
 from typing import List, Tuple, Callable, Any, Dict
 from torch.distributed import ProcessGroup
 from transformers import OPTForCausalLM
@@ -14,7 +14,8 @@ class OPTGenerator(ParallelModuleGenerator):
                 module: OPTForCausalLM,
                 num_stages: int,
                 groups_info: List[Tuple[ProcessGroup, List[int]]],
-                comm_groups: List[ProcessGroup],
+                inner_comm_groups: List[ProcessGroup],
+                final_comm_group: ProcessGroup,
                 embed_size: int,
                 vocab_size: int,
                 device: torch.device) -> Module:
@@ -34,7 +35,7 @@ class OPTGenerator(ParallelModuleGenerator):
         stage: ModuleDict = PipelineGenerator.get_stage(modules,
                                                         inner_boundary_points,
                                                         groups_info,
-                                                        comm_groups[:-1],
+                                                        inner_comm_groups,
                                                         inner_strategies)
         
         module = OPTGenerator.replace_modules(module, stage)
@@ -42,9 +43,8 @@ class OPTGenerator(ParallelModuleGenerator):
         fake_args = OPTGenerator.build_fake_args(num_layers, embed_size, vocab_size)
         pipeline = PipelineGenerator(module,
                                      modules,
-                                     LeaderStrategyDictModule(send_leader=num_stages - 1, recv_leader=0),
-                                     groups_info,
-                                     comm_groups[-1],
+                                     FinalStrategyDictModule(send_rank=num_stages-1),
+                                     final_comm_group,
                                      fake_args)
         return pipeline.to(device)
         
@@ -78,7 +78,7 @@ class OPTGenerator(ParallelModuleGenerator):
         return module        
          
     @staticmethod
-    def get_inner_strategies(num_points: int) -> List[StrategyModule]:
+    def get_inner_strategies(num_points: int) -> List[InnerStrategyModule]:
         return [LeaderTupleStrategyModule() for _ in range(num_points)]
     
     @staticmethod
