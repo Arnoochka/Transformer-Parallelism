@@ -35,8 +35,8 @@ def start(prompts: List[str],
     generate_func=GenerationFunc.simple_generate,
     batch_func=pipeline_batch_func,
     warm_up=True,
-    model_name="bloom-3b",
-    description="Pipeline parallel Bloom-3B benchmark",
+    model_name="bloom-7b1",
+    description="Pipeline parallel Bloom-7B1 benchmark",
     max_prompt_len=max_prompt_len,
     max_new_tokens=max_new_tokens,
     dtype=torch.float32,
@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     device = torch.cuda.current_device()
 
-    model_name = "bigscience/bloom-3b"
+    model_name = "bigscience/bloom-7b1b"
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
@@ -70,23 +70,34 @@ if __name__ == "__main__":
     stages = [
         (utils.create_group([0]), [0]),
         (utils.create_group([1]), [1]),
+        (utils.create_group([2]), [2]),
+        (utils.create_group([3]), [3]),
     ]
-    
+    inner_comm_groups = [
+        utils.create_group([0, 1]),
+        utils.create_group([1, 2]),
+        utils.create_group([2, 3])
+        ]
     with open('test.txt', 'r', encoding='utf-8') as file:
         text = file.read()
 
-    for batch_size in range(8, 16 + 1, 8):
+    for batch_size in range(16, 48 + 1, 16):
         prompts = [text for _ in range(batch_size)]
-        for max_prompt_len in range(8, 24 + 1, 8):
+        for max_prompt_len in range(64, 256 + 1, 64):
             model = BloomForCausalLM.from_pretrained(
                 model_name,
-                torch_dtype=torch.float32).eval()
+                torch_dtype=torch.float16).eval()
             pp_custom.BloomGenerator.batch_size = batch_size
             pp_custom.BloomGenerator.seq_len = max_prompt_len
             pp_custom.BloomGenerator(
                 module=model,
-                num_stages=2,
+                num_stages=4,
                 groups_info=stages,
-                device=device
+                final_group_info=(utils.create_group([0, 1, 2, 3]), [0, 1, 2, 3]),
+                device=device,
+                comm_groups=inner_comm_groups,
+                final_comm_group=utils.create_group([0, 1, 2, 3])
             )
-            start(prompts, batch_size, max_prompt_len, 1)
+            utils.Logger.log_all_device(model)
+            for max_new_tokens in range(64, 256 + 1, 64):
+                start(prompts, batch_size, max_prompt_len, max_new_tokens)

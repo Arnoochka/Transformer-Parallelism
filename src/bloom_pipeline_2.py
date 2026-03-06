@@ -39,8 +39,8 @@ def start(prompts: List[str],
     generate_func=GenerationFunc.pipeline_generate,
     batch_func=pipeline_batch_func,
     warm_up=True,
-    model_name="bloom-3b",
-    description="Pipeline parallel Bloom-3b benchmark",
+    model_name="bloom-7b1",
+    description="Pipeline parallel Bloom-7b1 benchmark",
     max_prompt_len=max_prompt_len,
     max_new_tokens=max_new_tokens,
     dtype=torch.float32,
@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     device = torch.cuda.current_device()
 
-    model_name = "bigscience/bloom-3b"
+    model_name = "bigscience/bloom-7b1"
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
@@ -79,27 +79,33 @@ if __name__ == "__main__":
     stages = [
         (utils.create_group([0]), [0]),
         (utils.create_group([1]), [1]),
+        (utils.create_group([2]), [2]),
+        (utils.create_group([3]), [3]),
     ]
 
-    comm_groups = [
+    inner_comm_groups = [
         utils.create_group([0, 1]),
-        utils.create_group([0, 1])
-    ]
+        utils.create_group([1, 2]),
+        utils.create_group([2, 3])
+        ]
 
     pp_custom.BloomGenerator(
         module=model,
-        num_stages=2,
+        num_stages=4,
         groups_info=stages,
-        comm_groups=comm_groups,
-        embed_size=2560,
-        vocab_size=250880,
+        inner_comm_groups=inner_comm_groups,
+        final_comm_group=None,
+        embed_size=5120,
+        vocab_size=50272,
         device=device
     )
+    utils.Logger.log_all_device(model)
     with open('test.txt', 'r', encoding='utf-8') as file:
         text = file.read()
         
-    for batch_size in range(16, 16 + 1, 8):
+    for batch_size in range(16, 48 + 1, 16):
         prompts = [text for _ in range(batch_size)]
-        for max_prompt_len in range(24, 24 + 1, 8):
-            for num_microbatches in [1, 2]:
-                start(prompts, batch_size, num_microbatches, max_prompt_len, 1)
+        for max_prompt_len in range(64, 256 + 1, 64):
+            for max_new_tokens in range(64, 256 + 1, 64):
+                for num_microbatches in [1, 2, 4, 8]:
+                    start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)

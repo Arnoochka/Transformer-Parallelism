@@ -2,7 +2,7 @@ from mytransformers.parallel.pipeline_parallel_1.generators import PipelineGener
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from mytransformers.parallel.pipeline_parallel_1.layers.fake_modules import (
     FakeModule, FakeSeqModule, FakeTupleSeqModule)
-from mytransformers.parallel.pipeline_parallel_1.layers.strategies import LeaderStrategyModule
+from mytransformers.parallel.pipeline_parallel_1.layers.strategies import FinalStrategyModule
 from typing import List, Tuple
 from torch.distributed import ProcessGroup
 from transformers import BloomForCausalLM
@@ -18,6 +18,9 @@ class BloomGenerator(ParallelModuleGenerator):
                 module: BloomForCausalLM,
                 num_stages: int,
                 groups_info: List[Tuple[ProcessGroup, List[int]]],
+                comm_groups: List[ProcessGroup],
+                final_group_info: Tuple[ProcessGroup, List[int]],
+                final_comm_group: ProcessGroup,
                 device: torch.device) -> Module:
         stages_info = [[] for _ in range(num_stages)]
 
@@ -33,7 +36,14 @@ class BloomGenerator(ParallelModuleGenerator):
         stages_info[-1] = stages_info[-1] + [transformer.ln_f, module.lm_head]
         stages = [stages_info[idx] for idx in range(num_stages)]
         stages_fake_generators = BloomGenerator.get_stages_fake_modules(stages, device)
-        pipeline = PipelineGenerator(stages, groups_info, stages_fake_generators, LeaderStrategyModule, device)
+        pipeline = PipelineGenerator(stages=stages,
+                                     groups_info=groups_info,
+                                     final_group_info=final_group_info,
+                                     stages_fake_modules=stages_fake_generators,
+                                     final_strategy=FinalStrategyModule,
+                                     device=device,
+                                     comm_groups=comm_groups,
+                                     final_comm_group=final_comm_group)
         setattr(transformer, 'word_embeddings', pipeline[0][0])
         setattr(transformer, 'word_embeddings_layernorm', pipeline[0][1])
         setattr(transformer, 'ln_f', pipeline[-1][-2])
