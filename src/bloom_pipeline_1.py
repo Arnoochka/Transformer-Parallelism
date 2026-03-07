@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
     for batch_size in range(16, 48 + 1, 16):
         prompts = [text for _ in range(batch_size)]
-        for max_prompt_len in range(64, 256 + 1, 64):
+        for max_prompt_len in range(128, 512 + 1, 128):
             model = BloomForCausalLM.from_pretrained(
                 model_name,
                 torch_dtype=torch.float16).eval()
@@ -99,5 +99,5 @@ if __name__ == "__main__":
                 final_comm_group=utils.create_group([0, 1, 2, 3])
             )
             utils.Logger.log_all_device(model)
-            for max_new_tokens in range(64, 256 + 1, 64):
+            for max_new_tokens in range(128, 512 + 1, 128):
                 start(prompts, batch_size, max_prompt_len, max_new_tokens)

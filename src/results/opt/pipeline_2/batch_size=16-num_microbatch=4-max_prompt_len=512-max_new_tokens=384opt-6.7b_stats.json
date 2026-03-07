@@ -1,0 +1,19 @@
+{
+    "description": "Pipeline parallel OPT-6.7B benchmark",
+    "model_name": "opt-6.7b",
+    "model_size": 3.0248794555664062,
+    "max_prompt_len": 512,
+    "max_new_tokens": 384,
+    "dtype": "float16",
+    "model_config_dir": null,
+    "data_size": 16,
+    "batch_size": 4,
+    "inference_time": 51.401033246000225,
+    "throughput": 119.53067111696818,
+    "max_memory_allocated_per_device": [
+        5.104568004608154,
+        5.876824378967285,
+        5.87685489654541,
+        4.952250957489014
+    ]
+}

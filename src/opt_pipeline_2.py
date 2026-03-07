@@ -39,8 +39,8 @@ def start(prompts: List[str],
     generate_func=GenerationFunc.pipeline_generate,
     batch_func=pipeline_batch_func,
     warm_up=True,
-    model_name="opt-13b",
-    description="Pipeline parallel OPT-13B benchmark",
+    model_name="opt-6.7b",
+    description="Pipeline parallel OPT-6.7B benchmark",
     max_prompt_len=max_prompt_len,
     max_new_tokens=max_new_tokens,
     dtype=torch.float16,
@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     device = torch.cuda.current_device()
 
-    model_name = "facebook/opt-13b"
+    model_name = "facebook/opt-6.7b"
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
@@ -95,7 +95,7 @@ if __name__ == "__main__":
         groups_info=stages,
         inner_comm_groups=inner_comm_groups,
         final_comm_group=None,
-        embed_size=5120,
+        embed_size=4096,
         vocab_size=50272,
         device=device
     )
@@ -105,7 +105,7 @@ if __name__ == "__main__":
         
     for batch_size in range(48, 48 + 1, 16):
         prompts = [text for _ in range(batch_size)]
-        for max_prompt_len in range(64, 256 + 1, 64):
-            for max_new_tokens in range(64, 256 + 1, 64):
-                for num_microbatches in [1, 2, 4, 8]:
+        for max_prompt_len in range(512, 512 + 1, 128):
+            for max_new_tokens in range(384, 512 + 1, 128):
+                for num_microbatches in [1, 2, 4]:
                     start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)

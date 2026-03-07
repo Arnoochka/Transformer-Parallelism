@@ -105,7 +105,7 @@ if __name__ == "__main__":
         
     for batch_size in range(16, 48 + 1, 16):
         prompts = [text for _ in range(batch_size)]
-        for max_prompt_len in range(64, 256 + 1, 64):
-            for max_new_tokens in range(64, 256 + 1, 64):
-                for num_microbatches in [1, 2, 4, 8]:
+        for max_prompt_len in range(128, 512 + 1, 128):
+            for max_new_tokens in range(128, 512 + 1, 128):
+                for num_microbatches in [1, 2, 4]:
                     start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)

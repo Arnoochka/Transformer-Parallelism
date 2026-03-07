@@ -60,7 +60,7 @@ class BloomGenerator(ParallelModuleGenerator):
     def get_stages_fake_modules(stages: List[List[Module]], device) -> List[List[FakeModule]]:
         batch_size = BloomGenerator.batch_size
         seq_len = BloomGenerator.seq_len
-        embed_size = 2560
+        embed_size = 5120
         vocab_size = 250880
         first_stage = [FakeSeqModule((batch_size, seq_len, embed_size), seq_dim=1, device=device), 
                        FakeSeqModule((batch_size, seq_len, embed_size), seq_dim=1, device=device)] + \

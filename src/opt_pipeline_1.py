@@ -35,8 +35,8 @@ def start(prompts: List[str],
     generate_func=GenerationFunc.simple_generate,
     batch_func=pipeline_batch_func,
     warm_up=True,
-    model_name="opt-13b",
-    description="Pipeline parallel OPT-13B benchmark",
+    model_name="opt-6.7b",
+    description="Pipeline parallel OPT-6.7B benchmark",
     max_prompt_len=max_prompt_len,
     max_new_tokens=max_new_tokens,
     dtype=torch.float16,
@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     device = torch.cuda.current_device()
 
-    model_name = "facebook/opt-13b"
+    model_name = "facebook/opt-6.7b"
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
@@ -81,9 +81,9 @@ if __name__ == "__main__":
     with open('test.txt', 'r', encoding='utf-8') as file:
         text = file.read()
 
-    for batch_size in range(48, 48 + 1, 16):
+    for batch_size in range(16, 48 + 1, 16):
         prompts = [text for _ in range(batch_size)]
-        for max_prompt_len in range(128, 256 + 1, 64):
+        for max_prompt_len in range(128, 512 + 1, 128):
             model = OPTForCausalLM.from_pretrained(
                 model_name,
                 torch_dtype=torch.float16).eval()
@@ -99,5 +99,5 @@ if __name__ == "__main__":
                 final_comm_group=utils.create_group([0, 1, 2, 3])
             )
             utils.Logger.log_all_device(model)
-            for max_new_tokens in range(64, 256 + 1, 64):
+            for max_new_tokens in range(128, 512 + 1, 128):
                 start(prompts, batch_size, max_prompt_len, max_new_tokens)
