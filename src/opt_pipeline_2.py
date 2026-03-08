@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     device = torch.cuda.current_device()
 
-    model_name = "facebook/opt-6.7b"
+    model_name = "facebook/opt-30b"
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
@@ -95,7 +95,7 @@ if __name__ == "__main__":
         groups_info=stages,
         inner_comm_groups=inner_comm_groups,
         final_comm_group=None,
-        embed_size=4096,
+        embed_size=7168,
         vocab_size=50272,
         device=device
     )
@@ -103,9 +103,9 @@ if __name__ == "__main__":
     with open('test.txt', 'r', encoding='utf-8') as file:
         text = file.read()
         
-    for batch_size in range(48, 48 + 1, 16):
+    for batch_size in range(64, 64 + 1, 16):
         prompts = [text for _ in range(batch_size)]
-        for max_prompt_len in range(512, 512 + 1, 128):
-            for max_new_tokens in range(384, 512 + 1, 128):
+        for max_prompt_len in range(1024, 1024 + 1, 128):
+            for max_new_tokens in range(1024, 1024 + 1, 128):
                 for num_microbatches in [1, 2, 4]:
                     start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)

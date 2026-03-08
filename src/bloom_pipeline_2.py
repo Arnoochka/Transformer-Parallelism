@@ -43,7 +43,7 @@ def start(prompts: List[str],
     description="Pipeline parallel Bloom-7b1 benchmark",
     max_prompt_len=max_prompt_len,
     max_new_tokens=max_new_tokens,
-    dtype=torch.float32,
+    dtype=torch.float16,
     save_model_config=False,
     save_stats=True,
     save_dir=f"results/bloom/pipeline_2/batch_size={batch_size}-num_microbatch={num_microbatches}-max_prompt_len={max_prompt_len}-max_new_tokens={max_new_tokens}")
@@ -73,7 +73,7 @@ if __name__ == "__main__":
 
     model = BloomForCausalLM.from_pretrained(
         model_name,
-        torch_dtype=torch.float32
+        torch_dtype=torch.float16
     ).eval()
 
     stages = [
@@ -95,17 +95,17 @@ if __name__ == "__main__":
         groups_info=stages,
         inner_comm_groups=inner_comm_groups,
         final_comm_group=None,
-        embed_size=5120,
-        vocab_size=50272,
+        embed_size=4096,
+        vocab_size=250880,
         device=device
     )
     utils.Logger.log_all_device(model)
     with open('test.txt', 'r', encoding='utf-8') as file:
         text = file.read()
         
-    for batch_size in range(16, 48 + 1, 16):
+    for batch_size in range(16, 32 + 1, 16):
         prompts = [text for _ in range(batch_size)]
-        for max_prompt_len in range(128, 512 + 1, 128):
-            for max_new_tokens in range(128, 512 + 1, 128):
+        for max_prompt_len in range(384, 384 + 1, 128):
+            for max_new_tokens in range(512, 512 + 1, 128):
                 for num_microbatches in [1, 2, 4]:
                     start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)

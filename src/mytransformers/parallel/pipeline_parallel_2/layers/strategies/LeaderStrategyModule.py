@@ -4,7 +4,7 @@ import torch.distributed as dist
 from torch import Tensor
 import torch
 from typing import Tuple, Dict, Optional, Any
-from mytransformers import utils
+from mytransformers.utils import Logger
 
 class LeaderStrategyModule(InnerStrategyModule):
     """

@@ -60,7 +60,7 @@ class OPTGenerator(ParallelModuleGenerator):
     def get_stages_fake_modules(stages: List[List[Module]], device) -> List[List[FakeModule]]:
         batch_size = OPTGenerator.batch_size
         seq_len = OPTGenerator.seq_len
-        embed_size = 4096
+        embed_size = 7168
         first_stage = [FakeSeqModule((batch_size, seq_len, embed_size), seq_dim=1, device=device), 
                        FakeSeqModule((batch_size, seq_len, embed_size), seq_dim=1, device=device)] + \
                           [FakeTupleSeqModule([(batch_size, seq_len, embed_size)], [1], device=device)

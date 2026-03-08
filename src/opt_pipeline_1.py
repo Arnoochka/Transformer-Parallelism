@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     device = torch.cuda.current_device()
 
-    model_name = "facebook/opt-6.7b"
+    model_name = "facebook/opt-30b"
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,

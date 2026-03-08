@@ -60,7 +60,7 @@ class BloomGenerator(ParallelModuleGenerator):
     def get_stages_fake_modules(stages: List[List[Module]], device) -> List[List[FakeModule]]:
         batch_size = BloomGenerator.batch_size
         seq_len = BloomGenerator.seq_len
-        embed_size = 5120
+        embed_size = 4096
         vocab_size = 250880
         first_stage = [FakeSeqModule((batch_size, seq_len, embed_size), seq_dim=1, device=device), 
                        FakeSeqModule((batch_size, seq_len, embed_size), seq_dim=1, device=device)] + \
@@ -70,11 +70,11 @@ class BloomGenerator(ParallelModuleGenerator):
                            for _ in range(len(stages[-1][:-2]))] + \
                                [FakeSeqModule((batch_size, seq_len, embed_size), seq_dim=1, device=device),
                                 FakeSeqModule((batch_size, seq_len, vocab_size), seq_dim=1, device=device)]
-        fake_modules = [first_stage, last_stage]
+        fake_modules = [first_stage]
         for stage in stages[1:-1]:
-            fake_modules.append([FakeSeqModule((batch_size, seq_len, embed_size), seq_dim=1, device=device)
+            fake_modules.append([FakeTupleSeqModule([(batch_size, seq_len, embed_size)], [1], device=device, cache_name='layer_past')
                                     for _ in range(len(stage))])
-            
+        fake_modules.append(last_stage)  
         return fake_modules
                 
                 

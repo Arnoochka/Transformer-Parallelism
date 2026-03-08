@@ -39,7 +39,7 @@ def start(prompts: List[str],
     description="Pipeline parallel Bloom-7B1 benchmark",
     max_prompt_len=max_prompt_len,
     max_new_tokens=max_new_tokens,
-    dtype=torch.float32,
+    dtype=torch.float16,
     save_model_config=False,
     save_stats=True,
     save_dir=f"results/bloom/pipeline_1/batch_size={batch_size}-max_prompt_len={max_prompt_len}-max_new_tokens={max_new_tokens}")
@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     device = torch.cuda.current_device()
 
-    model_name = "bigscience/bloom-7b1b"
+    model_name = "bigscience/bloom-7b1"
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
@@ -81,9 +81,9 @@ if __name__ == "__main__":
     with open('test.txt', 'r', encoding='utf-8') as file:
         text = file.read()
 
-    for batch_size in range(16, 48 + 1, 16):
+    for batch_size in range(16, 32 + 1, 16):
         prompts = [text for _ in range(batch_size)]
-        for max_prompt_len in range(128, 512 + 1, 128):
+        for max_prompt_len in range(128, 384 + 1, 128):
             model = BloomForCausalLM.from_pretrained(
                 model_name,
                 torch_dtype=torch.float16).eval()

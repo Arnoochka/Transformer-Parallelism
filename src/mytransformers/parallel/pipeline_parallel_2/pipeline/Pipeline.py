@@ -5,6 +5,7 @@ from typing import Callable, List, Tuple
 from mytransformers.parallel.pipeline_parallel_2.layers import FakeModule, FinalStrategyModule
 from .utils import MBatch, CondWorker
 from threading import Thread
+from mytransformers.utils import Logger
         
 class Pipeline(ModuleList):
     """
@@ -61,9 +62,7 @@ class Pipeline(ModuleList):
             
         for thread in threads:
             thread.join()
-        
         for idx in range(len(mbatches)):
             mbatches[idx].data = self.final_stategy(mbatches[idx].data)
-            
         return mbatches
 

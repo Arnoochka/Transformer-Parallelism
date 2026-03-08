@@ -35,7 +35,6 @@ class PipeInnerBoundaryPointModule(PipeModule):
         self.strategy = strategy
         
     def forward(self, *args, **kwargs) -> Any:
-        
         output = self.strategy(self.module(*args, **kwargs),
                                self.is_send,
                                self.current_group,
