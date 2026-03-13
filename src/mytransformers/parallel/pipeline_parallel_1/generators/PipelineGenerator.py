@@ -1,0 +1,85 @@
+from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
+from mytransformers.parallel.pipeline_parallel_1.layers import (PipeRole, FakeModule)
+from mytransformers.parallel.pipeline_parallel_1.layers.strategies import LeaderStrategyModule, LeaderTupleStrategyModule, StrategyModule
+from .layer_generators import StrategyModuleGenerator, ComputeModuleGenerator
+from .PipeModuleGenerator import PipeModuleGenerator
+from typing import List, Tuple, Dict
+from torch.nn import Module
+from torch.distributed import ProcessGroup
+import torch
+from mytransformers.utils import Logger
+
+
+class PipelineGenerator:
+    
+    """
+    Генератор стадий конвейерного параллелизма
+    
+    Args:
+        stages (List[List[Module]]): Слои, разделенные ао стадиям
+        groups_info (List[Tuple[ProcessGroup, List[int]]]): информация о группах
+        stages_fake_modules (List[List[FakeModule]]): фейковые модули для подмены модулей
+        device (torch.device): текущее устройство
+    """
+    
+    def __new__(cls,
+                stages: List[List[Module]],
+                groups_info: List[Tuple[ProcessGroup, List[int]]],
+                comm_groups: List[ProcessGroup],
+                final_group_info: Tuple[ProcessGroup, List[int]],
+                final_comm_group: ProcessGroup,
+                stages_fake_modules: List[List[FakeModule]],
+                final_strategy: StrategyModule,
+                device: torch.device) -> List[List[Module]]:
+        if len(groups_info) != len(stages):
+            raise AttributeError("the number of groups does not match the number of stages")
+        pipeline = []
+        for idx, (group, ranks) in enumerate(groups_info):
+            is_last_stage = (idx == len(stages) - 1)
+            stage = stages[idx]
+            stage_fake_modules = stages_fake_modules[idx]
+            compute_kwargs = {
+                "role": PipeRole.compute,
+                "group_ranks": ranks}
+            strategy_kwargs = {
+                "role": PipeRole.computeAndSend,
+                "group_info": (group, ranks),
+                "next_role": PipeRole.recv,
+                "next_module": stage_fake_modules[-1],
+                "next_group_info": final_group_info if is_last_stage else groups_info[idx + 1],
+                "comm_group": final_comm_group if is_last_stage else comm_groups[idx],
+                "strategy": LeaderStrategyModule}  # не забыть поменять обратно
+            if is_last_stage:
+                strategy_kwargs["strategy"] = final_strategy
+                strategy_kwargs["strategy_kwargs"] = {"send_rank": len(stages) - 1}
+            new_stage = PipelineGenerator.get_stage(
+                stage,
+                stage_fake_modules,
+                compute_kwargs,
+                strategy_kwargs,
+                device)
+            
+            pipeline.append(new_stage)
+                
+        return pipeline
+
+    @classmethod
+    def get_stage(cls,
+                  modules: List[Module],
+                  fake_modules: List[FakeModule],
+                  gen_kwargs: Dict,
+                  last_gen_kwargs: Dict,
+                  device: torch.device) -> List[Module]:
+        stage = []
+        PipeModuleGenerator.generator = ComputeModuleGenerator
+        PipeModuleGenerator.gen_kwargs = gen_kwargs
+        for module, fake_module in zip(modules[:-1], fake_modules[:-1]):
+            gen_kwargs['fake_module'] = fake_module
+            stage.append(PipeModuleGenerator(module, device))
+
+        last_gen_kwargs['fake_module'] = fake_modules[-1]
+        PipeModuleGenerator.generator = StrategyModuleGenerator
+        PipeModuleGenerator.gen_kwargs = last_gen_kwargs
+        stage.append(PipeModuleGenerator(modules[-1], device))
+
+        return stage

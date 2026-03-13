@@ -1,0 +1,481 @@
+W0308 01:48:36.294000 629044 site-packages/torch/distributed/run.py:852] 
+W0308 01:48:36.294000 629044 site-packages/torch/distributed/run.py:852] *****************************************
+W0308 01:48:36.294000 629044 site-packages/torch/distributed/run.py:852] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0308 01:48:36.294000 629044 site-packages/torch/distributed/run.py:852] *****************************************
+/root/anaconda3/envs/parallel/lib/python3.11/site-packages/huggingface_hub/file_download.py:949: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+/root/anaconda3/envs/parallel/lib/python3.11/site-packages/huggingface_hub/file_download.py:949: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+/root/anaconda3/envs/parallel/lib/python3.11/site-packages/huggingface_hub/file_download.py:949: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+/root/anaconda3/envs/parallel/lib/python3.11/site-packages/huggingface_hub/file_download.py:949: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
+  warnings.warn(
+Could not find image processor class in the image processor config or the model config. Loading based on pattern matching with the model's feature extractor configuration. Please open a PR/issue to update `preprocessor_config.json` to use `image_processor_type` instead of `feature_extractor_type`. This warning will be removed in v4.40.
+Could not find image processor class in the image processor config or the model config. Loading based on pattern matching with the model's feature extractor configuration. Please open a PR/issue to update `preprocessor_config.json` to use `image_processor_type` instead of `feature_extractor_type`. This warning will be removed in v4.40.
+Could not find image processor class in the image processor config or the model config. Loading based on pattern matching with the model's feature extractor configuration. Please open a PR/issue to update `preprocessor_config.json` to use `image_processor_type` instead of `feature_extractor_type`. This warning will be removed in v4.40.
+Could not find image processor class in the image processor config or the model config. Loading based on pattern matching with the model's feature extractor configuration. Please open a PR/issue to update `preprocessor_config.json` to use `image_processor_type` instead of `feature_extractor_type`. This warning will be removed in v4.40.
+/root/anaconda3/envs/parallel/lib/python3.11/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+FlashAttention is not installed.
+/root/anaconda3/envs/parallel/lib/python3.11/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+FlashAttention is not installed.
+/root/anaconda3/envs/parallel/lib/python3.11/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+FlashAttention is not installed.
+/root/anaconda3/envs/parallel/lib/python3.11/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+FlashAttention is not installed.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.Warning: Flash Attention is not available, use_flash_attn is set to False.
+
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.Warning: Flash Attention is not available, use_flash_attn is set to False.
+
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.Warning: Flash Attention is not available, use_flash_attn is set to False.
+
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.Warning: Flash Attention is not available, use_flash_attn is set to False.
+
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.Warning: Flash Attention is not available, use_flash_attn is set to False.
+
+Warning: Flash Attention is not available, use_flash_attn is set to False.Warning: Flash Attention is not available, use_flash_attn is set to False.
+
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.Warning: Flash Attention is not available, use_flash_attn is set to False.
+
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.Warning: Flash Attention is not available, use_flash_attn is set to False.Warning: Flash Attention is not available, use_flash_attn is set to False.
+
+
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.Warning: Flash Attention is not available, use_flash_attn is set to False.
+
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.Warning: Flash Attention is not available, use_flash_attn is set to False.
+
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.Warning: Flash Attention is not available, use_flash_attn is set to False.
+
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.Warning: Flash Attention is not available, use_flash_attn is set to False.
+
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Warning: Flash Attention is not available, use_flash_attn is set to False.
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:04<00:09,  4.94s/it]Loading checkpoint shards:  33%|███▎      | 1/3 [00:04<00:09,  4.92s/it]Loading checkpoint shards:  33%|███▎      | 1/3 [00:04<00:09,  4.99s/it]Loading checkpoint shards:  33%|███▎      | 1/3 [00:05<00:10,  5.00s/it]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:09<00:04,  4.74s/it]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:09<00:04,  4.69s/it]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:09<00:04,  4.91s/it]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:09<00:04,  4.93s/it]Loading checkpoint shards: 100%|██████████| 3/3 [00:10<00:00,  3.18s/it]Loading checkpoint shards: 100%|██████████| 3/3 [00:10<00:00,  3.62s/it]
+Loading checkpoint shards: 100%|██████████| 3/3 [00:10<00:00,  3.15s/it]Loading checkpoint shards: 100%|██████████| 3/3 [00:10<00:00,  3.59s/it]
+Loading checkpoint shards: 100%|██████████| 3/3 [00:11<00:00,  3.21s/it]Loading checkpoint shards: 100%|██████████| 3/3 [00:11<00:00,  3.68s/it]
+Loading checkpoint shards: 100%|██████████| 3/3 [00:11<00:00,  3.22s/it]Loading checkpoint shards: 100%|██████████| 3/3 [00:11<00:00,  3.69s/it]
+---device:2---:
+InternVisionModel(
+  (embeddings): PipeFakeModule(role=PipeRole.dummy
+    (module): FakeTensorModule(device=2)
+  )
+  (encoder): InternVisionEncoder(
+    (layers): ModuleList(
+      (0-19): 20 x PipeFakeModule(role=PipeRole.dummy
+        (module): FakeTensorModule(device=2)
+      )
+      (20): PipeInnerBoundaryPointModule(role=PipeRole.recv
+        (module): FakeTensorModule(device=2)
+        (strategy): LeaderStrategyModule()
+      )
+      (21-30): 10 x PipeComputeModule(role=PipeRole.compute
+        (module): InternVisionEncoderLayer(
+          (attn): InternAttention(
+            (qkv): Linear(in_features=3200, out_features=9600, bias=False)
+            (attn_drop): Dropout(p=0.0, inplace=False)
+            (proj_drop): Dropout(p=0.0, inplace=False)
+            (q_norm): InternRMSNorm()
+            (k_norm): InternRMSNorm()
+            (proj): Linear(in_features=3200, out_features=3200, bias=True)
+          )
+          (mlp): InternMLP(
+            (act): GELUActivation()
+            (fc1): Linear(in_features=3200, out_features=12800, bias=True)
+            (fc2): Linear(in_features=12800, out_features=3200, bias=True)
+          )
+          (norm1): InternRMSNorm()
+          (norm2): InternRMSNorm()
+          (drop_path1): Identity()
+          (drop_path2): Identity()
+        )
+      )
+      (31): PipeInnerBoundaryPointModule(role=PipeRole.computeAndSend
+        (module): InternVisionEncoderLayer(
+          (attn): InternAttention(
+            (qkv): Linear(in_features=3200, out_features=9600, bias=False)
+            (attn_drop): Dropout(p=0.0, inplace=False)
+            (proj_drop): Dropout(p=0.0, inplace=False)
+            (q_norm): InternRMSNorm()
+            (k_norm): InternRMSNorm()
+            (proj): Linear(in_features=3200, out_features=3200, bias=True)
+          )
+          (mlp): InternMLP(
+            (act): GELUActivation()
+            (fc1): Linear(in_features=3200, out_features=12800, bias=True)
+            (fc2): Linear(in_features=12800, out_features=3200, bias=True)
+          )
+          (norm1): InternRMSNorm()
+          (norm2): InternRMSNorm()
+          (drop_path1): Identity()
+          (drop_path2): Identity()
+        )
+        (strategy): LeaderStrategyModule()
+      )
+      (32-44): 13 x PipeFakeModule(role=PipeRole.dummy
+        (module): FakeTensorModule(device=2)
+      )
+    )
+  )
+)
+---device:3---:
+InternVisionModel(
+  (embeddings): PipeFakeModule(role=PipeRole.dummy
+    (module): FakeTensorModule(device=3)
+  )
+  (encoder): InternVisionEncoder(
+    (layers): ModuleList(
+      (0-30): 31 x PipeFakeModule(role=PipeRole.dummy
+        (module): FakeTensorModule(device=3)
+      )
+      (31): PipeInnerBoundaryPointModule(role=PipeRole.recv
+        (module): FakeTensorModule(device=3)
+        (strategy): LeaderStrategyModule()
+      )
+      (32-44): 13 x PipeComputeModule(role=PipeRole.compute
+        (module): InternVisionEncoderLayer(
+          (attn): InternAttention(
+            (qkv): Linear(in_features=3200, out_features=9600, bias=False)
+            (attn_drop): Dropout(p=0.0, inplace=False)
+            (proj_drop): Dropout(p=0.0, inplace=False)
+            (q_norm): InternRMSNorm()
+            (k_norm): InternRMSNorm()
+            (proj): Linear(in_features=3200, out_features=3200, bias=True)
+          )
+          (mlp): InternMLP(
+            (act): GELUActivation()
+            (fc1): Linear(in_features=3200, out_features=12800, bias=True)
+            (fc2): Linear(in_features=12800, out_features=3200, bias=True)
+          )
+          (norm1): InternRMSNorm()
+          (norm2): InternRMSNorm()
+          (drop_path1): Identity()
+          (drop_path2): Identity()
+        )
+      )
+    )
+  )
+)
+---device:0---:
+InternVisionModel(
+  (embeddings): PipeComputeModule(role=PipeRole.compute
+    (module): InternVisionEmbeddings(
+      (patch_embedding): Conv2d(3, 3200, kernel_size=(14, 14), stride=(14, 14))
+    )
+  )
+  (encoder): InternVisionEncoder(
+    (layers): ModuleList(
+      (0-8): 9 x PipeComputeModule(role=PipeRole.compute
+        (module): InternVisionEncoderLayer(
+          (attn): InternAttention(
+            (qkv): Linear(in_features=3200, out_features=9600, bias=False)
+            (attn_drop): Dropout(p=0.0, inplace=False)
+            (proj_drop): Dropout(p=0.0, inplace=False)
+            (q_norm): InternRMSNorm()
+            (k_norm): InternRMSNorm()
+            (proj): Linear(in_features=3200, out_features=3200, bias=True)
+          )
+          (mlp): InternMLP(
+            (act): GELUActivation()
+            (fc1): Linear(in_features=3200, out_features=12800, bias=True)
+            (fc2): Linear(in_features=12800, out_features=3200, bias=True)
+          )
+          (norm1): InternRMSNorm()
+          (norm2): InternRMSNorm()
+          (drop_path1): Identity()
+          (drop_path2): Identity()
+        )
+      )
+      (9): PipeInnerBoundaryPointModule(role=PipeRole.computeAndSend
+        (module): InternVisionEncoderLayer(
+          (attn): InternAttention(
+            (qkv): Linear(in_features=3200, out_features=9600, bias=False)
+            (attn_drop): Dropout(p=0.0, inplace=False)
+            (proj_drop): Dropout(p=0.0, inplace=False)
+            (q_norm): InternRMSNorm()
+            (k_norm): InternRMSNorm()
+            (proj): Linear(in_features=3200, out_features=3200, bias=True)
+          )
+          (mlp): InternMLP(
+            (act): GELUActivation()
+            (fc1): Linear(in_features=3200, out_features=12800, bias=True)
+            (fc2): Linear(in_features=12800, out_features=3200, bias=True)
+          )
+          (norm1): InternRMSNorm()
+          (norm2): InternRMSNorm()
+          (drop_path1): Identity()
+          (drop_path2): Identity()
+        )
+        (strategy): LeaderStrategyModule()
+      )
+      (10-44): 35 x PipeFakeModule(role=PipeRole.dummy
+        (module): FakeTensorModule(device=0)
+      )
+    )
+  )
+)
+---device:1---:
+InternVisionModel(
+  (embeddings): PipeFakeModule(role=PipeRole.dummy
+    (module): FakeTensorModule(device=1)
+  )
+  (encoder): InternVisionEncoder(
+    (layers): ModuleList(
+      (0-8): 9 x PipeFakeModule(role=PipeRole.dummy
+        (module): FakeTensorModule(device=1)
+      )
+      (9): PipeInnerBoundaryPointModule(role=PipeRole.recv
+        (module): FakeTensorModule(device=1)
+        (strategy): LeaderStrategyModule()
+      )
+      (10-19): 10 x PipeComputeModule(role=PipeRole.compute
+        (module): InternVisionEncoderLayer(
+          (attn): InternAttention(
+            (qkv): Linear(in_features=3200, out_features=9600, bias=False)
+            (attn_drop): Dropout(p=0.0, inplace=False)
+            (proj_drop): Dropout(p=0.0, inplace=False)
+            (q_norm): InternRMSNorm()
+            (k_norm): InternRMSNorm()
+            (proj): Linear(in_features=3200, out_features=3200, bias=True)
+          )
+          (mlp): InternMLP(
+            (act): GELUActivation()
+            (fc1): Linear(in_features=3200, out_features=12800, bias=True)
+            (fc2): Linear(in_features=12800, out_features=3200, bias=True)
+          )
+          (norm1): InternRMSNorm()
+          (norm2): InternRMSNorm()
+          (drop_path1): Identity()
+          (drop_path2): Identity()
+        )
+      )
+      (20): PipeInnerBoundaryPointModule(role=PipeRole.computeAndSend
+        (module): InternVisionEncoderLayer(
+          (attn): InternAttention(
+            (qkv): Linear(in_features=3200, out_features=9600, bias=False)
+            (attn_drop): Dropout(p=0.0, inplace=False)
+            (proj_drop): Dropout(p=0.0, inplace=False)
+            (q_norm): InternRMSNorm()
+            (k_norm): InternRMSNorm()
+            (proj): Linear(in_features=3200, out_features=3200, bias=True)
+          )
+          (mlp): InternMLP(
+            (act): GELUActivation()
+            (fc1): Linear(in_features=3200, out_features=12800, bias=True)
+            (fc2): Linear(in_features=12800, out_features=3200, bias=True)
+          )
+          (norm1): InternRMSNorm()
+          (norm2): InternRMSNorm()
+          (drop_path1): Identity()
+          (drop_path2): Identity()
+        )
+        (strategy): LeaderStrategyModule()
+      )
+      (21-44): 24 x PipeFakeModule(role=PipeRole.dummy
+        (module): FakeTensorModule(device=1)
+      )
+    )
+  )
+)
+---device:2---:
+shape=torch.Size([8, 1025, 4096]), is_send=False
+[rank2]:[W308 01:48:56.057886572 ProcessGroupNCCL.cpp:4068] Warning: An unbatched P2P op (send/recv) was called on this ProcessGroup with size 2.  In lazy initialization mode, this will result in a new 2-rank NCCL communicator to be created. (function operator())
+---device:3---:
+shape=torch.Size([8, 1025, 4096]), is_send=False
+[rank3]:[W308 01:48:56.111606370 ProcessGroupNCCL.cpp:4068] Warning: An unbatched P2P op (send/recv) was called on this ProcessGroup with size 2.  In lazy initialization mode, this will result in a new 2-rank NCCL communicator to be created. (function operator())
+---device:1---:
+shape=torch.Size([8, 1025, 4096]), is_send=False
+[rank1]:[W308 01:48:56.388511092 ProcessGroupNCCL.cpp:4068] Warning: An unbatched P2P op (send/recv) was called on this ProcessGroup with size 2.  In lazy initialization mode, this will result in a new 2-rank NCCL communicator to be created. (function operator())
+---device:0---:
+shape=torch.Size([8, 1025, 3200]), is_send=True
+[rank0]:[W308 01:49:04.258792518 ProcessGroupNCCL.cpp:4068] Warning: An unbatched P2P op (send/recv) was called on this ProcessGroup with size 2.  In lazy initialization mode, this will result in a new 2-rank NCCL communicator to be created. (function operator())
+---device:0---:
+EEEEEE 1
+W0308 01:50:04.324000 629044 site-packages/torch/distributed/elastic/agent/server/api.py:739] Received 1 death signal, shutting down workers
+W0308 01:50:04.329000 629044 site-packages/torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 629103 closing signal SIGHUP
+W0308 01:50:04.329000 629044 site-packages/torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 629104 closing signal SIGHUP
+W0308 01:50:04.330000 629044 site-packages/torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 629105 closing signal SIGHUP
+W0308 01:50:04.330000 629044 site-packages/torch/distributed/elastic/multiprocessing/api.py:1010] Sending process 629106 closing signal SIGHUP
+Traceback (most recent call last):
+  File "/root/anaconda3/envs/parallel/bin/torchrun", line 6, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/root/anaconda3/envs/parallel/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/errors/__init__.py", line 362, in wrapper
+    return f(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^
+  File "/root/anaconda3/envs/parallel/lib/python3.11/site-packages/torch/distributed/run.py", line 991, in main
+    run(args)
+  File "/root/anaconda3/envs/parallel/lib/python3.11/site-packages/torch/distributed/run.py", line 982, in run
+    elastic_launch(
+  File "/root/anaconda3/envs/parallel/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/anaconda3/envs/parallel/lib/python3.11/site-packages/torch/distributed/launcher/api.py", line 308, in launch_agent
+    result = agent.run()
+             ^^^^^^^^^^^
+  File "/root/anaconda3/envs/parallel/lib/python3.11/site-packages/torch/distributed/elastic/metrics/api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^
+  File "/root/anaconda3/envs/parallel/lib/python3.11/site-packages/torch/distributed/elastic/agent/server/api.py", line 731, in run
+    result = self._invoke_run(role)
+             ^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/anaconda3/envs/parallel/lib/python3.11/site-packages/torch/distributed/elastic/agent/server/api.py", line 908, in _invoke_run
+    time.sleep(monitor_interval)
+  File "/root/anaconda3/envs/parallel/lib/python3.11/site-packages/torch/distributed/elastic/multiprocessing/api.py", line 86, in _terminate_process_handler
+    raise SignalException(f"Process {os.getpid()} got signal: {sigval}", sigval=sigval)
+torch.distributed.elastic.multiprocessing.api.SignalException: Process 629044 got signal: 1
