@@ -1,11 +1,3 @@
-/single-gpu/model_weights.pth
-/single-gpu/model.pth
-/single-gpu/tiny_tokenizer.model
-/single-gpu/tiny_tokenizer.vocab
-/single-gpu/tinystories.txt
-/multi-gpu/model_weights.pth
-/multi-gpu/model.pth
-/multi-gpu/tiny_tokenizer.model
-/multi-gpu/tiny_tokenizer.vocab
-/multi-gpu/tinystories.txt
 /__pycache__
+/.vscode
+/src/.vscode
