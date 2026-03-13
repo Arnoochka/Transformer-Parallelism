@@ -1,12 +1,12 @@
 from torch.distributed import ProcessGroup
-from .StrategyModule import StrategyModule, COUNTER
+from .StrategyModule import InnerStrategyModule, COUNTER
 import torch.distributed as dist
 from torch import Tensor
 import torch
-from typing import Tuple, Dict, Optional
-from mytransformers import utils
+from typing import Tuple, Dict, Optional, Any
+from mytransformers.utils import Logger
 
-class LeaderStrategyModule(StrategyModule):
+class LeaderStrategyModule(InnerStrategyModule):
     """
     Стратегия передачи на основе выбора лидера:
         1. В каждой группе выбирается один процесс, который принимает или отправляет данные ("лидер")
@@ -48,14 +48,14 @@ class LeaderStrategyModule(StrategyModule):
         if is_send:
             if dist.get_rank(comm_group) == self.send_leader:
                 dst_rank = dist.get_global_rank(comm_group, self.recv_leader)
-                dist.send(output, dst=dst_rank, group=comm_group, tag=tag)
+                dist.send(output.contiguous(), dst=dst_rank, group=comm_group, tag=tag)
         else:
             if dist.get_rank(comm_group) == self.recv_leader:
                 src_rank = dist.get_global_rank(comm_group, self.send_leader)
-                dist.recv(output, src=src_rank, group=comm_group, tag=tag) 
+                dist.recv(output.contiguous(), src=src_rank, group=comm_group, tag=tag) 
                 
             src_rank = dist.get_global_rank(current_group, self.bcast_leader)
-            dist.broadcast(output, src=src_rank, group=current_group)
+            dist.broadcast(output.contiguous(), src=src_rank, group=current_group)
         return output
         
 class LeaderTupleStrategyModule(LeaderStrategyModule):
@@ -72,19 +72,19 @@ class LeaderTupleStrategyModule(LeaderStrategyModule):
         и лидером-отправителем в current_group
     """
     def forward(self,
-                output: Tuple[Optional[Tensor]],
+                output: Tuple[Any],
                 is_send: bool,
                 current_group: ProcessGroup,
-                comm_group: ProcessGroup) -> Tuple[Optional[Tensor]]:
+                comm_group: ProcessGroup) -> Tuple[Any]:
         """
         Args:
-            output (Tuple[Optional[Tensor]]): выход, который необходимо передать не следующий процесс
+            output (Tuple[Any]): выход, который необходимо передать не следующий процесс
             is_send (bool): является ли процесс отправителем
             current_group (ProcessGroup): текущая группа процессов
             comm_group (ProcessGroup): группа процессов для коммуникации
             
         Returns:
-            Tuple[Optional[Tensor]]: выход, который необходимо быдло передать (output)
+            Tuple[Any]: выход, который необходимо быдло передать (output)
         """
         new_output = []
         for out in output:
@@ -109,19 +109,19 @@ class LeaderStrategyDictModule(LeaderStrategyModule):
         и лидером-отправителем в current_group
     """
     def forward(self,
-                output: Dict[str, Optional[Tensor]],
+                output: Dict[str, Any],
                 is_send: bool,
                 current_group: ProcessGroup,
-                comm_group: ProcessGroup) -> Dict[str, Optional[Tensor]]:
+                comm_group: ProcessGroup) -> Dict[str, Any]:
         """
         Args:
-            output (Dict[str, Optional[Tensor]]): выход, который необходимо передать не следующий процесс
+            output (Dict[str, Any]): выход, который необходимо передать не следующий процесс
             is_send (bool): является ли процесс отправителем
             current_group (ProcessGroup): текущая группа процессов
             comm_group (ProcessGroup): группа процессов для коммуникации
             
         Returns:
-            Dict[str, Optional[Tensor]]: выход, который необходимо быдло передать (output)
+            Dict[str, Any]: выход, который необходимо быдло передать (output)
         """
         new_output = {}
         for name, out in output.items():

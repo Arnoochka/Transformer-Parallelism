@@ -1,0 +1,17 @@
+{
+    "description": "dinov2",
+    "model_name": "dinov2",
+    "model_size": 2.122465133666992,
+    "dtype": "float32",
+    "max_prompt_len": 257,
+    "max_new_tokens": 1,
+    "model_config_dir": null,
+    "data_size": 8,
+    "batch_size": 4,
+    "inference_time": 1.3601694740000312,
+    "throughput": 5.8816200134776855,
+    "max_memory_allocated_per_device": [
+        2.331064224243164,
+        2.2491583824157715
+    ]
+}

@@ -1,17 +1,17 @@
 from mytransformers.parallel.pipeline_parallel.generators import PipelineGenerator
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from mytransformers.parallel.pipeline_parallel.layers import (
-    FakeModule, FakeTensorModule, FakeTupleTensorWithCacheModule,
-    InnerStrategyModule, LeaderTupleStrategyModule, FinalStrategyDictModule)
+    FakeModule, FakeTensorModule, FakeTupleTensorModule,
+    StrategyModule, LeaderTupleStrategyModule, FinalStrategyDictModule)
 from typing import List, Tuple, Callable, Any, Dict
 from torch.distributed import ProcessGroup
-from transformers import OPTForCausalLM
+from transformers import DebertaV2Model
 import torch
 from torch.nn import Module, ModuleList, ModuleDict
 
-class OPTGenerator(ParallelModuleGenerator):
+class DebertaGenerator(ParallelModuleGenerator):
     def __new__(cls,
-                module: OPTForCausalLM,
+                module: DebertaV2Model,
                 num_stages: int,
                 groups_info: List[Tuple[ProcessGroup, List[int]]],
                 inner_comm_groups: List[ProcessGroup],
@@ -20,17 +20,17 @@ class OPTGenerator(ParallelModuleGenerator):
                 vocab_size: int,
                 device: torch.device) -> Module:
         
-        decoder = module.model.decoder
-        num_layers = len(decoder.layers)
+        encoder = module.encoder
+        num_layers = len(encoder.layer)
         
-        orig_modules = OPTGenerator.get_orig_modules(module)
-        fake_modules = OPTGenerator.get_fake_modules(num_layers, device)
+        orig_modules = DebertaGenerator.get_orig_modules(module)
+        fake_modules = DebertaGenerator.get_fake_modules(num_layers, device)
         modules = [(name, orig_module, fake_module)
                    for (name, orig_module), fake_module in zip(orig_modules, fake_modules)]
-        num_modules_per_stage = len(modules) // num_stages
+        num_modules_per_stage = (len(modules) // num_stages) - 3
         inner_boundary_points = [num_modules_per_stage * k - 1 for k in range(num_stages)][1:]
         
-        inner_strategies = OPTGenerator.get_inner_strategies(len(inner_boundary_points))
+        inner_strategies = DebertaGenerator.get_inner_strategies(len(inner_boundary_points))
         
         stage: ModuleDict = PipelineGenerator.get_stage(modules,
                                                         inner_boundary_points,
@@ -38,9 +38,9 @@ class OPTGenerator(ParallelModuleGenerator):
                                                         inner_comm_groups,
                                                         inner_strategies)
         
-        module = OPTGenerator.replace_modules(module, stage)
+        module = DebertaGenerator.replace_modules(module, stage)
         modules = [module for name, module in stage.items()]
-        fake_args = OPTGenerator.build_fake_args(num_layers, embed_size, vocab_size)
+        fake_args = DebertaGenerator.build_fake_args(num_layers, embed_size, vocab_size)
         pipeline = PipelineGenerator(module,
                                      modules,
                                      FinalStrategyDictModule(send_rank=num_stages-1),
@@ -50,45 +50,42 @@ class OPTGenerator(ParallelModuleGenerator):
         
     @staticmethod
     def get_fake_modules(num_layers: int, device: torch.device) -> List[FakeModule]:
-        first_modules = [FakeTensorModule(device), FakeTensorModule(device)]
-        inner_modules = [FakeTupleTensorWithCacheModule(device) for _ in range(num_layers)]
-        last_modules = [FakeTensorModule(device), FakeTensorModule(device)]
-        return first_modules + inner_modules + last_modules
+        return [FakeTensorModule(device),
+                FakeTensorModule(device)] + \
+                    [FakeTupleTensorModule(device) for _ in range(num_layers)]
     
     @staticmethod
-    def get_orig_modules(module: OPTForCausalLM) -> List[Tuple[str, Module]]:
-        decoder = module.model.decoder
-        first_modules = [('embed_tokens', decoder.embed_tokens),
-                         ('embed_positions', decoder.embed_positions)]
-        inner_modules = [(f"layers-{name}", layer) for name, layer in enumerate(decoder.layers)]
-        last_modules = [('final_layer_norm', decoder.final_layer_norm),
-                        ('lm_head', module.lm_head)]
-        return first_modules + inner_modules + last_modules
-    
+    def get_orig_modules(module: DebertaV2Model) -> List[Tuple[str, Module]]:
+        encoder = module.encoder
+        embeddings = module.embeddings
+        conv = encoder.conv
+        layers = encoder.layer
+        
+        return [('embeddings', embeddings),
+                ('conv', conv)] + \
+                    [(f"layer-{i}", layer) for i, layer in enumerate(layers)]
+                    
     @staticmethod
-    def replace_modules(module: OPTForCausalLM, stage: ModuleDict) -> Module:
-        for name in ['embed_tokens', 'embed_positions', 'final_layer_norm']:
-            setattr(module.model.decoder, name, stage[name])
-        setattr(module, 'lm_head', stage['lm_head'])
+    def replace_modules(module: DebertaV2Model, stage: ModuleDict) -> Module:
+        setattr(module, 'embeddings', stage['embeddings'])
+        setattr(module.encoder, 'conv', stage['conv'])
         layers = ModuleList()
         for name, pipe_module in stage.items():
-            if "layers" in name.split("-"):
+            if "layer" in name.split("-"):
                 layers.append(pipe_module)
-        module.model.decoder.layers = layers
+        module.encoder.layer = layers
         return module        
          
     @staticmethod
-    def get_inner_strategies(num_points: int) -> List[InnerStrategyModule]:
+    def get_inner_strategies(num_points: int) ->  List[StrategyModule]:
         return [LeaderTupleStrategyModule() for _ in range(num_points)]
     
     @staticmethod
     def build_fake_args(num_layers: int, embed_size: int, vocab_size: int) -> Callable:
         def _get_fake_args(mbatch_data: Dict) -> List[Any]:
             b, s = mbatch_data['input_ids'].size()
-            first_args = [((b, s, embed_size),), ((b, s, embed_size),)] 
-            last_args = [((b, s, embed_size),), ((b, s, vocab_size),)] 
-            inner_args = [([(b, s, embed_size)],) for _ in range(num_layers)]
-            return first_args + inner_args + last_args
+            return [((b, s, embed_size),), ((b, s, embed_size),)] + \
+                [([(b, s, embed_size), None],) for _ in range(num_layers)]
         
         return _get_fake_args
     

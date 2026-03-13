@@ -40,19 +40,26 @@ class FakeTupleTensorModule(FakeTensorModule):
                  device: torch.device,
                  dtype: Optional[torch.dtype] = None):
         super().__init__(device, dtype)
-        self.tensor_shapes: List[Tuple[int]] = None
+        self.tensor_shapes: List[Optional[Tuple[int]]] = None
     
     def forward(self, *args, **kwargs) -> Tuple[Tensor]:
-        outputs = [self.get_tensor(tensor_shape)
+        outputs = [self.get_tensor(tensor_shape) if tensor_shape is not None else None
                    for tensor_shape in self.tensor_shapes]
         return tuple(outputs)
     
-    def set_gen_args(self, tensor_shapes: List[Tuple[int]]) -> None:
+    def set_gen_args(self, tensor_shapes: List[Optional[Tuple[int]]]) -> None:
         self.tensor_shapes = tensor_shapes
         
 class FakeTupleTensorWithCacheModule(FakeTupleTensorModule):
+    def __init__(self,
+                 device: torch.device,
+                 dtype: Optional[torch.dtype] = None,
+                 cache_name: str = 'past_key_values'):
+        super().__init__(device, dtype)
+        self.cache_name = cache_name
+        
     def forward(self, *args, **kwargs) -> Tuple[Tensor, Cache]:
         tensor_output = super().forward(*args, **kwargs)
-        cache = kwargs['past_key_value']
+        cache = kwargs[self.cache_name]
         return tensor_output + (cache,)
     

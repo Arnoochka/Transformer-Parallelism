@@ -19,6 +19,29 @@ class StrategyModule(Module):
         
     def forward(self,
                 output: Any,
+                comm_group: ProcessGroup) -> Any:
+        
+        """
+        Args:
+            output (Any): выход, который необходимо передать не следующий процесс
+            comm_group (ProcessGroup): группа процессов для коммуникации
+            
+        Returns:
+            Any: выход, который необходимо быдло передать (output)
+        """
+        next(COUNTER)
+        return output
+    
+    
+class InnerStrategyModule(StrategyModule):
+    """
+    Базовый класс внутренних стратегий
+    """
+    def __init__(self):
+        super().__init__()
+        
+    def forward(self,
+                output: Any,
                 is_send: bool,
                 current_group: ProcessGroup,
                 comm_group: ProcessGroup) -> Any:
@@ -33,8 +56,9 @@ class StrategyModule(Module):
         Returns:
             Any: выход, который необходимо быдло передать (output)
         """
-        next(COUNTER)
+        super().forward(output, comm_group)
         return output
+    
     
 
 

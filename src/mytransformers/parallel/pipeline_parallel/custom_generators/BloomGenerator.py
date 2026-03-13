@@ -2,16 +2,16 @@ from mytransformers.parallel.pipeline_parallel.generators import PipelineGenerat
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from mytransformers.parallel.pipeline_parallel.layers import (
     FakeModule, FakeTensorModule, FakeTupleTensorWithCacheModule,
-    InnerStrategyModule, LeaderTupleStrategyModule, FinalStrategyDictModule)
+    StrategyModule, LeaderTupleStrategyModule, FinalStrategyDictModule)
 from typing import List, Tuple, Callable, Any, Dict
 from torch.distributed import ProcessGroup
-from transformers import OPTForCausalLM
+from transformers import BloomForCausalLM
 import torch
 from torch.nn import Module, ModuleList, ModuleDict
 
-class OPTGenerator(ParallelModuleGenerator):
+class BloomGenerator(ParallelModuleGenerator):
     def __new__(cls,
-                module: OPTForCausalLM,
+                module: BloomForCausalLM,
                 num_stages: int,
                 groups_info: List[Tuple[ProcessGroup, List[int]]],
                 inner_comm_groups: List[ProcessGroup],
@@ -20,17 +20,17 @@ class OPTGenerator(ParallelModuleGenerator):
                 vocab_size: int,
                 device: torch.device) -> Module:
         
-        decoder = module.model.decoder
-        num_layers = len(decoder.layers)
+        transformer = module.transformer
+        num_layers = len(transformer.h)
         
-        orig_modules = OPTGenerator.get_orig_modules(module)
-        fake_modules = OPTGenerator.get_fake_modules(num_layers, device)
+        orig_modules = BloomGenerator.get_orig_modules(module)
+        fake_modules = BloomGenerator.get_fake_modules(num_layers, device)
         modules = [(name, orig_module, fake_module)
                    for (name, orig_module), fake_module in zip(orig_modules, fake_modules)]
         num_modules_per_stage = len(modules) // num_stages
         inner_boundary_points = [num_modules_per_stage * k - 1 for k in range(num_stages)][1:]
         
-        inner_strategies = OPTGenerator.get_inner_strategies(len(inner_boundary_points))
+        inner_strategies = BloomGenerator.get_inner_strategies(len(inner_boundary_points))
         
         stage: ModuleDict = PipelineGenerator.get_stage(modules,
                                                         inner_boundary_points,
@@ -38,9 +38,9 @@ class OPTGenerator(ParallelModuleGenerator):
                                                         inner_comm_groups,
                                                         inner_strategies)
         
-        module = OPTGenerator.replace_modules(module, stage)
+        module = BloomGenerator.replace_modules(module, stage)
         modules = [module for name, module in stage.items()]
-        fake_args = OPTGenerator.build_fake_args(num_layers, embed_size, vocab_size)
+        fake_args = BloomGenerator.build_fake_args(num_layers, embed_size, vocab_size)
         pipeline = PipelineGenerator(module,
                                      modules,
                                      FinalStrategyDictModule(send_rank=num_stages-1),
@@ -51,34 +51,34 @@ class OPTGenerator(ParallelModuleGenerator):
     @staticmethod
     def get_fake_modules(num_layers: int, device: torch.device) -> List[FakeModule]:
         first_modules = [FakeTensorModule(device), FakeTensorModule(device)]
-        inner_modules = [FakeTupleTensorWithCacheModule(device) for _ in range(num_layers)]
+        inner_modules = [FakeTupleTensorWithCacheModule(device, cache_name='layer_past') for _ in range(num_layers)]
         last_modules = [FakeTensorModule(device), FakeTensorModule(device)]
         return first_modules + inner_modules + last_modules
     
     @staticmethod
-    def get_orig_modules(module: OPTForCausalLM) -> List[Tuple[str, Module]]:
-        decoder = module.model.decoder
-        first_modules = [('embed_tokens', decoder.embed_tokens),
-                         ('embed_positions', decoder.embed_positions)]
-        inner_modules = [(f"layers-{name}", layer) for name, layer in enumerate(decoder.layers)]
-        last_modules = [('final_layer_norm', decoder.final_layer_norm),
+    def get_orig_modules(module: BloomForCausalLM) -> List[Tuple[str, Module]]:
+        transformer = module.transformer
+        first_modules = [('word_embeddings', transformer.word_embeddings),
+                         ('word_embeddings_layernorm', transformer.word_embeddings_layernorm)]
+        inner_modules = [(f"layers-{name}", layer) for name, layer in enumerate(transformer.h)]
+        last_modules = [('ln_f', transformer.ln_f),
                         ('lm_head', module.lm_head)]
         return first_modules + inner_modules + last_modules
     
     @staticmethod
-    def replace_modules(module: OPTForCausalLM, stage: ModuleDict) -> Module:
-        for name in ['embed_tokens', 'embed_positions', 'final_layer_norm']:
-            setattr(module.model.decoder, name, stage[name])
+    def replace_modules(module: BloomForCausalLM, stage: ModuleDict) -> Module:
+        for name in ['word_embeddings', 'word_embeddings_layernorm', 'ln_f']:
+            setattr(module.transformer, name, stage[name])
         setattr(module, 'lm_head', stage['lm_head'])
         layers = ModuleList()
         for name, pipe_module in stage.items():
             if "layers" in name.split("-"):
                 layers.append(pipe_module)
-        module.model.decoder.layers = layers
+        module.transformer.h = layers
         return module        
          
     @staticmethod
-    def get_inner_strategies(num_points: int) -> List[InnerStrategyModule]:
+    def get_inner_strategies(num_points: int) -> List[StrategyModule]:
         return [LeaderTupleStrategyModule() for _ in range(num_points)]
     
     @staticmethod
