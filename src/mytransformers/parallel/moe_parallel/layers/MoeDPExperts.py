@@ -114,7 +114,6 @@ class MoeDPExpertsSpeed(MoeExperts):
 
         dist.all_gather_into_tensor(full_top_k_index, top_k_index, group=self.moe_group)
 
-        final_hidden_states = torch.zeros_like(hidden_states)
         flat_topk = full_top_k_index.reshape(-1)
         global_ranks = self.expert_to_rank[flat_topk]
         local_ranks = global_ranks[num_tokens * self.rank * k: num_tokens * (self.rank + 1) * k]
@@ -175,5 +174,5 @@ class MoeDPExpertsSpeed(MoeExperts):
         flat_weights = top_k_weights.reshape(-1)
         computed_hidden_states.mul_(flat_weights.unsqueeze(-1))
         
-        final_hidden_states = computed_hidden_states.view(num_tokens, k, hidden_dim).sum(dim=1)
-        return final_hidden_states
+        hidden_states = computed_hidden_states.view(num_tokens, k, hidden_dim).sum(dim=1)
+        return hidden_states

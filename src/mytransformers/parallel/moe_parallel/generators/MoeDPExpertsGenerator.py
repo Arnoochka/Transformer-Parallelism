@@ -5,7 +5,7 @@ import torch.distributed as dist
 from torch import Tensor
 from torch.nn import ModuleList
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
-from mytransformers.parallel.moe_parallel.layers import MoeDPExpertsMemory, MoeDPExpertsSpeed
+from mytransformers.parallel.moe_parallel.layers import MoeDPExpertsMemory, MoeDPExpertsSpeed, MoePipeExpertsMemory
 
 class MoeDPExpertsGenerator(ParallelModuleGenerator):
     """
@@ -41,9 +41,10 @@ class MoeDPExpertsGenerator(ParallelModuleGenerator):
             
         local_experts = ModuleList([module[r.item()] for r in expert_ranks])
         
-        return MoeDPExpertsMemory(num_experts,
+        return MoePipeExpertsMemory(num_experts,
                             local_experts,
                             expert_to_rank,
                             global_to_local_expert_idxs,
-                            moe_group)
+                            moe_group,
+                            0)
         
