@@ -1,2 +1,2 @@
-from .MoeExperts import *
-from .MoeExpertsGenerator import *
+from .layers import *
+from .generators import *
