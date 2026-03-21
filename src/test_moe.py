@@ -117,38 +117,76 @@ class MixtralSparseMoeBlock(nn.Module):
 #         hidden_states = hidden_states.reshape(batch_size, sequence_length, hidden_dim)
 #         return hidden_states
     
-    
-def test_single(model: MixtralSparseMoeBlock, local_input: Tensor):
+def test_dp_memory_parallel(model: MixtralSparseMoeBlock, local_input: Tensor):
     cuda.reset_max_memory_allocated(cuda.current_device())
+    expert_idxs = [LongTensor([0,1,2,3]).to(device), LongTensor([4,5,6,7]).to(device)]
+    model.experts = moe.MoeExpertsGenerator(model.experts, moe.MoeDPExpertsMemory, expert_idxs, moe_group, device).to(device)
     model = model.to(device)
-    input = [torch.empty_like(local_input) for _ in range(2)]
-    dist.all_gather(input, local_input, group=moe_group)
-    input = torch.cat(input, dim=0)
     start = time()
-    with torch.no_grad():
-        local_output = model(local_input)
+    local_output = model(local_input)
+    global_output = [torch.empty_like(local_output) for _ in range(dist.get_world_size())] if dist.get_rank() ==0 else None
+    dist.gather(local_output, global_output)
+    local_output = torch.cat(global_output, dim=0) if dist.get_rank() == 0 else None
+    del global_output
     end = time()
-    Logger.log_all_device(f"SINGLE STATS: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
-    
-def test_parallel(model: MixtralSparseMoeBlock, local_input: Tensor):
+    Logger.log_all_device(f"DP MEMORY: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
+
+def test_dp_speed_parallel(model: MixtralSparseMoeBlock, local_input: Tensor):
     cuda.reset_max_memory_allocated(cuda.current_device())
     expert_idxs = [LongTensor([0,1,2,3]).to(device), LongTensor([4, 5,6,7]).to(device)]
-    model.experts = moe.MoeDPExpertsGenerator(model.experts, expert_idxs, moe_group, device).to(device)
+    model.experts = moe.MoeExpertsGenerator(model.experts, moe.MoeDPExpertsSpeed, expert_idxs, moe_group, device).to(device)
+    model = model.to(device)
+    start = time()
+    local_output = model(local_input)
+    global_output = [torch.empty_like(local_output) for _ in range(dist.get_world_size())] if dist.get_rank() == 0 else None
+    dist.gather(local_output, global_output)
+    local_output = torch.cat(global_output, dim=0) if dist.get_rank() == 0 else None
+    del global_output
+    end = time()
+    Logger.log_all_device(f"DP SPEED: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
+    
+def test_pp_memory_parallel(model: MixtralSparseMoeBlock, local_input: Tensor):
+    global_input = [torch.empty_like(local_input) for _ in range(dist.get_world_size())]
+    dist.all_gather(global_input, local_input)
+    local_input = torch.cat(global_input, dim=0)
+    del global_input
+    cuda.reset_max_memory_allocated(cuda.current_device())
+    expert_idxs = [LongTensor([0,1,2,3]).to(device), LongTensor([4, 5,6,7]).to(device)]
+    model.experts = moe.MoeExpertsGenerator(model.experts, moe.MoePipeExpertsMemory, expert_idxs, moe_group, device, main_rank=0).to(device)
     model = model.to(device)
     start = time()
     local_output = model(local_input)
     end = time()
-    Logger.log_all_device(f"PARALLEL STATS: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
+    Logger.log_all_device(f"PIPE MEMORY: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
+    
+def test_pp_speed_parallel(model: MixtralSparseMoeBlock, local_input: Tensor):
+    global_input = [torch.empty_like(local_input) for _ in range(dist.get_world_size())]
+    dist.all_gather(global_input, local_input)
+    local_input = torch.cat(global_input, dim=0)
+    del global_input
+    cuda.reset_max_memory_allocated(cuda.current_device())
+    expert_idxs = [LongTensor([0,1,2,3]).to(device), LongTensor([4, 5,6,7]).to(device)]
+    model.experts = moe.MoeExpertsGenerator(model.experts, moe.MoePipeExpertsSpeed, expert_idxs, moe_group, device, main_rank=0).to(device)
+    model = model.to(device)
+    start = time()
+    local_output = model(local_input)
+    end = time()
+    Logger.log_all_device(f"PIPE SPEED: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
     
 if __name__ == "__main__":
     SEED = 42
     torch.manual_seed(SEED)
     torch.cuda.manual_seed(SEED)
-    model = MixtralSparseMoeBlock(Config)
     rank = int(os.environ["RANK"])
     moe_group = utils.init_distributed_cuda()
     device = torch.cuda.current_device()
-    local_input = torch.randn(4, 512, Config.hidden_size).to(device) + (dist.get_rank() + 1) * 7
-    test_single(model, local_input)
-    test_parallel(model, local_input)
+    local_input = torch.randn(16, 512, Config.hidden_size).to(device) + (dist.get_rank() + 1) * 7
+    model = MixtralSparseMoeBlock(Config)
+    test_dp_memory_parallel(model, local_input)
+    model = MixtralSparseMoeBlock(Config)
+    test_dp_speed_parallel(model, local_input)
+    model = MixtralSparseMoeBlock(Config)
+    test_pp_memory_parallel(model, local_input)
+    model = MixtralSparseMoeBlock(Config)
+    test_pp_speed_parallel(model, local_input)
     

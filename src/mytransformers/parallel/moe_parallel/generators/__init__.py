@@ -1,1 +1,1 @@
-from .MoeDPExpertsGenerator import *
+from .MoeExpertsGenerator import *
