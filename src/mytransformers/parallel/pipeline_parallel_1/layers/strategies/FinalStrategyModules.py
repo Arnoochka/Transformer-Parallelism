@@ -4,6 +4,7 @@ import torch.distributed as dist
 from torch import Tensor
 import torch
 from typing import Dict, Optional, Any, Tuple
+from mytransformers.utils import Logger
 
 class FinalStrategyModule(StrategyModule):
     """

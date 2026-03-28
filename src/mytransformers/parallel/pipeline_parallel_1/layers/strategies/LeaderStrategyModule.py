@@ -5,6 +5,7 @@ from torch.distributed import Work
 from torch import Tensor
 from typing import Tuple, List, Dict, Optional
 from mytransformers.utils import Logger
+import torch
 
 class LeaderStrategyModule(StrategyModule):
     """
@@ -39,6 +40,7 @@ class LeaderStrategyModule(StrategyModule):
         self.tag = next(GLOBAL_COUNTER)
         send_rank = dist.get_global_rank(comm_group, 0)
         recv_rank = dist.get_global_rank(comm_group, 1)
+        torch.cuda.synchronize()
         if is_send:
             if dist.get_rank() == send_rank:
                 dist.send(output, recv_rank, tag=0)
@@ -66,8 +68,10 @@ class LeaderTupleStrategyModule(LeaderStrategyModule):
                 recv_group: ProcessGroup,
                 comm_group: ProcessGroup) -> Tuple[Tensor]:
         new_output = []
+        k = 0
         for out in output:
             if isinstance(out, Tensor):
+                k += 1
                 out = super().forward(out, is_send, send_group, recv_group, comm_group)
             new_output.append(out)
         return tuple(new_output)

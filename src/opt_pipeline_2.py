@@ -4,7 +4,7 @@ import torch.distributed as dist
 from typing import List
 from mytransformers import utils
 from mytransformers import pp_custom_2 as pp_custom
-from mytransformers.parallel import pp_2 as pp
+from mytransformers.parallel import pp
 from transformers import AutoTokenizer, OPTForCausalLM
 from mytransformers.benchmark import BenchmarkModel, GenerationFunc
 
@@ -39,11 +39,11 @@ def start(prompts: List[str],
     generate_func=GenerationFunc.pipeline_generate,
     batch_func=pipeline_batch_func,
     warm_up=True,
-    model_name="opt-6.7b",
-    description="Pipeline parallel OPT-6.7B benchmark",
+    model_name="opt-1.3b",
+    description="Pipeline parallel OPT-1.3B benchmark",
     max_prompt_len=max_prompt_len,
     max_new_tokens=max_new_tokens,
-    dtype=torch.float16,
+    dtype=torch.float32,
     save_model_config=False,
     save_stats=True,
     save_dir=f"results/opt/pipeline_2/batch_size={batch_size}-num_microbatch={num_microbatches}-max_prompt_len={max_prompt_len}-max_new_tokens={max_new_tokens}")
@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     device = torch.cuda.current_device()
 
-    model_name = "facebook/opt-30b"
+    model_name = "facebook/opt-1.3b"
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
@@ -73,29 +73,25 @@ if __name__ == "__main__":
 
     model = OPTForCausalLM.from_pretrained(
         model_name,
-        torch_dtype=torch.float16
+        torch_dtype=torch.float32
     ).eval()
 
     stages = [
         (utils.create_group([0]), [0]),
         (utils.create_group([1]), [1]),
-        (utils.create_group([2]), [2]),
-        (utils.create_group([3]), [3]),
     ]
 
     inner_comm_groups = [
         utils.create_group([0, 1]),
-        utils.create_group([1, 2]),
-        utils.create_group([2, 3])
         ]
 
     pp_custom.OPTGenerator(
         module=model,
-        num_stages=4,
+        num_stages=2,
         groups_info=stages,
         inner_comm_groups=inner_comm_groups,
         final_comm_group=None,
-        embed_size=7168,
+        embed_size=2048,
         vocab_size=50272,
         device=device
     )
@@ -103,9 +99,8 @@ if __name__ == "__main__":
     with open('test.txt', 'r', encoding='utf-8') as file:
         text = file.read()
         
-    for batch_size in range(64, 64 + 1, 16):
+    for batch_size in [8, 16, 24]:
         prompts = [text for _ in range(batch_size)]
-        for max_prompt_len in range(1024, 1024 + 1, 128):
-            for max_new_tokens in range(1024, 1024 + 1, 128):
-                for num_microbatches in [1, 2, 4]:
-                    start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)
+        for max_prompt_len in [128, 192, 256, 320, 384]:
+                for num_microbatches in [8]:
+                    start(prompts, batch_size, num_microbatches, max_prompt_len, 1)

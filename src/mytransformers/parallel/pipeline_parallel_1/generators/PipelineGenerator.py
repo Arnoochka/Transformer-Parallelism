@@ -48,7 +48,7 @@ class PipelineGenerator:
                 "next_module": stage_fake_modules[-1],
                 "next_group_info": final_group_info if is_last_stage else groups_info[idx + 1],
                 "comm_group": final_comm_group if is_last_stage else comm_groups[idx],
-                "strategy": LeaderStrategyModule}  # не забыть поменять обратно
+                "strategy": LeaderTupleStrategyModule}  # не забыть поменять обратно
             if is_last_stage:
                 strategy_kwargs["strategy"] = final_strategy
                 strategy_kwargs["strategy_kwargs"] = {"send_rank": len(stages) - 1}
