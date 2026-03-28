@@ -110,7 +110,7 @@ class MoePipeExpertsMemory(MoeExperts):
                 (max_count, hidden_dim),
                 dtype=hidden_states.dtype,
                 device=hidden_states.device
-            )
+            ) if self.main_rank == self.rank else hidden_states[:max_count]
 
             local_k_index = torch.empty(
                 (max_count,),
@@ -142,33 +142,18 @@ class MoePipeExpertsMemory(MoeExperts):
             if self.rank == self.main_rank:
                 del hidden_split, index_split, weight_split
             
-            padded_output = torch.zeros_like(local_hidden_states)
-
-            local_hidden_states = local_hidden_states[:local_count]
-            local_k_index = local_k_index[:local_count]
-            local_k_weights = local_k_weights[:local_count]
-
             local_k_index = self.global_to_local_expert_idxs[local_k_index]
 
             expert_mask = torch.nn.functional.one_hot(
-                local_k_index,
+                local_k_index[:local_count],
                 num_classes=len(self.local_experts)
             ).transpose(0, 1).to(torch.bool)
 
-            local_hidden_states = self.compute(local_hidden_states, expert_mask)
+            local_hidden_states[:local_count] = self.compute(local_hidden_states[:local_count], expert_mask)
 
-            local_hidden_states.mul_(local_k_weights.unsqueeze(-1))
+            local_hidden_states[:local_count].mul_(local_k_weights[:local_count].unsqueeze(-1))
 
-            padded_output = torch.zeros(
-                (max_count, hidden_dim),
-                dtype=hidden_states.dtype,
-                device=hidden_states.device
-            )
-
-            if local_count > 0:
-                padded_output[:local_count] = local_hidden_states
-
-            dist.gather(padded_output,
+            dist.gather(local_hidden_states,
                         gather_list=gather_hidden,
                         dst=self.main_rank,
                         group=self.moe_group)
@@ -236,7 +221,7 @@ class MoePipeExpertsSpeed(MoeExperts):
                 (self.world_size, max_count, hidden_dim),
                 dtype=hidden_states.dtype,
                 device=hidden_states.device
-            )
+            ) 
 
             index_pad = torch.zeros(
                 (self.world_size, max_count),
@@ -293,19 +278,19 @@ class MoePipeExpertsSpeed(MoeExperts):
             (max_count, hidden_dim),
             dtype=hidden_states.dtype,
             device=hidden_states.device
-        )
+        ) 
 
         local_k_index = torch.empty(
             (max_count,),
             dtype=torch.long,
             device=hidden_states.device
-        )
+        ) 
 
         local_k_weights = torch.empty(
             (max_count,),
             dtype=hidden_states.dtype,
             device=hidden_states.device
-        )
+        ) 
 
         dist.scatter(local_hidden_states,
                      scatter_list=hidden_split,
@@ -344,7 +329,7 @@ class MoePipeExpertsSpeed(MoeExperts):
             gathered = torch.cat(
                 [gather_hidden[r][:count_split[r][0]] for r in range(self.world_size)],
                 dim=0
-            )
+            ) 
 
             inverse_indices = torch.empty_like(global_sorted_indices)
             inverse_indices[global_sorted_indices] = torch.arange(

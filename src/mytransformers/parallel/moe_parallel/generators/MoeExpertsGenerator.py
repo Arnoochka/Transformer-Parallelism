@@ -7,7 +7,7 @@ from torch.nn import ModuleList
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from mytransformers.parallel.moe_parallel.layers import MoeExperts
 
-class MoeExpertsGenerator(ParallelModuleGenerator):
+class MoeExpertsModuleGenerator(ParallelModuleGenerator):
     def __new__(cls,
                 module: ModuleList,
                 replace_layer: MoeExperts,
