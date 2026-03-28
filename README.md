@@ -53,6 +53,7 @@
 
 ### Сравнение конвейерного параллелзма 1.0 и 2.0 при generate на opt-2.7b
 
-![1.0-vs-2.0](./images/opt-2.7b-1.0-vs-2.0.png)
+![1.0-vs-2.0](./images/results/opt-6.7b.svg)
 
+![1.0-vs-2.0](./images/results/pareto_analysis.svg)
 
