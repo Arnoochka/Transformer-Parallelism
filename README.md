@@ -1,5 +1,6 @@
 # Parallelism in Transformers: My Implementation
 ![parallelism](./images//README.png)
+![parallelism](./images//README.png)
 
 **Тема ВКР:** Оптимизация распределённого инференса больших языковых моделей с архитектурой Mixture of Experts
 
@@ -51,4 +52,5 @@
 
 ![1.0-vs-2.0](./images/opt-2.7b-1.0-vs-2.0.png)
 
+![1.0-vs-2.0](./images/results/pareto_analysis.svg)
 
