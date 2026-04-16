@@ -9,8 +9,6 @@ from torch import cuda
 import os
 from time import time
 import pandas as pd
-import numpy as np
-import random
 from typing import List, Callable, Tuple
 from mytransformers.benchmark import init_global_tracker
 from mytransformers.benchmark.moe import TokenRouter
@@ -22,15 +20,6 @@ TOKEN_ROUTER = TokenRouter.uniform
 TOKEN_ROUTER.centers = (7, 15)
 TOKEN_ROUTER.std = 2.0
 TOKEN_ROUTER.alpha = 1.1
-
-
-class Config:
-    num_experts_per_tok = 2
-    hidden_size = 2048
-
-GB = 1024**3
-
-pd.set_option('display.max_colwidth', None)
 
 class Config:
     num_experts_per_tok = 2
