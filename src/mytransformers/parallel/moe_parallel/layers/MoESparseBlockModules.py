@@ -8,6 +8,7 @@ from .MoeExperts import MoeExperts
 from typing import Callable, Optional
 import torch.distributed as dist
 from mytransformers.utils import Logger
+from mytransformers.benchmark import get_global_tracker
 
 class MoeSparseBlockModule(ParallelModule):
     def __init__(self,
@@ -50,9 +51,7 @@ class MoeSparseBlockDPModule(MoeSparseBlockModule):
         else: 
             splitted_hidden_states = None
         dist.scatter(self.buffer, splitted_hidden_states, src=self.main_rank, group=self.moe_group)
-        
         output = super().forward(self.buffer)
-        
         dist.gather(output, splitted_hidden_states, dst=self.main_rank, group=self.moe_group)
         if self.main_rank == rank:
             return torch.cat(splitted_hidden_states, dim=0)
