@@ -7,7 +7,6 @@ from torch.nn import ModuleList
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from mytransformers.parallel.moe_parallel.layers import MoeExperts
 
-<<<<<<<< HEAD:src/mytransformers/parallel/moe_parallel/generators/MoeExpertsGenerator.py
 class MoeExpertsModuleGenerator(ParallelModuleGenerator):
     def __new__(cls,
                 module: ModuleList,
@@ -16,23 +15,7 @@ class MoeExpertsModuleGenerator(ParallelModuleGenerator):
                 moe_group: ProcessGroup,
                 device: torch.device,
                 **replace_layer_kwargs) -> MoeExperts:
-========
-class MoeDPExpertsGenerator(ParallelModuleGenerator):
-    """
-    генерирует MoeDPExperts из модуля экспертов модели
-    
-    Args:
-        module (List[ModuleList]): исходный MoE слой
-        expert_idxs (List[Tensor]): план распределения экспертов по устройствам
-        moe_group: (ProcessGroup): Группа процессов MoE
-        device: устройство на котором будет работать эксперт
-    """
-    def __new__(cls,
-                module: ModuleList,
-                expert_idxs: List[Tensor],
-                moe_group: ProcessGroup,
-                device: torch.device) -> MoeDPExperts:
->>>>>>>> main:src/mytransformers/parallel/moe_parallel/MoeExpertsGenerator.py
+        
         rank = dist.get_rank(moe_group)
         world_size = dist.get_world_size(moe_group)
         expert_ranks = expert_idxs[rank]
@@ -51,19 +34,11 @@ class MoeDPExpertsGenerator(ParallelModuleGenerator):
         global_to_local_expert_idxs = torch.cat(global_to_local_expert_idxs, dim=0)
             
         local_experts = ModuleList([module[r.item()] for r in expert_ranks])
-<<<<<<<< HEAD:src/mytransformers/parallel/moe_parallel/generators/MoeExpertsGenerator.py
-========
-        global_expert_idxs = expert_idxs[rank].to(device)
->>>>>>>> main:src/mytransformers/parallel/moe_parallel/MoeExpertsGenerator.py
         
         return replace_layer(num_experts,
                             local_experts,
                             expert_to_rank,
                             global_to_local_expert_idxs,
-<<<<<<<< HEAD:src/mytransformers/parallel/moe_parallel/generators/MoeExpertsGenerator.py
                             moe_group,
                             **replace_layer_kwargs)
-========
-                            moe_group)
->>>>>>>> main:src/mytransformers/parallel/moe_parallel/MoeExpertsGenerator.py
         

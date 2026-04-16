@@ -33,11 +33,9 @@ GB = 1024**3
 pd.set_option('display.max_colwidth', None)
 
 class Config:
-    num_experts_per_tok = 5
+    num_experts_per_tok = 2
     hidden_size = 2048
     num_experts = 8
-    intermediate_size = 4096
-    num_experts = 32
     intermediate_size = 8192
     
 class MixtralMLP(nn.Module):
@@ -106,29 +104,6 @@ class MixtralSparseMoeBlock(nn.Module):
         hidden_states = self.experts(hidden_states, top_k_index, top_k_weights.to(hidden_states.dtype))
         hidden_states = hidden_states.reshape(batch_size, sequence_length, hidden_dim)
         return hidden_states
-    
-    
-# class MixtralSparseMoeBlock(nn.Module):
-#     def __init__(self, config: Config):
-#         super().__init__()
-#         self.top_k = config.num_experts_per_tok
-#         self.gate = nn.Linear(config.hidden_size, config.num_experts, bias=False)
-#         self.experts = MixtralExperts(config)
-
-#     def route_tokens_to_experts(self, router_logits):
-#         routing_weights = torch.nn.functional.softmax(router_logits.float(), dim=-1)
-#         top_k_weights, top_k_index = torch.topk(routing_weights, self.top_k, dim=-1)
-#         top_k_weights /= top_k_weights.sum(dim=-1, keepdim=True)
-#         return top_k_index, top_k_weights.to(router_logits.dtype)
-
-#     def forward(self, hidden_states: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-#         batch_size, sequence_length, hidden_dim = hidden_states.shape
-#         hidden_states = hidden_states.view(-1, hidden_states.shape[-1])
-#         router_logits = self.gate(hidden_states)
-#         top_k_index, top_k_weights = self.route_tokens_to_experts(router_logits)
-#         hidden_states = self.experts(hidden_states, top_k_index, top_k_weights.to(hidden_states.dtype))
-#         hidden_states = hidden_states.reshape(batch_size, sequence_length, hidden_dim)
-#         return hidden_states
 
 
 def gather_peak_memory_all_ranks(device) -> dict:
