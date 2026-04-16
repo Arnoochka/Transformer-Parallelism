@@ -6,6 +6,8 @@ from torch.nn import Module
 import torch.distributed as dist
 from enum import Enum
 from torch.distributed import ProcessGroup
+import numpy as np
+import random
 
 
 # Глобальные переменные, используемые для распределённой инициализации
@@ -174,3 +176,16 @@ def create_group(ranks: List[int]) -> ProcessGroup:
     """
     group = dist.new_group(ranks=ranks, backend=BACKEND)
     return group
+
+def set_seed(seed: int = 42):
+    """
+    установка seed 
+    """
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+

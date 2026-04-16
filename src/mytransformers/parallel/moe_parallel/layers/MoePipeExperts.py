@@ -4,6 +4,7 @@ from torch import Tensor
 from torch.nn import ModuleList
 from .MoeExperts import MoeExperts
 from torch.distributed import ProcessGroup
+from mytransformers.benchmark import get_global_tracker
 
 class MoePipeExpertsMemory(MoeExperts):
 
@@ -191,10 +192,9 @@ class MoePipeExpertsSpeed(MoeExperts):
                 hidden_states: Tensor,
                 top_k_index: Tensor,
                 top_k_weights: Tensor) -> Tensor:
-
+        tracker = get_global_tracker()
         num_tokens, k = top_k_index.size()
         hidden_dim = hidden_states.size(1)
-
         token_indices = torch.arange(num_tokens, device=hidden_states.device).repeat_interleave(k)
         flat_index = top_k_index.reshape(-1)
         flat_weights = top_k_weights.reshape(-1)
@@ -265,7 +265,7 @@ class MoePipeExpertsSpeed(MoeExperts):
             index_split = None
             weight_split = None
             gather_hidden = None
-
+            
         dist.scatter(recv_info,
                      scatter_list=count_split,
                      src=self.main_rank,
@@ -291,17 +291,16 @@ class MoePipeExpertsSpeed(MoeExperts):
             dtype=hidden_states.dtype,
             device=hidden_states.device
         ) 
-
         dist.scatter(local_hidden_states,
                      scatter_list=hidden_split,
                      src=self.main_rank,
                      group=self.moe_group)
-
+        
         dist.scatter(local_k_index,
                      scatter_list=index_split,
                      src=self.main_rank,
                      group=self.moe_group)
-
+        
         dist.scatter(local_k_weights,
                      scatter_list=weight_split,
                      src=self.main_rank,
@@ -316,15 +315,13 @@ class MoePipeExpertsSpeed(MoeExperts):
             local_k_index,
             num_classes=len(self.local_experts)
         ).transpose(0, 1).to(torch.bool)
-
         local_hidden_states[:local_count] = self.compute(local_hidden_states[:local_count], expert_mask)
-        local_hidden_states[:local_count].mul_(local_k_weights[:local_count].unsqueeze(-1))
 
+        local_hidden_states[:local_count].mul_(local_k_weights[:local_count].unsqueeze(-1))
         dist.gather(local_hidden_states,
                     gather_list=gather_hidden,
                     dst=self.main_rank,
                     group=self.moe_group)
-
         if self.rank == self.main_rank:
             gathered = torch.cat(
                 [gather_hidden[r][:count_split[r][0]] for r in range(self.world_size)],
@@ -339,8 +336,8 @@ class MoePipeExpertsSpeed(MoeExperts):
 
             gathered = gathered[inverse_indices]
             gathered = gathered.view(num_tokens, k, hidden_dim)
-
-            return gathered.sum(dim=1)
+            output = gathered.sum(dim=1)
+            return output
 
         else:
             return hidden_states
