@@ -31,16 +31,20 @@ class BaseScheduler:
         raise NotImplementedError
 
 
-class RoundRobinScheduler(BaseScheduler):
+class InternalScheduler(BaseScheduler):
     def __init__(self) -> None:
         super().__init__(init_state=0)
-        self.curr_num_threads = 0
+        self.alive = [False, False]
     
-    def is_allowed(self, op_info: Tuple[int, bool]) -> bool:
-        stage_idx, is_point = op_info
-        return self.state == stage_idx
+    def is_allowed(self, op_info: int) -> bool:
+        return self.state == op_info
     
-    def advance(self, op_info: Tuple[int, bool]) -> None:
-        stage_idx, is_point = op_info
-        self.state = (self.state + 1)
+    def advance(self, op_info: int) -> None:
+        if self.alive[(self.state + 1) % 2]:
+            self.state = (self.state + 1) % 2
+        
+    def register_alive(self, stage_idx: int, is_alive: bool) -> None:
+        self.alive[stage_idx] = is_alive
+        
+    
         
