@@ -5,7 +5,7 @@ import torch.distributed as dist
 from torch import Tensor
 from torch.nn import ModuleList
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
-from mytransformers.parallel.moe_parallel.layers import MoeExperts
+from mytransformers.parallel.moe_parallel.moe_pipeline.layers.moe_layers import MoeExperts
 
 class MoeExpertsModuleGenerator(ParallelModuleGenerator):
     def __new__(cls,

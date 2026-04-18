@@ -4,7 +4,6 @@ from torch import Tensor
 from torch.nn import ModuleList
 from .MoeExperts import MoeExperts
 from torch.distributed import ProcessGroup
-from mytransformers.benchmark import get_global_tracker
 
 class MoePipeExpertsMemory(MoeExperts):
 
@@ -192,7 +191,6 @@ class MoePipeExpertsSpeed(MoeExperts):
                 hidden_states: Tensor,
                 top_k_index: Tensor,
                 top_k_weights: Tensor) -> Tensor:
-        tracker = get_global_tracker()
         num_tokens, k = top_k_index.size()
         hidden_dim = hidden_states.size(1)
         token_indices = torch.arange(num_tokens, device=hidden_states.device).repeat_interleave(k)

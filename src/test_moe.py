@@ -12,6 +12,7 @@ import pandas as pd
 from typing import List, Callable, Tuple
 from mytransformers.benchmark import init_global_tracker
 from mytransformers.benchmark.moe import TokenRouter
+from mytransformers import moe
 
 GB = 1024**3
 pd.set_option('display.max_colwidth', None)

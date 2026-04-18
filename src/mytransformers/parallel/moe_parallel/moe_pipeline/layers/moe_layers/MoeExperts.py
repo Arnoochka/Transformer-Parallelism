@@ -4,6 +4,7 @@ from torch import Tensor
 from torch.nn import ModuleList
 from mytransformers.parallel.ParallelModule import ParallelModule
 import torch.distributed as dist
+from mytransformers.parallel.moe_parallel.moe_pipeline.pipeline.Scheduler import BaseScheduler
 
 
 class MoeExperts(ParallelModule):
@@ -22,7 +23,8 @@ class MoeExperts(ParallelModule):
                  local_experts: ModuleList,
                  expert_to_rank: Tensor,
                  global_to_local_expert_idxs: Tensor,
-                 moe_group: ProcessGroup):
+                 moe_group: ProcessGroup,
+                 scheduler: BaseScheduler):
         super().__init__()
         self.rank = dist.get_rank(group=moe_group)
         self.world_size = dist.get_world_size(group=moe_group)
@@ -31,7 +33,10 @@ class MoeExperts(ParallelModule):
         self.local_experts = local_experts
         self.expert_to_rank = expert_to_rank
         self.global_to_local_expert_idxs = global_to_local_expert_idxs
+        
         self.moe_group = moe_group
+        self.scheduler = scheduler
+        self.thread_idx = 0
 
     def compute(self, hidden_states: Tensor, expert_mask: Tensor) -> Tensor:
         """
@@ -51,3 +56,8 @@ class MoeExperts(ParallelModule):
             hidden_states.index_copy_(0, idxs, expert_output)
     
         return hidden_states
+    
+    def reset(self) -> None:
+        self.thread_idx = 0
+    
+    

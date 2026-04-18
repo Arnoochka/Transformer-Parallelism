@@ -3,8 +3,6 @@ import torch.distributed as dist
 from torch import Tensor
 from torch.nn import functional
 from .MoeExperts import MoeExperts
-from mytransformers.benchmark import get_global_tracker
-from mytransformers.utils import Logger
 
 
 class MoeDPExpertsMemory(MoeExperts):
@@ -97,7 +95,11 @@ class MoeDPExpertsSpeed(MoeExperts):
             dtype=top_k_index.dtype,
             device=top_k_index.device
         )
-        dist.all_gather_into_tensor(full_top_k_index, top_k_index, group=self.moe_group)
+        self.scheduler.transfer(op=dist.all_gather_into_tensor,
+                                op_info=self.thread_idx,
+                                output_tensor=full_top_k_index,
+                                input_tensor=top_k_index,
+                                group=self.moe_group)
         flat_topk = full_top_k_index.reshape(-1)
         global_ranks = self.expert_to_rank[flat_topk]
 
@@ -131,26 +133,30 @@ class MoeDPExpertsSpeed(MoeExperts):
             num_classes=len(self.local_experts)
         ).transpose(0, 1).to(torch.bool)
         sorted_token_indices = token_indices[local_sorted_indices]
-        dist.all_to_all_single(
-            need_hidden_states,
-            hidden_states[sorted_token_indices],
-            recv_counts_list,
-            send_counts_list,
-            group=self.moe_group
-        )
+        
+        self.scheduler.transfer(op=dist.all_to_all_single,
+                                op_info=self.thread_idx,
+                                output=need_hidden_states,
+                                input=hidden_states[sorted_token_indices],
+                                output_split_sizes=recv_counts_list,
+                                input_split_sizes=send_counts_list,
+                                group=self.moe_group)
+        
         need_hidden_states = self.compute(need_hidden_states, expert_mask)
         computed = torch.empty(
             (num_tokens * k, hidden_dim),
             dtype=hidden_states.dtype,
             device=hidden_states.device
         )
-        dist.all_to_all_single(
-            computed,
-            need_hidden_states,
-            send_counts_list,
-            recv_counts_list,
-            group=self.moe_group
-        )
+        
+        self.scheduler.transfer(op=dist.all_to_all_single,
+                                op_info=self.thread_idx,
+                                output=computed,
+                                input=need_hidden_states,
+                                output_split_sizes=send_counts_list,
+                                input_split_sizes=recv_counts_list,
+                                group=self.moe_group)
+        
         inverse_indices = torch.empty_like(local_sorted_indices)
         inverse_indices[local_sorted_indices] = torch.arange(
             local_sorted_indices.size(0),
@@ -161,4 +167,6 @@ class MoeDPExpertsSpeed(MoeExperts):
         flat_weights = top_k_weights.reshape(-1)
         computed.mul_(flat_weights.unsqueeze(-1))
         output = computed.view(num_tokens, k, hidden_dim).sum(dim=1)
+        
+        self.thread_idx += 1
         return output

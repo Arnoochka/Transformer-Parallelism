@@ -7,8 +7,7 @@ from mytransformers.parallel.ParallelModule import ParallelModule
 from .MoeExperts import MoeExperts
 from typing import Callable, Optional
 import torch.distributed as dist
-from mytransformers.utils import Logger
-from mytransformers.benchmark import get_global_tracker
+from mytransformers.parallel.moe_parallel.moe_pipeline.pipeline.Scheduler import BaseScheduler
 
 class MoeSparseBlockModule(ParallelModule):
     def __init__(self,
@@ -31,6 +30,10 @@ class MoeSparseBlockModule(ParallelModule):
         hidden_states = hidden_states.reshape(batch_size, sequence_length, hidden_dim)
         return hidden_states
     
+    def reset(self) -> None:
+        self.thread_idx = 0
+        self.experts.reset()
+    
     
 class MoeSparseBlockDPModule(MoeSparseBlockModule):
     def __init__(self,
@@ -38,9 +41,12 @@ class MoeSparseBlockDPModule(MoeSparseBlockModule):
                  gate: Callable,
                  moe_group: ProcessGroup,
                  main_rank: int,
-                 buffer: Tensor):
+                 buffer: Tensor,
+                 scheduler: BaseScheduler):
         super().__init__(experts, gate, moe_group, main_rank)
         self.register_buffer('buffer', buffer)
+        self.scheduler = scheduler
+        self.thread_idx = 0
         
     def forward(self, hidden_states: Optional[Tensor]) -> Tensor:
         rank = dist.get_rank()
@@ -50,9 +56,25 @@ class MoeSparseBlockDPModule(MoeSparseBlockModule):
                                                       dim=0))
         else: 
             splitted_hidden_states = None
-        dist.scatter(self.buffer, splitted_hidden_states, src=self.main_rank, group=self.moe_group)
+            
+        self.scheduler.transfer(op=dist.scatter,
+                                op_info=self.thread_idx,
+                                tensor=self.buffer,
+                                scatter_list=splitted_hidden_states,
+                                src=self.main_rank,
+                                group=self.moe_group)
+        
         output = super().forward(self.buffer)
-        dist.gather(output, splitted_hidden_states, dst=self.main_rank, group=self.moe_group)
+        
+        self.scheduler.transfer(op=dist.gather,
+                        op_info=self.thread_idx,
+                        tensor=output,
+                        gather_list_list=splitted_hidden_states,
+                        dst=self.main_rank,
+                        group=self.moe_group)
+        
+        self.thread_idx += 1
+        
         if self.main_rank == rank:
             return torch.cat(splitted_hidden_states, dim=0)
         else: 

@@ -5,9 +5,9 @@ import torch.distributed as dist
 from torch import Tensor
 from torch.nn import ModuleList, Module
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
-from mytransformers.parallel.moe_parallel.layers import MoeExperts
+from mytransformers.parallel.moe_parallel.moe_pipeline.layers.moe_layers import MoeExperts
 from .MoeExpertsGenerator import MoeExpertsModuleGenerator
-from mytransformers.parallel.moe_parallel.layers import MoeSparseBlockDPModule, MoeSparseBlockPipeModule
+from mytransformers.parallel.moe_parallel.moe_pipeline.layers.moe_layers import MoeSparseBlockDPModule, MoeSparseBlockPipeModule
 from mytransformers.utils import Logger
 
 class MoeSparseBlockDPModuleGenerator(ParallelModuleGenerator):
