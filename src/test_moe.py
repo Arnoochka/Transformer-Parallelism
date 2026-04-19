@@ -220,56 +220,6 @@ def start_tests(batch_sizes: List[int], seq_lens: List[int], save_path: str) -> 
         df = df[base_cols + gpu_cols]
         df.to_csv(save_path, index=False)
         print(df.to_string())
-    
-class MixtralSparseMoeBlock(nn.Module):
-    def __init__(self, config: Config):
-        super().__init__()
-        self.top_k = config.num_experts_per_tok
-        self.gate = nn.Linear(config.hidden_size, config.num_experts, bias=False)
-        self.experts = MixtralExperts(config)
-
-    def route_tokens_to_experts(self, router_logits):
-        routing_weights = torch.nn.functional.softmax(router_logits.float(), dim=-1)
-        top_k_weights, top_k_index = torch.topk(routing_weights, self.top_k, dim=-1)
-        top_k_weights /= top_k_weights.sum(dim=-1, keepdim=True)
-        top_k_index = torch.randint(
-            low=0,
-            high=8,
-            size=top_k_index.size(),
-            device=router_logits.device
-        )
-        return top_k_index, top_k_weights.to(router_logits.dtype)
-    
-    def forward(self, hidden_states: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        batch_size, sequence_length, hidden_dim = hidden_states.shape
-        hidden_states = hidden_states.view(-1, hidden_states.shape[-1])
-        router_logits = self.gate(hidden_states)
-        top_k_index, top_k_weights = self.route_tokens_to_experts(router_logits)
-        hidden_states = self.experts(hidden_states, top_k_index, top_k_weights.to(hidden_states.dtype))
-        hidden_states = hidden_states.reshape(batch_size, sequence_length, hidden_dim)
-        return hidden_states
-    
-    
-def test_single(model: MixtralSparseMoeBlock, local_input: Tensor):
-    cuda.reset_max_memory_allocated(cuda.current_device())
-    model = model.to(device)
-    input = [torch.empty_like(local_input) for _ in range(2)]
-    dist.all_gather(input, local_input, group=moe_group)
-    input = torch.cat(input, dim=0)
-    start = time()
-    local_output = model(local_input)
-    end = time()
-    Logger.log_all_device(f"SINGLE STATS: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
-    
-def test_parallel(model: MixtralSparseMoeBlock, local_input: Tensor):
-    cuda.reset_max_memory_allocated(cuda.current_device())
-    expert_idxs = [LongTensor([0,1,2,3]).to(device), LongTensor([4, 5,6,7]).to(device)]
-    model.experts = moe.MoeDPExpertsGenerator(model.experts, expert_idxs, moe_group, device).to(device)
-    model = model.to(device)
-    start = time()
-    local_output = model(local_input)
-    end = time()
-    Logger.log_all_device(f"PARALLEL STATS: time: {round(end-start, 3)}, memory: {round(cuda.max_memory_allocated(cuda.current_device()) / GB, 3)}")
         
 def get_operation_info(test: Callable,
                        batch_size: int,

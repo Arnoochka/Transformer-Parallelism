@@ -20,6 +20,7 @@ class PipelineGenerator(ParallelModuleGenerator):
         groups_info (Tuple[ProcessGroup, Tuple[int]]): информация о группах стадий
         final_comm_group (ProcessGroup): финальная группа для передачи данных
         fake_args (Callable): генератор аргументов для FakeModule
+        scheduler (BaseScheduler): расписание для коллективных операций
     """
     
     def __new__(cls,
@@ -27,12 +28,14 @@ class PipelineGenerator(ParallelModuleGenerator):
                 modules: ModuleList,
                 final_strategy: FinalStrategyModule,
                 final_comm_group: ProcessGroup,
-                fake_args: Callable,) -> Module:
+                fake_args: Callable,
+                scheduler: BaseScheduler) -> Module:
         pipeline = Pipeline(model.forward,
                             modules,
                             final_strategy,
                             final_comm_group,
-                            fake_args)
+                            fake_args,
+                            scheduler)
         
         model.forward = pipeline.forward
         return model

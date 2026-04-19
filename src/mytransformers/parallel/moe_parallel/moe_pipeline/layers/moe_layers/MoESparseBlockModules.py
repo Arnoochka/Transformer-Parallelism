@@ -21,7 +21,7 @@ class MoeSparseBlockModule(ParallelModule):
         self.moe_group = moe_group
         self.main_rank = main_rank
         
-        
+    @torch.no_grad()
     def forward(self, hidden_states: Tensor) -> Tensor:
         batch_size, sequence_length, hidden_dim = hidden_states.shape
         hidden_states = hidden_states.view(-1, hidden_states.shape[-1])
@@ -41,13 +41,13 @@ class MoeSparseBlockDPModule(MoeSparseBlockModule):
                  gate: Callable,
                  moe_group: ProcessGroup,
                  main_rank: int,
-                 buffer: Tensor,
                  scheduler: BaseScheduler):
         super().__init__(experts, gate, moe_group, main_rank)
-        self.register_buffer('buffer', buffer)
+        self.register_buffer('buffer', None)
         self.scheduler = scheduler
         self.thread_idx = 0
-        
+     
+    @torch.no_grad()   
     def forward(self, hidden_states: Optional[Tensor]) -> Tensor:
         rank = dist.get_rank()
         if rank == self.main_rank:

@@ -1,12 +1,10 @@
 import torch
 from torch import nn
 from torch import Tensor
-import torch.distributed as dist
-from typing import Tuple
-from mytransformers import utils
-from mytransformers.parallel import moe
-from mytransformers.parallel.moe_parallel import moe_pp
+from typing import Tuple, Optional
 from mytransformers.benchmark.moe import TokenRouter
+from transformers import DynamicCache
+from transformers.modeling_outputs import CausalLMOutputWithPast
 
 class Config:
     num_layers = 4
@@ -18,7 +16,10 @@ class Config:
     num_key_value_heads = 8
     head_dim = 64
     rms_norm_eps = 1e-5
+    vocab_size = 32000
     token_router = TokenRouter.uniform
+    
+    
 
 class TestMLP(nn.Module):
     def __init__(self, config: Config):
@@ -47,7 +48,7 @@ class TestExperts(nn.ModuleList):
 
     def forward(
         self, hidden_states: torch.Tensor, top_k_index: torch.Tensor, top_k_weights: torch.Tensor
-    ) -> torch.Tensor:
+    ) -> Tensor:
         """
         Args:
             hidden_states: (batch_size * sequence_length, hidden_dim)
@@ -79,7 +80,7 @@ class TestSparseMoeBlock(nn.Module):
         top_k_index, top_k_weights = self.token_router(router_logits, self.top_k)
         return top_k_index, top_k_weights.to(router_logits.dtype)
     
-    def forward(self, hidden_states: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, hidden_states: Tensor) -> Tensor:
         batch_size, sequence_length, hidden_dim = hidden_states.shape
         hidden_states = hidden_states.view(-1, hidden_states.shape[-1])
         router_logits = self.gate(hidden_states)
@@ -87,11 +88,13 @@ class TestSparseMoeBlock(nn.Module):
         hidden_states = self.experts(hidden_states, top_k_index, top_k_weights.to(hidden_states.dtype))
         hidden_states = hidden_states.reshape(batch_size, sequence_length, hidden_dim)
         return hidden_states
-    
+
+
 class TestAttention(nn.Module):
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, layer_idx: int):
         super().__init__()
         self.config = config
+        self.layer_idx = layer_idx
         self.hidden_size = config.hidden_size
         self.num_heads = config.num_attention_heads
         self.num_kv_heads = config.num_key_value_heads
@@ -103,56 +106,83 @@ class TestAttention(nn.Module):
         self.v_proj = nn.Linear(self.hidden_size, self.num_kv_heads * self.head_dim, bias=False)
         self.o_proj = nn.Linear(self.num_heads * self.head_dim, self.hidden_size, bias=False)
 
-    def forward(self, hidden_states: torch.Tensor) -> Tensor:
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        past_key_values: Optional[DynamicCache] = None,
+    ) -> Tensor:
         bsz, seq_len, _ = hidden_states.shape
 
         q = self.q_proj(hidden_states).view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2)
         k = self.k_proj(hidden_states).view(bsz, seq_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
         v = self.v_proj(hidden_states).view(bsz, seq_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
 
-        k = k.repeat_interleave(self.num_kv_groups, dim=1)
-        v = v.repeat_interleave(self.num_kv_groups, dim=1)
+        if past_key_values is not None:
+            k, v = past_key_values.update(k, v, self.layer_idx)
+
+        k_expanded = k.repeat_interleave(self.num_kv_groups, dim=1)
+        v_expanded = v.repeat_interleave(self.num_kv_groups, dim=1)
+
+        q_len, k_len = q.shape[-2], k.shape[-2]
+        is_causal = (q_len == k_len) and (q_len > 1)
 
         attn_output = torch.nn.functional.scaled_dot_product_attention(
-            q, k, v, is_causal=True
+            q, k_expanded, v_expanded, is_causal=is_causal
         )
-
         attn_output = attn_output.transpose(1, 2).contiguous().view(bsz, seq_len, -1)
-        attn_output = self.o_proj(attn_output)
-        return attn_output
+        return self.o_proj(attn_output)
 
 
 class TestDecoderLayer(nn.Module):
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, layer_idx: int):
         super().__init__()
-        self.self_attn = TestAttention(config)
+        self.self_attn = TestAttention(config, layer_idx=layer_idx)
         self.moe = TestSparseMoeBlock(config)
         self.input_layernorm = nn.RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.post_attention_layernorm = nn.RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
-    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        past_key_values: Optional[DynamicCache] = None,
+    ) -> Tensor:
         residual = hidden_states
         hidden_states = self.input_layernorm(hidden_states)
-        hidden_states = self.self_attn(hidden_states)
+        hidden_states = self.self_attn(hidden_states, past_key_values=past_key_values)
         hidden_states = residual + hidden_states
 
         residual = hidden_states
         hidden_states = self.post_attention_layernorm(hidden_states)
         hidden_states = self.moe(hidden_states)
-        hidden_states = residual + hidden_states
-        return hidden_states
+        return residual + hidden_states
 
 
 class TestModel(nn.Module):
     def __init__(self, config: Config):
         super().__init__()
         self.config = config
+        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size)
         self.layers = nn.ModuleList(
-            [TestDecoderLayer(config) for _ in range(config.num_layers)]
+            [TestDecoderLayer(config, layer_idx=i) for i in range(config.num_layers)]
         )
-        self.norm = nn.RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
-    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        past_key_values: Optional[DynamicCache] = None,
+        use_cache: bool = False,
+    ) -> Tuple[Tensor, Optional[DynamicCache]]:
+        if use_cache and past_key_values is None:
+            past_key_values = DynamicCache()
+
+        hidden_states = self.embed_tokens(input_ids)
         for layer in self.layers:
-            hidden_states = layer(hidden_states)
-        return self.norm(hidden_states)
+            hidden_states = layer(hidden_states, past_key_values=past_key_values)
+
+        logits = self.lm_head(hidden_states)
+        return CausalLMOutputWithPast(logits=logits,
+                                      past_key_values=past_key_values)
+    
+    
+    
