@@ -5,7 +5,8 @@ import torch.distributed as dist
 from torch import Tensor
 from torch.nn import ModuleList
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
-from mytransformers.parallel.moe_parallel.moe_pipeline.layers.moe_layers import MoeExperts
+from mytransformers.parallel.moe_parallel.layers import MoeExperts
+from mytransformers.parallel.moe_parallel.pipeline.Scheduler import BaseScheduler
 
 class MoeExpertsModuleGenerator(ParallelModuleGenerator):
     def __new__(cls,
@@ -13,6 +14,7 @@ class MoeExpertsModuleGenerator(ParallelModuleGenerator):
                 replace_layer: MoeExperts,
                 expert_idxs: List[Tensor],
                 moe_group: ProcessGroup,
+                scheduler: BaseScheduler,
                 device: torch.device,
                 **replace_layer_kwargs) -> MoeExperts:
         
@@ -34,10 +36,12 @@ class MoeExpertsModuleGenerator(ParallelModuleGenerator):
         global_to_local_expert_idxs = torch.cat(global_to_local_expert_idxs, dim=0)
             
         local_experts = ModuleList([module[r.item()] for r in expert_ranks])
+        
         return replace_layer(num_experts,
                             local_experts,
                             expert_to_rank,
                             global_to_local_expert_idxs,
                             moe_group,
+                            scheduler
                             **replace_layer_kwargs)
         

@@ -1,11 +1,14 @@
 from torch.distributed import ProcessGroup
-from .PipeModule import PipeModule, PipeRole
-from .strategies import InnerStrategyModule
-from mytransformers.parallel.moe_parallel.moe_pipeline.pipeline.Scheduler import BaseScheduler
 from torch.nn import Module
+import torch
 from typing import Any
+from mytransformers.parallel.pipeline_parallel.layers import PipeInnerBoundaryPointModule
+from mytransformers.parallel.pipeline_parallel.layers.PipeModule import PipeRole
+from mytransformers.parallel.pipeline_parallel.layers.strategies import InnerStrategyModule
+from mytransformers.parallel.moe_parallel.pipeline.Scheduler import BaseScheduler
+
     
-class PipeInnerBoundaryPointModule(PipeModule):
+class MoePipeInnerBoundaryPointModule(PipeInnerBoundaryPointModule):
     """
     крайняя точка (начальная или конечная) внутри конвейера.
     
@@ -26,28 +29,18 @@ class PipeInnerBoundaryPointModule(PipeModule):
                  comm_group: ProcessGroup,
                  strategy: InnerStrategyModule,
                  scheduler: BaseScheduler):
-        super().__init__(role, module)
-        is_send = (role == PipeRole.computeAndSend)
-        is_recv = (role  == PipeRole.recv)
-        if not (is_send or is_recv):
-            raise AttributeError(f"role: {role}, strategy type is not selected")   
-        
-        self.is_send = is_send
-        self.current_group = current_group
-        self.comm_group = comm_group
-        self.strategy = strategy
+        super().__init__(role, module, current_group, comm_group, strategy)
         self.scheduler = scheduler
         self.thread_idx = 0
         
+    @torch.no_grad()
     def forward(self, *args, **kwargs) -> Any:
-        output = self.module(*args, **kwargs)
         output = self.scheduler.transfer(op=self.strategy,
                                          op_info=self.thread_idx,
-                                         output=output,
+                                         output=self.module(*args, **kwargs),
                                          is_send=self.is_send,
                                          current_group=self.current_group,
                                          comm_group=self.comm_group)
-        self.thread_idx += 1
         return output
     
     def reset(self) -> None:

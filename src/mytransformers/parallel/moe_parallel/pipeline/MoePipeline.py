@@ -2,14 +2,15 @@ import torch
 from torch.nn import ModuleList
 from torch.distributed import ProcessGroup
 from typing import Callable, List
-from mytransformers.parallel.moe_parallel.moe_pipeline.layers import FakeModule, FinalStrategyModule, PipeInnerBoundaryPointModule, PipeComputeModule
-from mytransformers.parallel.moe_parallel.moe_pipeline.layers.moe_layers.MoESparseBlockModules import MoeSparseBlockModule
-from mytransformers.parallel.moe_parallel.moe_pipeline.pipeline.utils import MBatch, CondWorker
+from mytransformers.parallel.pipeline_parallel.layers import FakeModule, FinalStrategyModule, PipeComputeModule
+from mytransformers.parallel.moe_parallel.layers.sparse_block import MoeSparseBlockModule, MoeSparseBlocFakekDPModule
+from mytransformers.parallel.pipeline_parallel.pipeline.utils import MBatch
+from mytransformers.parallel.pipeline_parallel.pipeline.Pipeline import Pipeline
+from .MoePipeInnerBoundaryPointModule import MoePipeInnerBoundaryPointModule
 from threading import Thread
 from .Scheduler import BaseScheduler
-from mytransformers.utils import Logger
         
-class Pipeline(ModuleList):
+class MoePipeline(Pipeline):
     """
     класс конвейерного параллелизма
     
@@ -27,20 +28,16 @@ class Pipeline(ModuleList):
         fake_args (Callable): функция для вычисления арзументов для "фейковых" модулей по микробатчу
         scheduler (BaseScheduler): расписание для коллективных операций
     """
-    
     def __init__(self,
                  model_forward: Callable,
                  modules: ModuleList,
+                 reset_modules: List[MoePipeInnerBoundaryPointModule, MoeSparseBlockModule],
                  final_strategy: FinalStrategyModule,
                  final_comm_group: ProcessGroup,
                  fake_args: Callable,
                  scheduler: BaseScheduler):
-        super().__init__(modules)
-        self.final_stategy = lambda output: final_strategy(output, final_comm_group)
-        self.model_forward = model_forward
-        self.get_fake_args = fake_args
-        
-        self.compute_cond = CondWorker()
+        super().__init__(model_forward, modules, final_strategy, final_comm_group, fake_args)
+        self.reset_modules = reset_modules
         self.scheduler = scheduler
         
     def set_fake_args(self, mbatch: MBatch) -> None:
@@ -48,19 +45,16 @@ class Pipeline(ModuleList):
         for module, fake_args in zip(self, fake_args_list):
             if isinstance(module.module, FakeModule):
                 module.module.set_gen_args(*fake_args)
+            elif isinstance(module.module, MoeSparseBlocFakekDPModule):
+                module.module.fake_module.set_get_args(*fake_args)
                 
     def reset(self) -> None:
         self.compute_cond.reset()
         self.scheduler.reset()
-        
-        for module in self:
-            if isinstance(module, PipeInnerBoundaryPointModule) or isinstance(module, PipeComputeModule):
-                if isinstance(module, PipeInnerBoundaryPointModule): module.reset()
-                for submodule in module.module.modules():
-                    if isinstance(submodule, MoeSparseBlockModule):
-                        submodule.reset()
+        for module in self.reset_modules:
+            module.reset()
          
-           
+    # TODO: переделать forward, так как есть нюансы с CondWorker      
     @torch.no_grad()
     def forward(self, mbatches: List[MBatch], **forward_kwargs) -> List[MBatch]:
         self.reset()

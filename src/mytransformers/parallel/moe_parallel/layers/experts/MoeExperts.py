@@ -4,7 +4,7 @@ from torch import Tensor
 from torch.nn import ModuleList
 from mytransformers.parallel.ParallelModule import ParallelModule
 import torch.distributed as dist
-from mytransformers.parallel.moe_parallel.moe_pipeline.pipeline.Scheduler import BaseScheduler
+from mytransformers.parallel.moe_parallel.pipeline.Scheduler import BaseScheduler
 
 
 class MoeExperts(ParallelModule):
@@ -17,6 +17,7 @@ class MoeExperts(ParallelModule):
         expert_to_rank (Tensor): Отображение эксперта на ранг устройства.
         global_to_local_expert_idxs (Tensor): Сопоставление глобальных индексов экспертов с локальными.
         moe_group (ProcessGroup): Группа процессов MoE.
+        scheduler (BaseScheduler): расписание для коллективных операций.
     """
     def __init__(self,
                  global_num_experts: int,

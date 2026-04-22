@@ -5,10 +5,10 @@ from mytransformers.parallel.moe_parallel.moe_pipeline.generators import Pipelin
 from mytransformers.parallel.ParallelModuleGenerator import ParallelModuleGenerator
 from mytransformers.parallel.moe_parallel.moe_pipeline.layers import (
     FakeModule, FakeTensorModule, InnerStrategyModule, LeaderStrategyModule, FinalStrategyDictModule)
-from mytransformers.parallel.moe_parallel.moe_pipeline.generators.moe_generators import MoeSparseBlockDPModuleGenerator
-from mytransformers.parallel.moe_parallel.moe_pipeline.layers.moe_layers import MoeDPExpertsSpeed
+from mytransformers.parallel.moe_parallel.moe_pipeline.moe_generators import MoeSparseBlockDPModuleGenerator
+from mytransformers.parallel.moe_parallel.layers import MoeDPExpertsSpeed
 from torch.distributed import ProcessGroup
-from mytransformers.parallel.moe_parallel.moe_pipeline.pipeline.Scheduler import BaseScheduler
+from mytransformers.parallel.moe_parallel.pipeline.Scheduler import BaseScheduler
 from .TestModel import TestModel
 
 class TestMoeGenerator(ParallelModuleGenerator):
@@ -90,8 +90,9 @@ class TestMoeGenerator(ParallelModuleGenerator):
         return _get_fake_args
     
     @staticmethod
-    def replace_moe_modules(module: TestModel) -> nn.Module:
-        # TODO% добавить замену на MoE слои, однако стоит учесть уровень замены и уровкнь замены в Pipeline
+    def replace_moe_modules(module: TestModel, main_ranks: List[int]) -> nn.Module:
+        # TODO% добавить замену на MoE слои, однако стоит учесть уровень замены и уровень замены в Pipeline
+        
         new_layers = nn.ModuleList()
         for layer in module.layers:
             layer.moe

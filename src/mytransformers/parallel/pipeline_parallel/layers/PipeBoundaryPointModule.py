@@ -3,6 +3,7 @@ from .PipeModule import PipeModule, PipeRole
 from .strategies import InnerStrategyModule
 from torch.nn import Module
 from typing import Any
+import torch
     
 class PipeInnerBoundaryPointModule(PipeModule):
     """
@@ -34,6 +35,7 @@ class PipeInnerBoundaryPointModule(PipeModule):
         self.comm_group = comm_group
         self.strategy = strategy
         
+    @torch.no_grad()
     def forward(self, *args, **kwargs) -> Any:
         output = self.strategy(self.module(*args, **kwargs),
                                self.is_send,
