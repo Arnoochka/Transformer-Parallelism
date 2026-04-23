@@ -1,10 +1,9 @@
 import torch
 import torch.distributed as dist
 from torch import Tensor
-from ..experts.MoeExperts import MoeExperts
+from mytransformers.parallel.moe_parallel.layers.experts import MoeExperts
 from torch.distributed import ProcessGroup
 from mytransformers.parallel.ParallelModule import ParallelModule
-from ..experts.MoeExperts import MoeExperts
 from typing import Callable, Optional, List, Any
 import torch.distributed as dist
 from mytransformers.parallel.moe_parallel.pipeline.Scheduler import BaseScheduler 
@@ -38,14 +37,16 @@ class MoeSparseBlockDPModule(MoeSparseBlockModule):
     def distributed_forward(self, splitted_hidden_states: List[Tensor]) -> List[Tensor]:
         self.scheduler.transfer(op=dist.broadcast,
                                 op_info=self.thread_idx,
+                                op_name="broadcast",
                                 tensor=self.dim_buffer,
                                 src=self.main_rank,
                                 group=self.moe_group)
         
-        buffer = torch.empty(self.dim_buffer, device=torch.cuda.current_device())
+        buffer = torch.empty(self.dim_buffer.tolist(), device=torch.cuda.current_device())
         
         self.scheduler.transfer(op=dist.scatter,
                         op_info=self.thread_idx,
+                        op_name="scatter",
                         tensor=buffer,
                         scatter_list=splitted_hidden_states,
                         src=self.main_rank,
@@ -55,8 +56,9 @@ class MoeSparseBlockDPModule(MoeSparseBlockModule):
         
         self.scheduler.transfer(op=dist.gather,
                         op_info=self.thread_idx,
+                        op_name="gather",
                         tensor=output,
-                        gather_list_list=splitted_hidden_states,
+                        gather_list=splitted_hidden_states,
                         dst=self.main_rank,
                         group=self.moe_group)
         
@@ -70,9 +72,10 @@ class MoeSparseBlocFakekDPModule(MoeSparseBlockDPModule):
                  gate: Callable,
                  moe_group: ProcessGroup,
                  main_rank: int,
+                 dim_buffer: Tensor,
                  scheduler: BaseScheduler,
                  fake_module: FakeModule):
-        super().__init__(experts, gate, moe_group, main_rank, scheduler) 
+        super().__init__(experts, gate, moe_group, main_rank, dim_buffer, scheduler) 
         self.fake_module = fake_module
         
     @torch.no_grad()

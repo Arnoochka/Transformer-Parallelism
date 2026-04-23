@@ -22,6 +22,7 @@ class MoeDPExperts(MoeExperts):
         )
         self.scheduler.transfer(op=dist.all_gather_into_tensor,
                                 op_info=self.thread_idx,
+                                op_name="all_gather_data",
                                 output_tensor=full_top_k_index,
                                 input_tensor=top_k_index,
                                 group=self.moe_group)
@@ -61,6 +62,7 @@ class MoeDPExperts(MoeExperts):
         
         self.scheduler.transfer(op=dist.all_to_all_single,
                                 op_info=self.thread_idx,
+                                op_name="first_all_to_all",
                                 output=need_hidden_states,
                                 input=hidden_states[sorted_token_indices],
                                 output_split_sizes=recv_counts_list,
@@ -76,6 +78,7 @@ class MoeDPExperts(MoeExperts):
         
         self.scheduler.transfer(op=dist.all_to_all_single,
                                 op_info=self.thread_idx,
+                                op_name="second_all_to_all",
                                 output=computed,
                                 input=need_hidden_states,
                                 output_split_sizes=send_counts_list,

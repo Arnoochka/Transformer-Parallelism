@@ -33,7 +33,7 @@ class MoeSparseBlockDPModuleGenerator(ParallelModuleGenerator):
         if dist.get_rank() == main_rank:
                 return MoeSparseBlockDPModule(experts, gate, moe_group, main_rank, dim_buffer, scheduler).to(device)
         else:
-                return MoeSparseBlocFakekDPModule(experts, gate, moe_group, main_rank, scheduler, fake_module).to(device)
+                return MoeSparseBlocFakekDPModule(experts, gate, moe_group, main_rank, dim_buffer, scheduler, fake_module).to(device)
     
 class MoeSparseBlockPipeModuleGenerator(ParallelModuleGenerator):
     def __new__(cls,

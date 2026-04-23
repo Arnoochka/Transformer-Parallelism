@@ -2,13 +2,15 @@ import torch
 from torch.nn import ModuleList
 from torch.distributed import ProcessGroup
 from typing import Callable, List
-from mytransformers.parallel.pipeline_parallel.layers import FakeModule, FinalStrategyModule, PipeComputeModule
+from mytransformers.parallel.pipeline_parallel.layers import FakeModule, FinalStrategyModule
 from mytransformers.parallel.moe_parallel.layers.sparse_block import MoeSparseBlockModule, MoeSparseBlocFakekDPModule
 from mytransformers.parallel.pipeline_parallel.pipeline.utils import MBatch
 from mytransformers.parallel.pipeline_parallel.pipeline.Pipeline import Pipeline
 from .MoePipeInnerBoundaryPointModule import MoePipeInnerBoundaryPointModule
+from .MoeCondWorker import MoeCondWorker
 from threading import Thread
 from .Scheduler import BaseScheduler
+        
         
 class MoePipeline(Pipeline):
     """
@@ -31,7 +33,7 @@ class MoePipeline(Pipeline):
     def __init__(self,
                  model_forward: Callable,
                  modules: ModuleList,
-                 reset_modules: List[MoePipeInnerBoundaryPointModule, MoeSparseBlockModule],
+                 reset_modules: List[MoePipeInnerBoundaryPointModule | MoeSparseBlockModule],
                  final_strategy: FinalStrategyModule,
                  final_comm_group: ProcessGroup,
                  fake_args: Callable,
@@ -39,6 +41,10 @@ class MoePipeline(Pipeline):
         super().__init__(model_forward, modules, final_strategy, final_comm_group, fake_args)
         self.reset_modules = reset_modules
         self.scheduler = scheduler
+        self.compute_cond = MoeCondWorker(scheduler)
+        for module in self:
+            if isinstance(module, MoePipeInnerBoundaryPointModule):
+                module.compute_cond = self.compute_cond
         
     def set_fake_args(self, mbatch: MBatch) -> None:
         fake_args_list: List = self.get_fake_args(mbatch.data)
@@ -46,22 +52,20 @@ class MoePipeline(Pipeline):
             if isinstance(module.module, FakeModule):
                 module.module.set_gen_args(*fake_args)
             elif isinstance(module.module, MoeSparseBlocFakekDPModule):
-                module.module.fake_module.set_get_args(*fake_args)
+                module.module.fake_module.set_gen_args(*fake_args)
                 
-    def reset(self) -> None:
-        self.compute_cond.reset()
+    def start(self, num_mbatches: int) -> None:
         self.scheduler.reset()
         for module in self.reset_modules:
             module.reset()
-         
-    # TODO: переделать forward, так как есть нюансы с CondWorker      
+        self.compute_cond.start(num_mbatches)
+              
     @torch.no_grad()
     def forward(self, mbatches: List[MBatch], **forward_kwargs) -> List[MBatch]:
-        self.reset()
+        self.start(len(mbatches))
         def _forward(mbatch: MBatch) -> None:
             def _compute(mbatch: MBatch) -> MBatch:
                 self.set_fake_args(mbatch)
-                self.scheduler.register_alive(True)
                 mbatch.data.update(forward_kwargs)
                 return mbatch.compute(self.model_forward)  
             

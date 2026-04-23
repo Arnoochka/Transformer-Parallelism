@@ -1,2 +1,2 @@
-from .MoePipeline import Pipeline
+from .MoePipeline import MoePipeline
 from .Scheduler import *

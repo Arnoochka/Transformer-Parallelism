@@ -42,6 +42,6 @@ class MoeExpertsModuleGenerator(ParallelModuleGenerator):
                             expert_to_rank,
                             global_to_local_expert_idxs,
                             moe_group,
-                            scheduler
+                            scheduler,
                             **replace_layer_kwargs)
         

@@ -77,7 +77,8 @@ class TestSparseMoeBlock(nn.Module):
         self.token_router = config.token_router
 
     def route_tokens_to_experts(self, router_logits: Tensor) -> Tuple[Tensor, Tensor]:
-        top_k_index, top_k_weights = self.token_router(router_logits, self.top_k)
+        top_k_weights, top_k_index = torch.topk(router_logits, self.top_k, dim=-1)
+        top_k_weights = torch.softmax(top_k_weights, dim=-1)
         return top_k_index, top_k_weights.to(router_logits.dtype)
     
     def forward(self, hidden_states: Tensor) -> Tensor:

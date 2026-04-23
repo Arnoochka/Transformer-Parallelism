@@ -6,6 +6,7 @@ from mytransformers.parallel.pipeline_parallel.layers import PipeInnerBoundaryPo
 from mytransformers.parallel.pipeline_parallel.layers.PipeModule import PipeRole
 from mytransformers.parallel.pipeline_parallel.layers.strategies import InnerStrategyModule
 from mytransformers.parallel.moe_parallel.pipeline.Scheduler import BaseScheduler
+from .MoeCondWorker import MoeCondWorker
 
     
 class MoePipeInnerBoundaryPointModule(PipeInnerBoundaryPointModule):
@@ -32,16 +33,22 @@ class MoePipeInnerBoundaryPointModule(PipeInnerBoundaryPointModule):
         super().__init__(role, module, current_group, comm_group, strategy)
         self.scheduler = scheduler
         self.thread_idx = 0
+        self.compute_cond: MoeCondWorker = None
         
     @torch.no_grad()
     def forward(self, *args, **kwargs) -> Any:
         output = self.scheduler.transfer(op=self.strategy,
+                                         op_name="strategy",
                                          op_info=self.thread_idx,
                                          output=self.module(*args, **kwargs),
                                          is_send=self.is_send,
                                          current_group=self.current_group,
                                          comm_group=self.comm_group)
+        self.thread_idx += 1
+        self.compute_cond.notify()
         return output
     
     def reset(self) -> None:
         self.thread_idx = 0
+        
+    

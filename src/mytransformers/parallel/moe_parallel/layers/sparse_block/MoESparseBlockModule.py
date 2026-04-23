@@ -1,10 +1,9 @@
 import torch
 import torch.distributed as dist
 from torch import Tensor
-from ..experts.MoeExperts import MoeExperts
+from mytransformers.parallel.moe_parallel.layers.experts import MoeExperts
 from torch.distributed import ProcessGroup
 from mytransformers.parallel.ParallelModule import ParallelModule
-from ..experts.MoeExperts import MoeExperts
 from typing import Callable, Optional
 from mytransformers.parallel.moe_parallel.pipeline.Scheduler import BaseScheduler
 
