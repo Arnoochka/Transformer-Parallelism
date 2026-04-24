@@ -33,7 +33,6 @@ class MBatch:
         with cuda.stream(self.stream):
             self.data = compute_func(**self.data)
             self.event.record(self.stream)
-            
         return self
     
     

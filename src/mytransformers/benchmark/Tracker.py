@@ -59,11 +59,12 @@ class Tracker:
          
     def _get_memories(self, memory_func: Callable) -> torch.Tensor:
         memory = memory_func(cuda.current_device())
-        memory_tensor = torch.tensor(memory, dtype=torch.float, device='cuda')
+        memory_tensor = torch.tensor(memory, dtype=torch.float32, device=cuda.current_device())
         world_size = dist.get_world_size(self.group)
         memories = [torch.zeros_like(memory_tensor) for _ in range(world_size)]
         dist.all_gather(memories, memory_tensor, self.group)
         return torch.stack(memories) / self.unit.value
+        return torch.empty(2, device=cuda.current_device(), dtype=torch.float32)
     
 TRACKER: Optional[Tracker] = None
 def get_global_tracker() -> Tracker:

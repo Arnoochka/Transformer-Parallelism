@@ -189,73 +189,43 @@ class GenerationFunc:
         return decoder_input_ids
     
     @staticmethod
-    def pipeline_generate_encdec(model: Module,
-                                 batches: List[MBatch],
-                                 max_new_tokens: int,
-                                 eos_token_id: int,
-                                 pad_token_id: int,
-                                 use_cache: bool = False) -> List:
+    def test_generate(model: Module,
+                      mbatches: List[MBatch],
+                      max_new_tokens: int,
+                      eos_token_id: int,
+                      pad_token_id: int,
+                      use_cache: bool = False) -> List:
 
-        unfinished_sequences = []
-        input_ids_list = []
-        attention_masks_list = []
-        encoder_outputs_list = []
+        outputs: List[MBatch] = model(mbatches, use_cache=use_cache)
+        torch.cuda.synchronize() 
+        vocab_size = 10000
+        device = torch.cuda.current_device()
 
-        for idx, mbatch in enumerate(batches):
-            ids = mbatch.data['input_ids']
-            attn_mask = mbatch.data['attention_mask']
-            input_ids_list.append(ids)
-            unfinished_sequences.append(ids.new(ids.shape[0]).fill_(1))
-            attention_masks_list.append(attn_mask)
-
-            enc_out = model.encoder(
-                input_ids=ids,
-                attention_mask=attn_mask
-            )
-            encoder_outputs_list.append(enc_out.last_hidden_state)
-
-            input_ids_list[idx] = torch.full(
-                (ids.shape[0], 1),
-                model.config.decoder_start_token_id,
-                device=ids.device
-            )
-        past_key_values_list = [DynamicCache() if use_cache else None for _ in batches]
-
-        for step in range(max_new_tokens):
-            for idx, mbatch in enumerate(batches):
-                if use_cache and step > 0:
-                    decoder_input_ids = input_ids_list[idx][:, -1:]
-                else:
-                    decoder_input_ids = input_ids_list[idx]
-
-                mbatch.data = {
-                    "input_ids": decoder_input_ids,
-                    "attention_mask": attention_masks_list[idx],
-                    "encoder_hidden_states": encoder_outputs_list[idx],
-                    "past_key_values": past_key_values_list[idx]
-                }
-            outputs: List[MBatch] = model(batches, use_cache=use_cache)
-
+        for _ in range(max_new_tokens):
+            new_mbatches = []
             for idx, out in enumerate(outputs):
-                logits = out.data['logits']
-                next_token_logits = logits[:, -1, :]
-                next_token = torch.argmax(next_token_logits, dim=-1)
+                prev_ids =  out.data['logits']
+                batch_size = prev_ids.size(0)
 
-                eos_in_sents = (next_token == eos_token_id)
-                unfinished_sequences[idx] = unfinished_sequences[idx].mul((~eos_in_sents).long())
-                next_token = next_token * unfinished_sequences[idx] + pad_token_id * (1 - unfinished_sequences[idx])
-                next_token = next_token.unsqueeze(-1)
+                next_ids = torch.randint(
+                    0, vocab_size,
+                    (batch_size, 1),
+                    dtype=torch.long,
+                    device=device,
+                )
 
-                input_ids_list[idx] = torch.cat([input_ids_list[idx], next_token], dim=-1)
+                new_mbatches.append(MBatch(
+                    data={
+                        "input_ids": next_ids,
+                        "past_key_values": out.data.get('past_key_values'),
+                    },
+                    idx=idx,
+                    stream=torch.cuda.Stream(),
+                    event=torch.cuda.Event(),
+                ))
 
-                new_mask_val = unfinished_sequences[idx].unsqueeze(-1)
-                attention_masks_list[idx] = torch.cat([attention_masks_list[idx], new_mask_val], dim=-1)
+            mbatches = new_mbatches
+            outputs = model(mbatches, use_cache=use_cache)
+            torch.cuda.synchronize() 
 
-                if use_cache:
-                    past_key_values_list[idx] = out.data['past_key_values']
-
-            if torch.cat(unfinished_sequences).max() == 0:
-                print(f"Все предложения завершены на шаге {step+1}")
-                break
-
-        return input_ids_list
+        return outputs

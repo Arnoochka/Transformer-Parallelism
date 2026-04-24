@@ -75,8 +75,6 @@ class BenchmarkModel:
         self.stats['data_size'] = len(prompts)
         
         self.stats['batch_size'] = batch_size
-        torch.cuda.empty_cache()
-        torch.cuda.reset_peak_memory_stats()
         if self.warm_up:
             batches = self.batch_func(prompts, batch_size, self.max_prompt_len, self.tokenizer)
             self.generation_func(
@@ -86,8 +84,6 @@ class BenchmarkModel:
                 **generate_kwargs)
 
         batches = self.batch_func(prompts, batch_size, self.max_prompt_len, self.tokenizer)
-        torch.cuda.empty_cache()
-        torch.cuda.reset_peak_memory_stats()
         tracker.start()
         self.generation_func(
             self.model,
@@ -95,7 +91,6 @@ class BenchmarkModel:
             self.max_new_tokens,
             **generate_kwargs
         )
-
         inference_stats = tracker.stop()
 
         self.calculate_statistics(inference_stats)

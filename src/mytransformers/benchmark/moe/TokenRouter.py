@@ -7,19 +7,18 @@ class _TokenRouter:
     
     @staticmethod
     def uniform(router_logits: Tensor, top_k: int) -> Tuple[Tensor, Tensor]:
-        """
-        равномерное распределение
-        """
         num_experts = router_logits.shape[-1]
+        num_tokens = router_logits.shape[0]
+        device = router_logits.device
+
         routing_weights = torch.nn.functional.softmax(router_logits.float(), dim=-1)
-        top_k_weights, top_k_index = torch.topk(routing_weights, top_k, dim=-1)
+        top_k_weights, _ = torch.topk(routing_weights, top_k, dim=-1)
         top_k_weights /= top_k_weights.sum(dim=-1, keepdim=True)
-        top_k_index = torch.randint(
-            low=0,
-            high=num_experts,
-            size=top_k_index.size(),
-            device=router_logits.device
-        )
+        top_k_index = torch.stack([
+            torch.randperm(num_experts, device=device)[:top_k] 
+            for _ in range(num_tokens)
+        ])
+
         return top_k_index, top_k_weights.to(router_logits.dtype)
     
     @staticmethod

@@ -7,13 +7,13 @@ from transformers import DynamicCache
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
 class Config:
-    num_layers = 4
+    num_layers = 6
     num_experts_per_tok = 2
-    hidden_size = 2048
-    num_experts = 8
-    intermediate_size = 8192
-    num_attention_heads = 32
-    num_key_value_heads = 8
+    hidden_size = 1024
+    num_experts = 16
+    intermediate_size = 4096
+    num_attention_heads = 16
+    num_key_value_heads = 4
     head_dim = 64
     rms_norm_eps = 1e-5
     vocab_size = 32000
@@ -77,8 +77,7 @@ class TestSparseMoeBlock(nn.Module):
         self.token_router = config.token_router
 
     def route_tokens_to_experts(self, router_logits: Tensor) -> Tuple[Tensor, Tensor]:
-        top_k_weights, top_k_index = torch.topk(router_logits, self.top_k, dim=-1)
-        top_k_weights = torch.softmax(top_k_weights, dim=-1)
+        top_k_index, top_k_weights = self.token_router(router_logits, self.top_k)
         return top_k_index, top_k_weights.to(router_logits.dtype)
     
     def forward(self, hidden_states: Tensor) -> Tensor:

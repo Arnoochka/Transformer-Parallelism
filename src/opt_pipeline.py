@@ -64,7 +64,7 @@ if __name__ == "__main__":
 
     device = torch.cuda.current_device()
 
-    model_name = "facebook/opt-30b"
+    model_name = "facebook/opt-1.3b"
 
     tokenizer = AutoTokenizer.from_pretrained(
         model_name,
@@ -79,33 +79,27 @@ if __name__ == "__main__":
     stages = [
         (utils.create_group([0]), [0]),
         (utils.create_group([1]), [1]),
-        (utils.create_group([2]), [2]),
-        (utils.create_group([3]), [3]),
     ]
 
     inner_comm_groups = [
         utils.create_group([0, 1]),
-        utils.create_group([1, 2]),
-        utils.create_group([2, 3])
         ]
 
     pp_custom.OPTGenerator(
         module=model,
-        num_stages=4,
+        num_stages=2,
         groups_info=stages,
         inner_comm_groups=inner_comm_groups,
         final_comm_group=None,
-        embed_size=7168,
+        embed_size=2048,
         vocab_size=50272,
         device=device
     )
     utils.Logger.log_all_device(model)
-    with open('test.txt', 'r', encoding='utf-8') as file:
-        text = file.read()
         
     for batch_size in range(64, 64 + 1, 16):
-        prompts = [text for _ in range(batch_size)]
-        for max_prompt_len in range(1024, 1024 + 1, 128):
-            for max_new_tokens in range(1024, 1024 + 1, 128):
-                for num_microbatches in [1, 2, 4]:
+        prompts = ["text" for _ in range(batch_size)]
+        for max_prompt_len in range(128, 128 + 1, 128):
+            for max_new_tokens in range(128, 128 + 1, 128):
+                for num_microbatches in [4]:
                     start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)
