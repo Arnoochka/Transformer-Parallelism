@@ -1,3 +1,4 @@
 from .MoeExpertsGenerator import *
-from .MoeSperseBlockGenerator import *
+from .MoeSparseBlockGenerator import *
 from .MoePipelineGenerator import *
+from .MoeLayerGenerator import *

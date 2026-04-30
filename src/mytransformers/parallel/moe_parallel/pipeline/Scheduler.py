@@ -10,14 +10,22 @@ class BaseScheduler:
         self.cond = Condition()
         
     def transfer(self, op: Callable[..., Any], op_name: str, op_info: Any, **op_kwargs) -> Any:
-        # Logger.log_all_device(f"STATE:{self.state} OP_INFO:{op_info} IS_ALLOWED: {self.is_allowed(op_info)} transfer: {op_name} INIT")
+        cuda.synchronize(cuda.current_device())
+        dist.barrier()
+        Logger.log_all_device(f"STATE:{self.state} OP_INFO:{op_info} IS_ALLOWED: {self.is_allowed(op_info)} transfer: {op_name} INIT, {self.curr_num_threads}, {self.shift}")
         with self.cond: 
+            cuda.synchronize(cuda.current_device())
+            dist.barrier()
+            Logger.log_all_device(f"STATE:{self.state} OP_INFO:{op_info} IS_ALLOWED: {self.is_allowed(op_info)} transfer: {op_name} ENTER")
             while not self.is_allowed(op_info):
+                Logger.log_all_device(f"STATE:{self.state} OP_INFO:{op_info} IS_ALLOWED: {self.is_allowed(op_info)} transfer: {op_name} SLEEP")
                 self.cond.wait()
-            # Logger.log_all_device(f"STATE:{self.state} OP_INFO:{op_info} transfer: {op_name} START")
+            Logger.log_all_device(f"STATE:{self.state} OP_INFO:{op_info} transfer: {op_name} START")
             output = op(**op_kwargs)
+            cuda.synchronize(cuda.current_device())
+            dist.barrier()
+            Logger.log_all_device(f"STATE:{self.state} OP_INFO:{op_info} transfer: {op_name} END") 
             self.advance(op_info)
-            # Logger.log_all_device(f"STATE:{self.state} OP_INFO:{op_info} transfer: {op_name} END") 
             self.cond.notify_all()
         return output
             

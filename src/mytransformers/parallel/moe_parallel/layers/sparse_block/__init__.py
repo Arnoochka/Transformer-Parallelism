@@ -1,2 +1,2 @@
 from .MoESparseBlockModule import *
-from .MoeSperseBlockDPModule import *
+from .MoeSparseBlockDPModule import *

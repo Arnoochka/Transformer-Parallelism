@@ -9,23 +9,12 @@ class MoeDPExperts(MoeExperts):
     @torch.no_grad()
     def forward(self,
                 hidden_states: Tensor,
-                top_k_index: Tensor,
+                full_top_k_index: Tensor,
                 top_k_weights: Tensor) -> Tensor:
 
-        num_tokens, k = top_k_index.size()
-        hidden_dim = hidden_states.size(1)
+        num_tokens, hidden_dim = hidden_states.size()
+        k = full_top_k_index.size(1)
 
-        full_top_k_index = torch.empty(
-            (num_tokens * self.world_size, k),
-            dtype=top_k_index.dtype,
-            device=top_k_index.device
-        )
-        self.scheduler.transfer(op=dist.all_gather_into_tensor,
-                                op_info=self.thread_idx,
-                                op_name="all_gather_data",
-                                output_tensor=full_top_k_index,
-                                input_tensor=top_k_index,
-                                group=self.moe_group)
         flat_topk = full_top_k_index.reshape(-1)
         global_ranks = self.expert_to_rank[flat_topk]
 
@@ -96,5 +85,4 @@ class MoeDPExperts(MoeExperts):
         computed.mul_(flat_weights.unsqueeze(-1))
         output = computed.view(num_tokens, k, hidden_dim).sum(dim=1)
         
-        self.thread_idx += 1
         return output

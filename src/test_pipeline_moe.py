@@ -29,13 +29,13 @@ def get_moe_model(model: moe_test.TestModel,
     return moe_test.TestMoePipeGenerator(module=model,
                                          num_stages=2,
                                          groups_info=stages,
-                                         inner_comm_groups=inner_comm_groups,
                                          final_comm_group=None,
                                          embed_size=moe_test.Config.hidden_size,
                                          vocab_size=moe_test.Config.vocab_size,
                                          num_experts=moe_test.Config.num_experts,
+                                         k=moe_test.Config.num_experts_per_tok,
                                          scheduler=moe.pp.RoundRobinScheduler(),
-                                         moe_group=None,
+                                         moe_group=dist.group.WORLD,
                                          device=device)
     
     
@@ -82,7 +82,7 @@ def start(prompts: List[str],
     dtype=torch.float32,
     save_model_config=False,
     save_stats=True,
-    save_dir=f"results/base_test/pipe/prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-]")
+    save_dir=f"OK-")
     stats = benchmark(
     prompts=prompts,
     batch_size=batch_size // num_microbatches,
@@ -108,12 +108,13 @@ if __name__ == "__main__":
     inner_comm_groups = [utils.create_group([0, 1])]
     
     model = moe_test.TestModel(moe_test.Config).eval().to(device)
-    model = get_pipe_model(model, stages, inner_comm_groups)
+    model = get_moe_model(model, stages, inner_comm_groups)
+    utils.Logger.log_all_device(model)
     
     for batch_size in range(16, 16 + 1, 16):
         prompts = ["" for _ in range(batch_size)]
-        for max_prompt_len in [64, 256]:
-            for max_new_tokens in [64, 128, 192, 256]:
+        for max_prompt_len in [64]:
+            for max_new_tokens in [64]:
                 for num_microbatches in [2]:
                     start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)
     

@@ -60,5 +60,8 @@ class MoeExperts(ParallelModule):
     
     def reset(self) -> None:
         self.thread_idx = 0
+        
+    def update_thread_idx(self) -> None:
+        self.thread_idx += 1
     
     
