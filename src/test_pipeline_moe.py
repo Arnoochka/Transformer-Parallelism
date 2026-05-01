@@ -5,7 +5,7 @@ from typing import List, Tuple
 from mytransformers import utils
 from mytransformers.parallel import pp, moe
 from transformers import AutoTokenizer
-from mytransformers.benchmark import BenchmarkModel, GenerationFunc, moe_test
+from mytransformers.benchmark import BenchmarkModel, GenerationFunc, moe_test, TokenMetrics
 
 def get_pipe_model(model: moe_test.TestModel,
                    stages: List[Tuple[dist.ProcessGroup, List[int]]],
@@ -82,10 +82,11 @@ def start(prompts: List[str],
     dtype=torch.float32,
     save_model_config=False,
     save_stats=True,
-    save_dir=f"OK-")
+    save_dir=f"results/base_test/decode/schedule/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-")
     stats = benchmark(
     prompts=prompts,
     batch_size=batch_size // num_microbatches,
+    token_metric=TokenMetrics.output_tokens,
     eos_token_id=0,
     pad_token_id=0,
     use_cache=True)
@@ -111,10 +112,10 @@ if __name__ == "__main__":
     model = get_moe_model(model, stages, inner_comm_groups)
     utils.Logger.log_all_device(model)
     
-    for batch_size in range(16, 16 + 1, 16):
+    for batch_size in [16]:
         prompts = ["" for _ in range(batch_size)]
-        for max_prompt_len in [64]:
-            for max_new_tokens in [64]:
+        for max_prompt_len in [128, 512]:
+            for max_new_tokens in [64, 128, 256, 512, 1024]:
                 for num_microbatches in [2]:
                     start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)
     

@@ -55,13 +55,18 @@ class Logger:
             print(log)
             
     @staticmethod
-    def log_all_device(log: Any) -> None:
+    def log_all_device(log: Any, sync: bool = False) -> None:
         """
         Выводит данные со всех рангов, добавляя к выводу номер текущего ранга.
 
         Args:
             log (Any): Данные, которые необходимо вывести.
+            sync (bool): Нужно ли сделать синхронизацию перед выводом данных
         """
+        if sync:
+            torch.cuda.synchronize(torch.cuda.current_device())
+            torch.distributed.barrier()
+            
         print(f"---device:{dist.get_rank()}---:\n{log}")
     
     

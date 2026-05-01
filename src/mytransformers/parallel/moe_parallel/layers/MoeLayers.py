@@ -15,6 +15,11 @@ class MoeComputeLayer(ParallelModule):
         self.moe = moe
         self.notify_func: Optional[Callable] = None
         
+    def __call__(self, *args, **kwds) -> Any:
+        output = super().__call__(*args, **kwds)
+        self.notify()
+        return output
+        
     @torch.no_grad()
     def forward(self, *args, **kwargs) -> Any:
         output = self.module(*args, **kwargs)

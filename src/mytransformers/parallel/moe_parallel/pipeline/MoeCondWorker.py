@@ -22,12 +22,11 @@ class MoeCondWorker(CondWorker):
         return mbatch
 
     def notify(self) -> None:
-        print("NOTIFY")
         if self.num_mbatches - 1 > self.curr_idx:
             with self.cond:
                 self.scheduler.register_alive(True)
-                self.curr_idx += 1
-                self.cond.notify_all()  
+                self.curr_idx += 1 
+                self.cond.notify_all() 
             
     def start(self, num_mbatches: int) -> None:
         self.num_mbatches = num_mbatches

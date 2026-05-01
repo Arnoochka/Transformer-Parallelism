@@ -3,7 +3,7 @@ import json
 from torch import nn, Tensor
 import torch.distributed as dist
 from torch.distributed import ProcessGroup
-from typing import List, Optional, Union, Callable
+from typing import List, Optional, Union, Callable, Dict
 from transformers import PreTrainedModel, AutoTokenizer
 from .BenchmarkStats import BenchmarkStats
 from .Tracker import Tracker
@@ -15,6 +15,26 @@ def get_synchronize_func(group: ProcessGroup):
     def synchronize():
         dist.barrier(group)
     return synchronize
+
+class TokenMetrics:
+
+    @staticmethod
+    def input_tokens(stats: Dict) -> int:
+        return stats["data_size"] * stats["max_prompt_len"]
+
+    @staticmethod
+    def output_tokens(stats: Dict) -> int:
+        return stats["data_size"] * stats["max_new_tokens"]
+
+    @staticmethod
+    def num_requests(stats: Dict) -> int:
+        return stats["data_size"]
+
+    @staticmethod
+    def total_tokens(stats: Dict) -> int:
+        return stats["data_size"] * (stats["max_prompt_len"] + stats["max_new_tokens"])
+    
+        
 
 class BenchmarkModel:
     def __init__(self,
@@ -68,6 +88,7 @@ class BenchmarkModel:
     def __call__(self,
                  prompts: List[str],
                  batch_size: int,
+                 token_metric: Callable = TokenMetrics.output_tokens,
                  **generate_kwargs) -> BenchmarkStats:
 
         sync_func = get_synchronize_func(None)
@@ -97,7 +118,7 @@ class BenchmarkModel:
         )
         inference_stats = tracker.stop()
 
-        self.calculate_statistics(inference_stats)
+        self.calculate_statistics(inference_stats, token_metric)
         
         if self.save_stats:
             with open(self.save_dir + f"{self.stats['model_name']}_stats.json", 'w', encoding='utf-8') as file:
@@ -105,10 +126,10 @@ class BenchmarkModel:
                 
         return BenchmarkStats(**self.stats)
     
-    def calculate_statistics(self, inference_stats: pd.DataFrame) -> None:
+    def calculate_statistics(self, inference_stats: pd.DataFrame, token_metric: Callable) -> None:
         total_time = inference_stats.loc["stop", "time"]
 
-        total_tokens = self.stats["data_size"] * self.stats["max_new_tokens"]
+        total_tokens = token_metric(self.stats)
         throughput = total_tokens / total_time
         max_memory_per_device = []
         for col in inference_stats.columns:

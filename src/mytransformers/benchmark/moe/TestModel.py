@@ -5,6 +5,7 @@ from typing import Tuple, Optional
 from mytransformers.benchmark.moe import TokenRouter
 from transformers import DynamicCache
 from transformers.modeling_outputs import CausalLMOutputWithPast
+from mytransformers.utils import Logger
 
 class Config:
     num_layers = 6

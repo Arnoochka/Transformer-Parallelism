@@ -107,22 +107,15 @@ class TestMoePipeGenerator(TestPipeGenerator):
         orig_modules = cls.get_orig_modules(module)
         num_modules_per_stage = len(orig_modules) // num_stages
         inner_boundary_points = [num_modules_per_stage * k - 1 for k in range(num_stages)][1:]
-        moe_layer_configs = cls.get_moe_layer_configs(module.layers,
-                                                      num_experts,
-                                                      inner_boundary_points,
-                                                      moe_group)
+        moe_configs = cls.get_moe_layer_configs(orig_modules,
+                                                num_experts,
+                                                inner_boundary_points,
+                                                moe_group)
         
-        orig_modules = cls.get_orig_modules(module)
         fake_modules = cls.get_fake_modules(num_layers, device)
         
         modules = [(name, orig_module, fake_module, is_moe)
                    for (name, orig_module, is_moe), fake_module in zip(orig_modules, fake_modules)]
-        moe_configs = {}
-        idx = 0
-        for name, _, is_moe in orig_modules:
-            if is_moe:
-                moe_configs[name] = moe_layer_configs[idx]
-                idx += 1
         
         
         stage: nn.ModuleDict = MoePipelineGenerator.get_stage(modules=modules,
@@ -175,23 +168,25 @@ class TestMoePipeGenerator(TestPipeGenerator):
                 
                 
     @staticmethod
-    def get_moe_layer_configs(layers: nn.ModuleList,
+    def get_moe_layer_configs(orig_modules: List[Tuple[str, nn.Module, bool]],
                               num_experts: int,
                               inner_boundary_points: List[int],
-                              moe_group: ProcessGroup) -> List[MoeLayerConfig]:
+                              moe_group: ProcessGroup) -> Dict[str, MoeLayerConfig]:
+        
         def _make_gate(gate_module: nn.Module, route_fn: Callable) -> Callable:
             return lambda hs: route_fn(gate_module(hs))
         
         main_rank = 0
-        moe_layer_configs = []
-        for idx, module in enumerate(layers):
-            expert_idxs = torch.arange(0, num_experts)
-            expert_idxs = list(torch.split(expert_idxs, expert_idxs.size(0) // dist.get_world_size()))
-            _gate = module.moe.gate.to(device=torch.cuda.current_device())
-            _route = module.moe.route_tokens_to_experts
-            gate = _make_gate(_gate, _route)
-            next_main_rank = main_rank + 1 if idx in inner_boundary_points else main_rank
-            moe_layer_configs.append(MoeLayerConfig(module.moe, gate, main_rank, next_main_rank, expert_idxs, moe_group))
+        moe_layer_configs = {}
+        for idx, (name, module, is_moe) in enumerate(orig_modules):
+            if is_moe:
+                expert_idxs = torch.arange(0, num_experts)
+                expert_idxs = list(torch.split(expert_idxs, expert_idxs.size(0) // dist.get_world_size()))
+                _gate = module.moe.gate.to(device=torch.cuda.current_device())
+                _route = module.moe.route_tokens_to_experts
+                gate = _make_gate(_gate, _route)
+                next_main_rank = main_rank + 1 if idx in inner_boundary_points else main_rank
+                moe_layer_configs[name] = MoeLayerConfig(module.moe, gate, main_rank, next_main_rank, expert_idxs, moe_group)
             
             if idx in inner_boundary_points:
                 main_rank += 1

@@ -81,10 +81,7 @@ class MoeSparseBlockDPModule(MoeSparseBlockModule):
         
         if local_rank == self.next_main_rank:
             hidden_states = hidden_states[permutation]
-            hidden_states = hidden_states.reshape(batch_size, sequence_length, hidden_dim)
-            
-        if self.main_rank != self.next_main_rank:
-            self.scheduler.no
+        hidden_states = hidden_states.reshape(batch_size, sequence_length, hidden_dim)
         
         return hidden_states
     
@@ -93,6 +90,7 @@ class MoeSparseBlockDPModule(MoeSparseBlockModule):
         num_tokens, k = top_k_index.size()
         chunk_size = num_tokens // world_size
         permutation = torch.empty(num_tokens, dtype=torch.long, device=top_k_index.device)
+        return torch.arange(0, num_tokens, dtype=torch.long, device=top_k_index.device)
         
         expert_ranks = self.experts.expert_to_rank[top_k_index]
         
@@ -205,7 +203,6 @@ class MoeSparseBlockDPModule(MoeSparseBlockModule):
                         top_k_index: Tensor,
                         top_k_weights: Tensor) -> Tuple[Tensor, Tensor]:
         src = dist.get_global_rank(self.moe_group, self.main_rank)
-        utils.Logger.log_all_device(f"BROADCAST: {top_k_index.shape}, {top_k_weights.shape}, src={src}")
         dist.broadcast(top_k_index, src=src, group=self.moe_group)
         dist.broadcast(top_k_weights, src=src, group=self.moe_group)
                 
