@@ -5,7 +5,7 @@ from typing import List, Tuple
 from mytransformers import utils
 from mytransformers.parallel import pp, moe
 from transformers import AutoTokenizer
-from mytransformers.benchmark import BenchmarkModel, GenerationFunc, moe_test, TokenMetrics
+from mytransformers.benchmark import BenchmarkModel, GenerationFunc, moe_test, TokenMetrics, init_global_tracker
 
 def get_pipe_model(model: moe_test.TestModel,
                    stages: List[Tuple[dist.ProcessGroup, List[int]]],
@@ -27,7 +27,7 @@ def get_moe_model(model: moe_test.TestModel,
                   ) -> moe_test.TestModel:
     
     return moe_test.TestMoePipeGenerator(module=model,
-                                         num_stages=2,
+                                         num_stages=len(stages),
                                          groups_info=stages,
                                          final_comm_group=None,
                                          embed_size=moe_test.Config.hidden_size,
@@ -79,14 +79,14 @@ def start(prompts: List[str],
     description="test_model",
     max_prompt_len=max_prompt_len,
     max_new_tokens=max_new_tokens,
-    dtype=torch.float32,
+    dtype=torch.bfloat16,
     save_model_config=False,
     save_stats=True,
-    save_dir=f"results/base_test/decode/schedule/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-")
+    save_dir=f"results/base_test/moe-optimized/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-")
     stats = benchmark(
     prompts=prompts,
     batch_size=batch_size // num_microbatches,
-    token_metric=TokenMetrics.output_tokens,
+    token_metric=TokenMetrics.input_tokens,
     eos_token_id=0,
     pad_token_id=0,
     use_cache=True)
@@ -94,7 +94,6 @@ def start(prompts: List[str],
 
 
 if __name__ == "__main__":
-
     utils.init_distributed_cuda()
     rank = dist.get_rank()
     world_size = dist.get_world_size()
@@ -104,19 +103,29 @@ if __name__ == "__main__":
     stages = [
         (utils.create_group([0]), [0]),
         (utils.create_group([1]), [1]),
+        (utils.create_group([2]), [2]),
+        (utils.create_group([3]), [3])
     ]
 
-    inner_comm_groups = [utils.create_group([0, 1])]
-    
-    model = moe_test.TestModel(moe_test.Config).eval().to(device)
+    inner_comm_groups = [
+        utils.create_group([0, 1]),
+        utils.create_group([1, 2]),
+        utils.create_group([2, 3])
+        ]
+    torch.set_default_dtype(torch.bfloat16)
+    model = moe_test.TestModel(moe_test.Config).eval().to(torch.bfloat16).to(device)
     model = get_moe_model(model, stages, inner_comm_groups)
     utils.Logger.log_all_device(model)
+    tracker = init_global_tracker()
+    tracker.start()
     
-    for batch_size in [16]:
+    for batch_size in [32]:
         prompts = ["" for _ in range(batch_size)]
-        for max_prompt_len in [128, 512]:
-            for max_new_tokens in [64, 128, 256, 512, 1024]:
-                for num_microbatches in [2]:
+        for max_prompt_len in [1024]:
+            for max_new_tokens in [0]:
+                for num_microbatches in [1]:
                     start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)
+                    
+    tracker.stop()
     
     

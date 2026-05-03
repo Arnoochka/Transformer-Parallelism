@@ -3,6 +3,7 @@ from typing import Callable, Any
 from mytransformers.utils import Logger
 from torch import cuda
 import torch.distributed as dist
+import torch
 
 class BaseScheduler:
     def __init__(self) -> None:
@@ -11,11 +12,11 @@ class BaseScheduler:
         
     def transfer(self, op: Callable[..., Any], op_name: str, op_info: Any, **op_kwargs) -> Any:
         with self.cond: 
-            # Logger.log_all_device(f"STATE: {self.state}, OP_INFO: {op_info}, OP_NAME: {op_name}, IS_ALLOWED: {self.is_allowed(op_info)}, START", sync=True)
             while not self.is_allowed(op_info):
                 self.cond.wait()
-            output = op(**op_kwargs)
-            # Logger.log_all_device(f"STATE: {self.state}, OP_INFO: {op_info}, OP_NAME: {op_name}, END", sync=True)
+                
+        output = op(**op_kwargs)
+        with self.cond:
             self.advance(op_info)
             self.cond.notify_all()
         return output

@@ -10,14 +10,6 @@ from mytransformers.parallel.moe_parallel.pipeline.Scheduler import BaseSchedule
 class MoeExperts(ParallelModule):
     """
     Базовый вычислительный класс Mixture of Experts параллелизма.
-
-    Args:
-        global_num_experts (int): Общее количество экспертов.
-        local_experts (ModuleList): Локальный список экспертов.
-        expert_to_rank (Tensor): Отображение эксперта на ранг устройства.
-        global_to_local_expert_idxs (Tensor): Сопоставление глобальных индексов экспертов с локальными.
-        moe_group (ProcessGroup): Группа процессов MoE.
-        scheduler (BaseScheduler): расписание для коллективных операций.
     """
     def __init__(self,
                  global_num_experts: int,
@@ -29,39 +21,35 @@ class MoeExperts(ParallelModule):
         super().__init__()
         self.rank = dist.get_rank(group=moe_group)
         self.world_size = dist.get_world_size(group=moe_group)
-        
+
         self.global_num_experts = global_num_experts
         self.local_experts = local_experts
         self.expert_to_rank = expert_to_rank
         self.global_to_local_expert_idxs = global_to_local_expert_idxs
-        
+
         self.moe_group = moe_group
         self.scheduler = scheduler
         self.thread_idx = 0
 
-    def compute(self, hidden_states: Tensor, expert_mask: Tensor) -> Tensor:
+    def compute(self, hidden_states: Tensor, expert_offsets: Tensor) -> Tensor:
         """
-        hidden_states: (num_tokens, hidden_dim)
-        expert_mask: (num_experts_local, num_tokens)
+        hidden_states предварительно отсортирован по local expert index.
+        expert_offsets: (num_local_experts + 1,) — границы каждого эксперта.
+        
+        hidden_states[start:end] — contiguous view, не копия.
         """
-    
         for expert_idx, expert in enumerate(self.local_experts):
-            idxs = torch.nonzero(expert_mask[expert_idx], as_tuple=True)[0]
-    
-            if idxs.numel() == 0:
+            start = expert_offsets[expert_idx].item()
+            end = expert_offsets[expert_idx + 1].item()
+            if start == end:
                 continue
-            
-            expert_input = hidden_states.index_select(0, idxs)
-            expert_output = expert(expert_input)
-    
-            hidden_states.index_copy_(0, idxs, expert_output)
-    
+            expert_output = expert(hidden_states[start:end])
+            hidden_states[start:end] = expert_output
+            del expert_output
         return hidden_states
-    
+
     def reset(self) -> None:
         self.thread_idx = 0
-        
+
     def update_thread_idx(self) -> None:
         self.thread_idx += 1
-    
-    

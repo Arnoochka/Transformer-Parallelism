@@ -1,88 +1,116 @@
 import torch
 import torch.distributed as dist
 from torch import Tensor
-from torch.nn import functional
 from .MoeExperts import MoeExperts
-    
+
+
 class MoeDPExperts(MoeExperts):
-    
+
     @torch.no_grad()
     def forward(self,
                 hidden_states: Tensor,
                 full_top_k_index: Tensor,
                 top_k_weights: Tensor) -> Tensor:
-
         num_tokens, hidden_dim = hidden_states.size()
         k = full_top_k_index.size(1)
 
         flat_topk = full_top_k_index.reshape(-1)
         global_ranks = self.expert_to_rank[flat_topk]
 
-        token_indices = torch.arange(num_tokens, device=hidden_states.device).repeat_interleave(k)
+        my_start = self.rank * num_tokens * k
+        my_end = my_start + num_tokens * k
+        local_ranks = global_ranks[my_start:my_end]
 
-        local_slice = slice(num_tokens * self.rank * k, num_tokens * (self.rank + 1) * k)
-        local_ranks = global_ranks[local_slice]
-
-        global_sorted_ranks, global_sorted_indices = torch.sort(global_ranks, stable=True)
-        local_sorted_ranks, local_sorted_indices = torch.sort(local_ranks, stable=True)
-
-        send_counts = torch.bincount(local_sorted_ranks, minlength=self.world_size)
+        local_sort_perm = torch.argsort(local_ranks, stable=True) 
+        send_counts = torch.bincount(local_ranks, minlength=self.world_size)
 
         global_ranks_2d = global_ranks.view(self.world_size, num_tokens * k)
         recv_counts = (global_ranks_2d == self.rank).sum(dim=1)
+        del global_ranks_2d
+
+        global_sort_perm = torch.argsort(global_ranks, stable=True)
+        recv_mask = global_ranks[global_sort_perm] == self.rank
+        del global_ranks
+
+        recv_expert_ids = flat_topk[global_sort_perm[recv_mask]]
+        del global_sort_perm, recv_mask, flat_topk
 
         send_counts_list = send_counts.tolist()
         recv_counts_list = recv_counts.tolist()
+        total_recv = recv_counts.sum().item()
 
-        need_mask = (global_sorted_ranks == self.rank)
-        need_indices = flat_topk[global_sorted_indices][need_mask]
-        
-        need_hidden_states = torch.empty(
-            (recv_counts.sum().item(), hidden_dim),
+        token_ids = local_sort_perm // k
+        send_buf = hidden_states[token_ids]
+        del token_ids
+
+        recv_hidden = torch.empty(
+            (total_recv, hidden_dim),
             dtype=hidden_states.dtype,
-            device=hidden_states.device
-        )
+            device=hidden_states.device)
 
-        expert_mask = functional.one_hot(
-            self.global_to_local_expert_idxs[need_indices],
-            num_classes=len(self.local_experts)
-        ).transpose(0, 1).to(torch.bool)
-        sorted_token_indices = token_indices[local_sorted_indices]
-        
-        self.scheduler.transfer(op=dist.all_to_all_single,
-                                op_info=self.thread_idx,
-                                op_name="first_all_to_all",
-                                output=need_hidden_states,
-                                input=hidden_states[sorted_token_indices],
-                                output_split_sizes=recv_counts_list,
-                                input_split_sizes=send_counts_list,
-                                group=self.moe_group)
-        
-        need_hidden_states = self.compute(need_hidden_states, expert_mask)
-        computed = torch.empty(
+        self.scheduler.transfer(
+            op=dist.all_to_all_single,
+            op_info=self.thread_idx,
+            op_name="first_all_to_all",
+            output=recv_hidden,
+            input=send_buf,
+            output_split_sizes=recv_counts_list,
+            input_split_sizes=send_counts_list,
+            group=self.moe_group)
+        del send_buf
+
+        local_expert_ids = self.global_to_local_expert_idxs[recv_expert_ids]
+        del recv_expert_ids
+
+        expert_sort_perm = torch.argsort(local_expert_ids, stable=True)
+
+        num_local = len(self.local_experts)
+        counts = torch.bincount(local_expert_ids, minlength=num_local)
+        del local_expert_ids
+        offsets = torch.zeros(num_local + 1, dtype=torch.long,
+                              device=hidden_states.device)
+        torch.cumsum(counts, dim=0, out=offsets[1:])
+        del counts
+
+        recv_hidden = recv_hidden[expert_sort_perm]
+
+        recv_hidden = self.compute(recv_hidden, offsets)
+        del offsets
+
+        expert_unsort = torch.empty_like(expert_sort_perm)
+        expert_unsort[expert_sort_perm] = torch.arange(
+            total_recv, device=hidden_states.device)
+        del expert_sort_perm
+
+        recv_hidden = recv_hidden[expert_unsort]
+        del expert_unsort
+
+        result = torch.empty(
             (num_tokens * k, hidden_dim),
             dtype=hidden_states.dtype,
-            device=hidden_states.device
-        )
-        
-        self.scheduler.transfer(op=dist.all_to_all_single,
-                                op_info=self.thread_idx,
-                                op_name="second_all_to_all",
-                                output=computed,
-                                input=need_hidden_states,
-                                output_split_sizes=send_counts_list,
-                                input_split_sizes=recv_counts_list,
-                                group=self.moe_group)
-        
-        inverse_indices = torch.empty_like(local_sorted_indices)
-        inverse_indices[local_sorted_indices] = torch.arange(
-            local_sorted_indices.size(0),
-            device=local_sorted_indices.device
-        )
+            device=hidden_states.device)
 
-        computed = computed[inverse_indices]
-        flat_weights = top_k_weights.reshape(-1)
-        computed.mul_(flat_weights.unsqueeze(-1))
-        output = computed.view(num_tokens, k, hidden_dim).sum(dim=1)
-        
+        self.scheduler.transfer(
+            op=dist.all_to_all_single,
+            op_info=self.thread_idx,
+            op_name="second_all_to_all",
+            output=result,
+            input=recv_hidden,
+            output_split_sizes=send_counts_list,
+            input_split_sizes=recv_counts_list,
+            group=self.moe_group)
+        del recv_hidden
+
+        token_unsort = torch.empty_like(local_sort_perm)
+        token_unsort[local_sort_perm] = torch.arange(
+            local_sort_perm.size(0), device=hidden_states.device)
+        del local_sort_perm
+
+        result = result[token_unsort]
+        del token_unsort
+
+        result.mul_(top_k_weights.reshape(-1).unsqueeze(-1))
+        output = result.view(num_tokens, k, hidden_dim).sum(dim=1)
+        del result
+
         return output

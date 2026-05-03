@@ -90,7 +90,7 @@ class MoeSparseBlockDPModule(MoeSparseBlockModule):
         num_tokens, k = top_k_index.size()
         chunk_size = num_tokens // world_size
         permutation = torch.empty(num_tokens, dtype=torch.long, device=top_k_index.device)
-        return torch.arange(0, num_tokens, dtype=torch.long, device=top_k_index.device)
+        # return torch.arange(0, num_tokens, dtype=torch.long, device=top_k_index.device)
         
         expert_ranks = self.experts.expert_to_rank[top_k_index]
         

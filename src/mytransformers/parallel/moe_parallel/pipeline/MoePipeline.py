@@ -29,6 +29,7 @@ class MoePipeline(Pipeline):
         for idx, module in enumerate(self):
             if idx in inner_boundary_points:
                 module.set_notify(self.compute_cond.notify)
+                break
         
     def set_fake_args(self, mbatch: MBatch) -> None:
         fake_args_list: List = self.get_fake_args(mbatch.data)
