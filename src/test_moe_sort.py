@@ -28,7 +28,7 @@ class MockMoE:
         rank_offset = torch.arange(self.world_size, device=top_k_index.device) * chunk_size
         permutation[valid_tokens] = rank_offset[valid_ranks] + valid_pos
         permutation[~valid] = -1
-        permutation = self.assign_residual_tokens(permutation, rank_counts, chunk_size, self.world_size, min(self.world_size, top_k_index.shape[1]))
+        self.assign_residual_tokens(permutation, rank_counts, chunk_size, self.world_size, min(self.world_size, k))
         return permutation
             
     def assign_residual_tokens(self, permutation, rank_counts, chunk_size, world_size, num_round):
@@ -120,7 +120,7 @@ if __name__ == "__main__":
     num_experts = 64
     
     k_values = [1, 2, 4, 8]
-    world_size_values = [2, 4, 8, 16, 32]
+    world_size_values = [2, 4, 8, 16, 32, 64]
     iterations = 10
     
     results = []
@@ -150,4 +150,4 @@ if __name__ == "__main__":
     ]
     
     print(summary[cols_to_show])
-    summary.to_csv("moe_sort_efficiency_results.csv", index=False)
+    summary.to_csv("moe_sort_all.csv", index=False)
