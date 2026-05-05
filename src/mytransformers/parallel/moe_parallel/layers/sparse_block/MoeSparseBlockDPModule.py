@@ -90,7 +90,7 @@ class MoeSparseBlockDPModule(MoeSparseBlockModule):
         num_tokens, k = top_k_index.size()
         chunk_size = num_tokens // world_size
         permutation = torch.empty(num_tokens, dtype=torch.long, device=top_k_index.device)
-        # return torch.arange(0, num_tokens, dtype=torch.long, device=top_k_index.device)
+        return torch.arange(0, num_tokens, dtype=torch.long, device=top_k_index.device)
         
         expert_ranks = self.experts.expert_to_rank[top_k_index]
         
@@ -119,9 +119,16 @@ class MoeSparseBlockDPModule(MoeSparseBlockModule):
         permutation[~valid] = -1
         
         # Этап 2: остатки распределяем итеративным аукционом.
-        permutation = self.assign_residual_tokens(
-            permutation, rank_counts, chunk_size, world_size, min(world_size, k)
-        )
+        # permutation = self.assign_residual_tokens(
+        #     permutation, rank_counts, chunk_size, world_size, min(world_size, k)
+        # )
+        rest_mask = (permutation == -1)
+        if rest_mask.any():
+            used = torch.zeros(num_tokens, dtype=torch.bool, device=permutation.device)
+            used[permutation[~rest_mask]] = True
+            free_positions = torch.nonzero(~used).squeeze(1)
+            unplaced_idx = torch.nonzero(rest_mask).squeeze(1)
+            permutation[unplaced_idx] = free_positions
         
         return permutation
     

@@ -1,3 +1,4 @@
+import os
 import torch
 from torch import Tensor
 import torch.distributed as dist
@@ -82,11 +83,11 @@ def start(prompts: List[str],
     dtype=torch.bfloat16,
     save_model_config=False,
     save_stats=True,
-    save_dir=f"results/base_test/moe-optimized/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-")
+    save_dir=f"results/moe/base_test/moe-base/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-")
     stats = benchmark(
     prompts=prompts,
     batch_size=batch_size // num_microbatches,
-    token_metric=TokenMetrics.input_tokens,
+    token_metric=TokenMetrics.output_tokens,
     eos_token_id=0,
     pad_token_id=0,
     use_cache=True)
@@ -116,16 +117,16 @@ if __name__ == "__main__":
     model = moe_test.TestModel(moe_test.Config).eval().to(torch.bfloat16).to(device)
     model = get_moe_model(model, stages, inner_comm_groups)
     utils.Logger.log_all_device(model)
-    tracker = init_global_tracker()
-    tracker.start()
     
-    for batch_size in [32]:
+    for batch_size in [16, 32]:
         prompts = ["" for _ in range(batch_size)]
-        for max_prompt_len in [1024]:
-            for max_new_tokens in [0]:
-                for num_microbatches in [1]:
-                    start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)
-                    
-    tracker.stop()
+        for max_prompt_len in [128, 256, 512, 1024]:
+            for max_new_tokens in [128, 256, 512, 1024]:
+                for num_microbatches in [1, 2]:
+                    if not os.path.exists(f"results/moe/base_test/moe-base/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-test_model_stats.json"):
+                        start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)
+                    else:
+                        utils.Logger.log_main_device(f"Эксперимент results/moe/base_test/moe-fsort/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-test_model_stats.json уже проведен")
+                        
     
     

@@ -1,0 +1,19 @@
+{
+    "description": "test_model",
+    "model_name": "test_model",
+    "model_size": 1.2255973815917969,
+    "dtype": "bfloat16",
+    "max_prompt_len": 128,
+    "max_new_tokens": 128,
+    "model_config_dir": null,
+    "data_size": 32,
+    "batch_size": 16,
+    "inference_time": 25.97279300200171,
+    "throughput": 157.70348609347957,
+    "max_memory_allocated_per_device": [
+        6.025392055511475,
+        6.038468837738037,
+        6.037497043609619,
+        6.026302337646484
+    ]
+}
