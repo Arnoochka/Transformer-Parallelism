@@ -4,16 +4,16 @@
     "model_size": 1.1679840087890625,
     "dtype": "bfloat16",
     "max_prompt_len": 1024,
-    "max_new_tokens": 256,
+    "max_new_tokens": 512,
     "model_config_dir": null,
     "data_size": 32,
     "batch_size": 32,
-    "inference_time": 91.71396729399999,
-    "throughput": 89.32118238587994,
+    "inference_time": 143.6951302839998,
+    "throughput": 114.01917356293549,
     "max_memory_allocated_per_device": [
         10.33614730834961,
         10.309783935546875,
         10.309783935546875,
         10.33614730834961
     ]
-}
+}}

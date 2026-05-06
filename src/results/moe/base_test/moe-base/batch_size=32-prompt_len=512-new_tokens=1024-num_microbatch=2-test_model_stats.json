@@ -8,13 +8,12 @@
     "model_config_dir": null,
     "data_size": 32,
     "batch_size": 16,
-    "inference_time": 308.939206462,
-    "throughput": 106.0661752040543,
+    "inference_time": 309.6933270599993,
+    "throughput": 105.80789812643137,
     "max_memory_allocated_per_device": [
         6.445507049560547,
         6.43475341796875,
         6.43475341796875,
         6.445507049560547
     ]
-}} ]
 }
