@@ -83,7 +83,7 @@ def start(prompts: List[str],
     dtype=torch.bfloat16,
     save_model_config=False,
     save_stats=True,
-    save_dir=f"results/moe/base_test/moe-base/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-")
+    save_dir=f"results/base_test/pipe/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-")
     stats = benchmark(
     prompts=prompts,
     batch_size=batch_size // num_microbatches,
@@ -126,7 +126,7 @@ if __name__ == "__main__":
                     if not os.path.exists(f"results/moe/base_test/moe-base/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-test_model_stats.json"):
                         start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)
                     else:
-                        utils.Logger.log_main_device(f"Эксперимент results/moe/base_test/moe-fsort/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-test_model_stats.json уже проведен")
+                        utils.Logger.log_main_device(f"Эксперимент batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-test_model_stats.json уже проведен")
                         
     
     
