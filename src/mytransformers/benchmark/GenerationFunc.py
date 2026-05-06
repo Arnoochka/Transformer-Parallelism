@@ -229,3 +229,73 @@ class GenerationFunc:
             torch.cuda.synchronize() 
 
         return outputs
+    
+    
+    @staticmethod
+    def test_generate_merge(model, mbatches, max_new_tokens, eos_token_id, pad_token_id, use_cache=False):
+        outputs = model(mbatches, use_cache=use_cache)
+        torch.cuda.synchronize()
+
+        caches = [out.data['past_key_values'] for out in outputs]
+        def _merge_kv_caches(caches: List[DynamicCache]) -> DynamicCache:
+            if len(caches) == 1:
+                return caches[0]
+
+            num_layers = len(caches[0].layers)
+
+            seq_lens = [c.layers[0].keys.size(-2) for c in caches]
+            max_seq = max(seq_lens)
+
+            merged = DynamicCache()
+            for layer_idx in range(num_layers):
+                k_parts, v_parts = [], []
+
+                for c, s in zip(caches, seq_lens):
+                    k = c.layers[layer_idx].keys    # [b, heads, seq, head_dim]
+                    v = c.layers[layer_idx].values
+
+                    if s < max_seq:
+                        pad = max_seq - s
+                        k = torch.nn.functional.pad(k, (0, 0, pad, 0))
+                        v = torch.nn.functional.pad(v, (0, 0, pad, 0))
+
+                    k_parts.append(k)
+                    v_parts.append(v)
+
+                merged.update(
+                    torch.cat(k_parts, dim=0),
+                    torch.cat(v_parts, dim=0),
+                    layer_idx,
+                )
+
+            for c in caches:
+                del c
+
+            return merged
+
+        merged_cache = _merge_kv_caches(caches)
+
+        next_ids = torch.cat([
+            out.data['logits'][:, -1:, :].argmax(dim=-1)
+            for out in outputs
+        ], dim=0)
+
+        for _ in range(max_new_tokens):
+            decode_mbatch = MBatch(
+                data={
+                    "input_ids": next_ids,
+                    "past_key_values": merged_cache,
+                },
+                idx=0,
+                stream=torch.cuda.Stream(),
+                event=torch.cuda.Event(),
+            )
+
+            outputs = model([decode_mbatch], use_cache=True)
+            torch.cuda.synchronize()
+
+            out = outputs[0]
+            merged_cache = out.data['past_key_values']
+            next_ids = out.data['logits'][:, -1:, :].argmax(dim=-1)
+
+        return outputs
