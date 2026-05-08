@@ -8,6 +8,8 @@ from mytransformers.parallel import pp, moe
 from transformers import AutoTokenizer
 from mytransformers.benchmark import BenchmarkModel, GenerationFunc, moe_test, TokenMetrics, init_global_tracker
 
+PATH = "results/moe/base_test/moe-optimized"
+
 def get_pipe_model(model: moe_test.TestModel,
                    stages: List[Tuple[dist.ProcessGroup, List[int]]],
                    inner_comm_groups: List[dist.ProcessGroup],
@@ -83,7 +85,7 @@ def start(prompts: List[str],
     dtype=torch.bfloat16,
     save_model_config=False,
     save_stats=True,
-    save_dir=f"results/moe/base_test/moe-base/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-")
+    save_dir=f"{PATH}/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-")
     stats = benchmark(
     prompts=prompts,
     batch_size=batch_size // num_microbatches,
@@ -120,10 +122,10 @@ if __name__ == "__main__":
     
     for batch_size in [16, 32]:
         prompts = ["" for _ in range(batch_size)]
-        for max_prompt_len in [128, 256, 512, 1024]:
+        for max_prompt_len in [256]:
             for max_new_tokens in [128, 256, 512, 1024]:
                 for num_microbatches in [1, 2]:
-                    if not os.path.exists(f"results/moe/base_test/moe-base/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-test_model_stats.json"):
+                    if not os.path.exists(f"{PATH}/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-test_model_stats.json"):
                         start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)
                     else:
                         utils.Logger.log_main_device(f"Эксперимент batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-test_model_stats.json уже проведен")

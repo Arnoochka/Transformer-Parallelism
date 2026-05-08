@@ -1,8 +1,134 @@
 nohup: ignoring input
-W0506 18:30:47.765000 65834 site-packages/torch/distributed/run.py:851] 
-W0506 18:30:47.765000 65834 site-packages/torch/distributed/run.py:851] *****************************************
-W0506 18:30:47.765000 65834 site-packages/torch/distributed/run.py:851] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
-W0506 18:30:47.765000 65834 site-packages/torch/distributed/run.py:851] *****************************************
+W0508 11:25:51.748000 2663 site-packages/torch/distributed/run.py:851] 
+W0508 11:25:51.748000 2663 site-packages/torch/distributed/run.py:851] *****************************************
+W0508 11:25:51.748000 2663 site-packages/torch/distributed/run.py:851] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0508 11:25:51.748000 2663 site-packages/torch/distributed/run.py:851] *****************************************
+---device:3---:
+TestModel(
+  (embed_tokens): PipeFakeModule(role=PipeRole.dummy
+    (module): FakeTensorModule(device=3)
+  )
+  (layers): ModuleList(
+    (0-10): 11 x MoeFakeLayer(
+      (module): FakeTensorModule(device=3)
+      (moe): MoeSparseBlockDPModule(
+        (experts): MoeDPExperts(
+          (local_experts): ModuleList(
+            (0-3): 4 x TestMLP(
+              (w1): Linear(in_features=1024, out_features=3584, bias=False)
+              (w2): Linear(in_features=3584, out_features=1024, bias=False)
+              (w3): Linear(in_features=1024, out_features=3584, bias=False)
+              (act_fn): ReLU()
+            )
+          )
+        )
+      )
+      (fake_hidden_module): FakeTensorModule(device=3)
+    )
+    (11-13): 3 x MoeComputeLayer(
+      (module): TestDecoderLayer(
+        (self_attn): TestAttention(
+          (q_proj): Linear(in_features=1024, out_features=1024, bias=False)
+          (k_proj): Linear(in_features=1024, out_features=256, bias=False)
+          (v_proj): Linear(in_features=1024, out_features=256, bias=False)
+          (o_proj): Linear(in_features=1024, out_features=1024, bias=False)
+        )
+        (moe): MoeSparseBlockDPModule(
+          (experts): MoeDPExperts(
+            (local_experts): ModuleList(
+              (0-3): 4 x TestMLP(
+                (w1): Linear(in_features=1024, out_features=3584, bias=False)
+                (w2): Linear(in_features=3584, out_features=1024, bias=False)
+                (w3): Linear(in_features=1024, out_features=3584, bias=False)
+                (act_fn): ReLU()
+              )
+            )
+          )
+        )
+        (input_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
+        (post_attention_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
+      )
+      (moe): MoeSparseBlockDPModule(
+        (experts): MoeDPExperts(
+          (local_experts): ModuleList(
+            (0-3): 4 x TestMLP(
+              (w1): Linear(in_features=1024, out_features=3584, bias=False)
+              (w2): Linear(in_features=3584, out_features=1024, bias=False)
+              (w3): Linear(in_features=1024, out_features=3584, bias=False)
+              (act_fn): ReLU()
+            )
+          )
+        )
+      )
+    )
+  )
+  (lm_head): PipeComputeModule(role=PipeRole.compute
+    (module): Linear(in_features=1024, out_features=32768, bias=False)
+  )
+)
+---device:0---:
+TestModel(
+  (embed_tokens): PipeComputeModule(role=PipeRole.compute
+    (module): Embedding(32768, 1024)
+  )
+  (layers): ModuleList(
+    (0-2): 3 x MoeComputeLayer(
+      (module): TestDecoderLayer(
+        (self_attn): TestAttention(
+          (q_proj): Linear(in_features=1024, out_features=1024, bias=False)
+          (k_proj): Linear(in_features=1024, out_features=256, bias=False)
+          (v_proj): Linear(in_features=1024, out_features=256, bias=False)
+          (o_proj): Linear(in_features=1024, out_features=1024, bias=False)
+        )
+        (moe): MoeSparseBlockDPModule(
+          (experts): MoeDPExperts(
+            (local_experts): ModuleList(
+              (0-3): 4 x TestMLP(
+                (w1): Linear(in_features=1024, out_features=3584, bias=False)
+                (w2): Linear(in_features=3584, out_features=1024, bias=False)
+                (w3): Linear(in_features=1024, out_features=3584, bias=False)
+                (act_fn): ReLU()
+              )
+            )
+          )
+        )
+        (input_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
+        (post_attention_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
+      )
+      (moe): MoeSparseBlockDPModule(
+        (experts): MoeDPExperts(
+          (local_experts): ModuleList(
+            (0-3): 4 x TestMLP(
+              (w1): Linear(in_features=1024, out_features=3584, bias=False)
+              (w2): Linear(in_features=3584, out_features=1024, bias=False)
+              (w3): Linear(in_features=1024, out_features=3584, bias=False)
+              (act_fn): ReLU()
+            )
+          )
+        )
+      )
+    )
+    (3-13): 11 x MoeFakeLayer(
+      (module): FakeTensorModule(device=0)
+      (moe): MoeSparseBlockDPModule(
+        (experts): MoeDPExperts(
+          (local_experts): ModuleList(
+            (0-3): 4 x TestMLP(
+              (w1): Linear(in_features=1024, out_features=3584, bias=False)
+              (w2): Linear(in_features=3584, out_features=1024, bias=False)
+              (w3): Linear(in_features=1024, out_features=3584, bias=False)
+              (act_fn): ReLU()
+            )
+          )
+        )
+      )
+      (fake_hidden_module): FakeTensorModule(device=0)
+    )
+  )
+  (lm_head): PipeFakeModule(role=PipeRole.dummy
+    (module): FakeTensorModule(device=0)
+  )
+)
 ---device:1---:
 TestModel(
   (embed_tokens): PipeFakeModule(role=PipeRole.dummy
@@ -81,164 +207,7 @@ TestModel(
   (lm_head): PipeFakeModule(role=PipeRole.dummy
     (module): FakeTensorModule(device=1)
   )
-)---device:0---:
-TestModel(
-  (embed_tokens): PipeComputeModule(role=PipeRole.compute
-    (module): Embedding(32768, 1024)
-  )
-  (layers): ModuleList(
-    (0-2): 3 x MoeComputeLayer(
-      (module): TestDecoderLayer(
-        (self_attn): TestAttention(
-          (q_proj): Linear(in_features=1024, out_features=1024, bias=False)
-          (k_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (v_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (o_proj): Linear(in_features=1024, out_features=1024, bias=False)
-        )
-        (moe): MoeSparseBlockDPModule(
-          (experts): MoeDPExperts(
-            (local_experts): ModuleList(
-              (0-3): 4 x TestMLP(
-                (w1): Linear(in_features=1024, out_features=3584, bias=False)
-                (w2): Linear(in_features=3584, out_features=1024, bias=False)
-                (w3): Linear(in_features=1024, out_features=3584, bias=False)
-                (act_fn): ReLU()
-              )
-            )
-          )
-        )
-        (input_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
-        (post_attention_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
-      )
-      (moe): MoeSparseBlockDPModule(
-        (experts): MoeDPExperts(
-          (local_experts): ModuleList(
-            (0-3): 4 x TestMLP(
-              (w1): Linear(in_features=1024, out_features=3584, bias=False)
-              (w2): Linear(in_features=3584, out_features=1024, bias=False)
-              (w3): Linear(in_features=1024, out_features=3584, bias=False)
-              (act_fn): ReLU()
-            )
-          )
-        )
-      )
-    )
-    (3-13): 11 x MoeFakeLayer(
-      (module): FakeTensorModule(device=0)
-      (moe): MoeSparseBlockDPModule(
-        (experts): MoeDPExperts(
-          (local_experts): ModuleList(
-            (0-3): 4 x TestMLP(
-              (w1): Linear(in_features=1024, out_features=3584, bias=False)
-              (w2): Linear(in_features=3584, out_features=1024, bias=False)
-              (w3): Linear(in_features=1024, out_features=3584, bias=False)
-              (act_fn): ReLU()
-            )
-          )
-        )
-      )
-      (fake_hidden_module): FakeTensorModule(device=0)
-    )
-  )
-  (lm_head): PipeFakeModule(role=PipeRole.dummy
-    (module): FakeTensorModule(device=0)
-  )
 )
-
-Эксперимент batch_size=16-prompt_len=128-new_tokens=128-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=128-new_tokens=128-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=128-new_tokens=256-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=128-new_tokens=256-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=128-new_tokens=512-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=128-new_tokens=512-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=128-new_tokens=1024-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=128-new_tokens=1024-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=256-new_tokens=128-num_microbatch=1-test_model_stats.json уже проведен
----device:3---:
-TestModel(
-  (embed_tokens): PipeFakeModule(role=PipeRole.dummy
-    (module): FakeTensorModule(device=3)
-  )
-  (layers): ModuleList(
-    (0-10): 11 x MoeFakeLayer(
-      (module): FakeTensorModule(device=3)
-      (moe): MoeSparseBlockDPModule(
-        (experts): MoeDPExperts(
-          (local_experts): ModuleList(
-            (0-3): 4 x TestMLP(
-              (w1): Linear(in_features=1024, out_features=3584, bias=False)
-              (w2): Linear(in_features=3584, out_features=1024, bias=False)
-              (w3): Linear(in_features=1024, out_features=3584, bias=False)
-              (act_fn): ReLU()
-            )
-          )
-        )
-      )
-      (fake_hidden_module): FakeTensorModule(device=3)
-    )
-    (11-13): 3 x MoeComputeLayer(
-      (module): TestDecoderLayer(
-        (self_attn): TestAttention(
-          (q_proj): Linear(in_features=1024, out_features=1024, bias=False)
-          (k_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (v_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (o_proj): Linear(in_features=1024, out_features=1024, bias=False)
-        )
-        (moe): MoeSparseBlockDPModule(
-          (experts): MoeDPExperts(
-            (local_experts): ModuleList(
-              (0-3): 4 x TestMLP(
-                (w1): Linear(in_features=1024, out_features=3584, bias=False)
-                (w2): Linear(in_features=3584, out_features=1024, bias=False)
-                (w3): Linear(in_features=1024, out_features=3584, bias=False)
-                (act_fn): ReLU()
-              )
-            )
-          )
-        )
-        (input_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
-        (post_attention_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
-      )
-      (moe): MoeSparseBlockDPModule(
-        (experts): MoeDPExperts(
-          (local_experts): ModuleList(
-            (0-3): 4 x TestMLP(
-              (w1): Linear(in_features=1024, out_features=3584, bias=False)
-              (w2): Linear(in_features=3584, out_features=1024, bias=False)
-              (w3): Linear(in_features=1024, out_features=3584, bias=False)
-              (act_fn): ReLU()
-            )
-          )
-        )
-      )
-    )
-  )
-  (lm_head): PipeComputeModule(role=PipeRole.compute
-    (module): Linear(in_features=1024, out_features=32768, bias=False)
-  )
-)Эксперимент batch_size=16-prompt_len=256-new_tokens=128-num_microbatch=2-test_model_stats.json уже проведен
-
-Эксперимент batch_size=16-prompt_len=256-new_tokens=256-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=256-new_tokens=256-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=256-new_tokens=512-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=256-new_tokens=512-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=256-new_tokens=1024-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=256-new_tokens=1024-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=512-new_tokens=128-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=512-new_tokens=128-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=512-new_tokens=256-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=512-new_tokens=256-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=512-new_tokens=512-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=512-new_tokens=512-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=512-new_tokens=1024-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=512-new_tokens=1024-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=1024-new_tokens=128-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=1024-new_tokens=128-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=1024-new_tokens=256-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=1024-new_tokens=256-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=1024-new_tokens=512-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=1024-new_tokens=512-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=16-prompt_len=1024-new_tokens=1024-num_microbatch=1-test_model_stats.json уже проведен
 ---device:2---:
 TestModel(
   (embed_tokens): PipeFakeModule(role=PipeRole.dummy
@@ -317,31 +286,7 @@ TestModel(
   (lm_head): PipeFakeModule(role=PipeRole.dummy
     (module): FakeTensorModule(device=2)
   )
-)Эксперимент batch_size=16-prompt_len=1024-new_tokens=1024-num_microbatch=2-test_model_stats.json уже проведен
-
-Эксперимент batch_size=32-prompt_len=128-new_tokens=128-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=128-new_tokens=128-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=128-new_tokens=256-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=128-new_tokens=256-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=128-new_tokens=512-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=128-new_tokens=512-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=128-new_tokens=1024-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=128-new_tokens=1024-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=256-new_tokens=128-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=256-new_tokens=128-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=256-new_tokens=256-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=256-new_tokens=256-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=256-new_tokens=512-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=256-new_tokens=512-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=256-new_tokens=1024-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=256-new_tokens=1024-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=512-new_tokens=128-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=512-new_tokens=128-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=512-new_tokens=256-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=512-new_tokens=256-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=512-new_tokens=512-num_microbatch=1-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=512-new_tokens=512-num_microbatch=2-test_model_stats.json уже проведен
-Эксперимент batch_size=32-prompt_len=512-new_tokens=1024-num_microbatch=1-test_model_stats.json уже проведен
+)
 /root/miniconda3/envs/nir/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
   return func(*args, **kwargs)
 /root/Transformer-Parallelism/src/mytransformers/benchmark/Tracker.py:38: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
@@ -350,19 +295,81 @@ TestModel(
 STATS: name=start
 /root/Transformer-Parallelism/src/mytransformers/benchmark/Tracker.py:38: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
   cuda.reset_max_memory_allocated(cuda.current_device())
----device:2---:
-STATS: name=start
-/root/Transformer-Parallelism/src/mytransformers/benchmark/Tracker.py:38: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
-  cuda.reset_max_memory_allocated(cuda.current_device())
 ---device:0---:
 STATS: name=start
 /root/Transformer-Parallelism/src/mytransformers/benchmark/Tracker.py:38: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
   cuda.reset_max_memory_allocated(cuda.current_device())
 ---device:3---:
 STATS: name=start
+/root/Transformer-Parallelism/src/mytransformers/benchmark/Tracker.py:38: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
+  cuda.reset_max_memory_allocated(cuda.current_device())
+---device:2---:
+STATS: name=start
+---device:0---:
+STATS: name=stop
+---device:3---:
+STATS: name=stop
 ---device:1---:
+STATS: name=stop
+---device:2---:
+STATS: name=stop
+Description: test_model
+-------Benchmark results-------
+model name: test_model
+model size: 1.226, dtype: bfloat16
+inference time (s): 24.665
+throughput (token/s): 83.034
+data size: 16, batch size: 16, max len: 256, max new tokens: 128
+    inference time (s): 24.665
+    throughput (token/s): 83.034
+
+max memory allocated per device (GB):            
+    device 0: 5.289
+    device 1: 5.237
+    device 2: 5.237
+    device 3: 5.289
+---device:1---:
+STATS: name=start---device:0---:
+STATS: name=start
+
+---device:2---:
+STATS: name=start
+---device:3---:
+STATS: name=start
+---device:3---:
+STATS: name=stop---device:1---:
+STATS: name=stop---device:0---:
+STATS: name=stop
+
+
+---device:2---:
+STATS: name=stop
+Description: test_model
+-------Benchmark results-------
+model name: test_model
+model size: 1.226, dtype: bfloat16
+inference time (s): 29.671
+throughput (token/s): 69.024
+data size: 16, batch size: 8, max len: 256, max new tokens: 128
+    inference time (s): 29.671
+    throughput (token/s): 69.024
+
+max memory allocated per device (GB):            
+    device 0: 5.369
+    device 1: 5.364
+    device 2: 5.364
+    device 3: 5.369
+---device:1---:
+STATS: name=start---device:0---:
+STATS: name=start
+
+---device:3---:
+STATS: name=start
+---device:2---:
+STATS: name=start
+---device:2---:
 STATS: name=stop---device:3---:
-STATS: name=stop---device:2---:
+STATS: name=stop---device:1---:
 STATS: name=stop
 
 
@@ -372,48 +379,79 @@ Description: test_model
 -------Benchmark results-------
 model name: test_model
 model size: 1.226, dtype: bfloat16
-inference time (s): 309.693
-throughput (token/s): 105.808
-data size: 32, batch size: 16, max len: 512, max new tokens: 1024
-    inference time (s): 309.693
-    throughput (token/s): 105.808
+inference time (s): 46.062
+throughput (token/s): 88.923
+data size: 16, batch size: 16, max len: 256, max new tokens: 256
+    inference time (s): 46.062
+    throughput (token/s): 88.923
 
 max memory allocated per device (GB):            
-    device 0: 6.446
-    device 1: 6.435
-    device 2: 6.435
-    device 3: 6.446
+    device 0: 5.452
+    device 1: 5.403
+    device 2: 5.403
+    device 3: 5.452
 ---device:2---:
-STATS: name=start
----device:1---:
+STATS: name=start---device:1---:
+STATS: name=start---device:0---:
 STATS: name=start---device:3---:
 STATS: name=start
----device:0---:
-STATS: name=start
 
+
+
+---device:1---:
+STATS: name=stop
 ---device:0---:
-STATS: name=stop---device:1---:
-STATS: name=stop---device:2---:
 STATS: name=stop
 ---device:3---:
 STATS: name=stop
+---device:2---:
+STATS: name=stop
+Description: test_model
+-------Benchmark results-------
+model name: test_model
+model size: 1.226, dtype: bfloat16
+inference time (s): 57.488
+throughput (token/s): 71.249
+data size: 16, batch size: 8, max len: 256, max new tokens: 256
+    inference time (s): 57.488
+    throughput (token/s): 71.249
 
+max memory allocated per device (GB):            
+    device 0: 5.516
+    device 1: 5.529
+    device 2: 5.529
+    device 3: 5.517
+---device:2---:
+STATS: name=start---device:0---:
+STATS: name=start---device:3---:
+STATS: name=start
+
+
+---device:1---:
+STATS: name=start
+---device:2---:
+STATS: name=stop---device:1---:
+STATS: name=stop---device:0---:
+STATS: name=stop
+
+---device:3---:
+STATS: name=stop
 
 Description: test_model
 -------Benchmark results-------
 model name: test_model
 model size: 1.226, dtype: bfloat16
-inference time (s): 66.923
-throughput (token/s): 61.205
-data size: 32, batch size: 32, max len: 1024, max new tokens: 128
-    inference time (s): 66.923
-    throughput (token/s): 61.205
+inference time (s): 89.092
+throughput (token/s): 91.949
+data size: 16, batch size: 16, max len: 256, max new tokens: 512
+    inference time (s): 89.092
+    throughput (token/s): 91.949
 
 max memory allocated per device (GB):            
-    device 0: 10.336
-    device 1: 10.310
-    device 2: 10.310
-    device 3: 10.336
+    device 0: 5.654
+    device 1: 5.608
+    device 2: 5.608
+    device 3: 5.654
 ---device:1---:
 STATS: name=start---device:2---:
 STATS: name=start---device:0---:
@@ -423,28 +461,59 @@ STATS: name=start
 ---device:3---:
 STATS: name=start
 ---device:2---:
+STATS: name=stop---device:1---:
+STATS: name=stop---device:3---:
+STATS: name=stop---device:0---:
 STATS: name=stop
----device:3---:
-STATS: name=stop
----device:0---:
-STATS: name=stop
----device:1---:
-STATS: name=stop
+
+
+
 Description: test_model
 -------Benchmark results-------
 model name: test_model
 model size: 1.226, dtype: bfloat16
-inference time (s): 75.684
-throughput (token/s): 54.120
-data size: 32, batch size: 16, max len: 1024, max new tokens: 128
-    inference time (s): 75.684
-    throughput (token/s): 54.120
+inference time (s): 110.073
+throughput (token/s): 74.423
+data size: 16, batch size: 8, max len: 256, max new tokens: 512
+    inference time (s): 110.073
+    throughput (token/s): 74.423
 
 max memory allocated per device (GB):            
-    device 0: 8.680
-    device 1: 8.653
-    device 2: 8.653
-    device 3: 8.680
+    device 0: 5.561
+    device 1: 5.609
+    device 2: 5.609
+    device 3: 5.562
+---device:2---:
+STATS: name=start---device:1---:
+STATS: name=start---device:0---:
+STATS: name=start
+
+
+---device:3---:
+STATS: name=start
+---device:2---:
+STATS: name=stop---device:3---:
+STATS: name=stop---device:0---:
+STATS: name=stop---device:1---:
+STATS: name=stop
+
+
+
+Description: test_model
+-------Benchmark results-------
+model name: test_model
+model size: 1.226, dtype: bfloat16
+inference time (s): 184.556
+throughput (token/s): 88.775
+data size: 16, batch size: 16, max len: 256, max new tokens: 1024
+    inference time (s): 184.556
+    throughput (token/s): 88.775
+
+max memory allocated per device (GB):            
+    device 0: 5.803
+    device 1: 5.765
+    device 2: 5.765
+    device 3: 5.803
 ---device:1---:
 STATS: name=start---device:2---:
 STATS: name=start---device:3---:
@@ -465,30 +534,30 @@ Description: test_model
 -------Benchmark results-------
 model name: test_model
 model size: 1.226, dtype: bfloat16
-inference time (s): 88.021
-throughput (token/s): 93.069
-data size: 32, batch size: 32, max len: 1024, max new tokens: 256
-    inference time (s): 88.021
-    throughput (token/s): 93.069
+inference time (s): 223.968
+throughput (token/s): 73.153
+data size: 16, batch size: 8, max len: 256, max new tokens: 1024
+    inference time (s): 223.968
+    throughput (token/s): 73.153
 
 max memory allocated per device (GB):            
-    device 0: 10.336
-    device 1: 10.310
-    device 2: 10.310
-    device 3: 10.336
+    device 0: 5.646
+    device 1: 5.764
+    device 2: 5.765
+    device 3: 5.646
 ---device:1---:
+STATS: name=start---device:2---:
 STATS: name=start---device:3---:
 STATS: name=start---device:0---:
-STATS: name=start---device:2---:
 STATS: name=start
 
 
 
----device:3---:
-STATS: name=stop---device:1---:
-STATS: name=stop---device:2---:
+---device:1---:
+STATS: name=stop---device:3---:
 STATS: name=stop
-
+---device:2---:
+STATS: name=stop
 ---device:0---:
 STATS: name=stop
 
@@ -496,142 +565,235 @@ Description: test_model
 -------Benchmark results-------
 model name: test_model
 model size: 1.226, dtype: bfloat16
-inference time (s): 113.858
-throughput (token/s): 71.949
-data size: 32, batch size: 16, max len: 1024, max new tokens: 256
-    inference time (s): 113.858
-    throughput (token/s): 71.949
+inference time (s): 34.185
+throughput (token/s): 119.818
+data size: 32, batch size: 32, max len: 256, max new tokens: 128
+    inference time (s): 34.185
+    throughput (token/s): 119.818
 
 max memory allocated per device (GB):            
-    device 0: 8.680
-    device 1: 8.653
-    device 2: 8.653
-    device 3: 8.680
+    device 0: 5.905
+    device 1: 5.859
+    device 2: 5.859
+    device 3: 5.905
+---device:1---:
+STATS: name=start
 ---device:0---:
+STATS: name=start
+---device:2---:
+STATS: name=start---device:3---:
+STATS: name=start
+
+---device:3---:
+STATS: name=stop
+---device:1---:
+STATS: name=stop---device:0---:
+STATS: name=stop---device:2---:
+STATS: name=stop
+
+
+Description: test_model
+-------Benchmark results-------
+model name: test_model
+model size: 1.226, dtype: bfloat16
+inference time (s): 37.068
+throughput (token/s): 110.499
+data size: 32, batch size: 16, max len: 256, max new tokens: 128
+    inference time (s): 37.068
+    throughput (token/s): 110.499
+
+max memory allocated per device (GB):            
+    device 0: 5.812
+    device 1: 5.860
+    device 2: 5.860
+    device 3: 5.813
+---device:2---:
+STATS: name=start---device:3---:
+STATS: name=start---device:0---:
 STATS: name=start---device:1---:
-STATS: name=start---device:3---:
-STATS: name=start---device:2---:
 STATS: name=start
 
 
 
----device:1---:
-STATS: name=stop
 ---device:2---:
-STATS: name=stop
----device:0---:
-STATS: name=stop
----device:3---:
-STATS: name=stop
-Description: test_model
--------Benchmark results-------
-model name: test_model
-model size: 1.226, dtype: bfloat16
-inference time (s): 143.695
-throughput (token/s): 114.019
-data size: 32, batch size: 32, max len: 1024, max new tokens: 512
-    inference time (s): 143.695
-    throughput (token/s): 114.019
-
-max memory allocated per device (GB):            
-    device 0: 10.336
-    device 1: 10.310
-    device 2: 10.310
-    device 3: 10.336
----device:0---:
-STATS: name=start
----device:2---:
-STATS: name=start
----device:3---:
-STATS: name=start
----device:1---:
-STATS: name=start
----device:0---:
 STATS: name=stop---device:1---:
 STATS: name=stop---device:3---:
 STATS: name=stop
 
+
+---device:0---:
+STATS: name=stop
+Description: test_model
+-------Benchmark results-------
+model name: test_model
+model size: 1.226, dtype: bfloat16
+inference time (s): 61.269
+throughput (token/s): 133.706
+data size: 32, batch size: 32, max len: 256, max new tokens: 256
+    inference time (s): 61.269
+    throughput (token/s): 133.706
+
+max memory allocated per device (GB):            
+    device 0: 5.979
+    device 1: 5.937
+    device 2: 5.938
+    device 3: 5.980
+---device:1---:
+STATS: name=start---device:3---:
+STATS: name=start
+---device:0---:
+STATS: name=start
+---device:2---:
+STATS: name=start
+
+---device:1---:
+STATS: name=stop---device:3---:
+STATS: name=stop---device:0---:
+STATS: name=stop
+
+
 ---device:2---:
 STATS: name=stop
+Description: test_model
+-------Benchmark results-------
+model name: test_model
+model size: 1.226, dtype: bfloat16
+inference time (s): 69.591
+throughput (token/s): 117.717
+data size: 32, batch size: 16, max len: 256, max new tokens: 256
+    inference time (s): 69.591
+    throughput (token/s): 117.717
+
+max memory allocated per device (GB):            
+    device 0: 5.854
+    device 1: 5.936
+    device 2: 5.937
+    device 3: 5.855
+---device:1---:
+STATS: name=start---device:3---:
+STATS: name=start---device:2---:
+STATS: name=start
+
+---device:0---:
+STATS: name=start
+
+---device:1---:
+STATS: name=stop---device:0---:
+STATS: name=stop---device:2---:
+STATS: name=stop---device:3---:
+STATS: name=stop
+
+
 
 Description: test_model
 -------Benchmark results-------
 model name: test_model
 model size: 1.226, dtype: bfloat16
-inference time (s): 196.581
-throughput (token/s): 83.345
-data size: 32, batch size: 16, max len: 1024, max new tokens: 512
-    inference time (s): 196.581
-    throughput (token/s): 83.345
+inference time (s): 117.221
+throughput (token/s): 139.770
+data size: 32, batch size: 32, max len: 256, max new tokens: 512
+    inference time (s): 117.221
+    throughput (token/s): 139.770
 
 max memory allocated per device (GB):            
-    device 0: 8.680
-    device 1: 8.653
-    device 2: 8.653
-    device 3: 8.680
----device:1---:
-STATS: name=start---device:2---:
-STATS: name=start---device:3---:
+    device 0: 6.128
+    device 1: 6.094
+    device 2: 6.094
+    device 3: 6.128
+---device:3---:
 STATS: name=start---device:0---:
+STATS: name=start---device:2---:
 STATS: name=start
 
-
-
----device:0---:
-STATS: name=stop---device:2---:
-STATS: name=stop---device:3---:
-STATS: name=stop---device:1---:
-STATS: name=stop
-
-
-
-Description: test_model
--------Benchmark results-------
-model name: test_model
-model size: 1.226, dtype: bfloat16
-inference time (s): 270.810
-throughput (token/s): 121.000
-data size: 32, batch size: 32, max len: 1024, max new tokens: 1024
-    inference time (s): 270.810
-    throughput (token/s): 121.000
-
-max memory allocated per device (GB):            
-    device 0: 10.336
-    device 1: 10.310
-    device 2: 10.310
-    device 3: 10.336
----device:0---:
-STATS: name=start---device:3---:
-STATS: name=start
 
 ---device:1---:
 STATS: name=start
----device:2---:
-STATS: name=start
----device:0---:
-STATS: name=stop---device:1---:
+---device:1---:
+STATS: name=stop---device:3---:
 STATS: name=stop---device:2---:
 STATS: name=stop
----device:3---:
+
+
+---device:0---:
 STATS: name=stop
-
-
 Description: test_model
 -------Benchmark results-------
 model name: test_model
 model size: 1.226, dtype: bfloat16
-inference time (s): 366.326
-throughput (token/s): 89.450
-data size: 32, batch size: 16, max len: 1024, max new tokens: 1024
-    inference time (s): 366.326
-    throughput (token/s): 89.450
+inference time (s): 139.917
+throughput (token/s): 117.098
+data size: 32, batch size: 16, max len: 256, max new tokens: 512
+    inference time (s): 139.917
+    throughput (token/s): 117.098
 
 max memory allocated per device (GB):            
-    device 0: 8.680
-    device 1: 8.653
-    device 2: 8.653
-    device 3: 8.680
-[rank2]:[W506 19:25:46.510154898 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
-[rank0]:[W506 19:25:46.555741535 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
-[rank1]:[W506 19:25:46.577469697 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
-[rank3]:[W506 19:25:46.578737766 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+    device 0: 5.940
+    device 1: 6.083
+    device 2: 6.059
+    device 3: 5.941
+---device:1---:
+STATS: name=start---device:2---:
+STATS: name=start---device:0---:
+STATS: name=start---device:3---:
+STATS: name=start
+
+
+
+---device:2---:
+STATS: name=stop---device:3---:
+STATS: name=stop---device:0---:
+STATS: name=stop
+
+
+---device:1---:
+STATS: name=stop
+Description: test_model
+-------Benchmark results-------
+model name: test_model
+model size: 1.226, dtype: bfloat16
+inference time (s): 238.153
+throughput (token/s): 137.592
+data size: 32, batch size: 32, max len: 256, max new tokens: 1024
+    inference time (s): 238.153
+    throughput (token/s): 137.592
+
+max memory allocated per device (GB):            
+    device 0: 6.426
+    device 1: 6.408
+    device 2: 6.408
+    device 3: 6.426
+---device:2---:
+STATS: name=start---device:0---:
+STATS: name=start---device:1---:
+STATS: name=start
+
+
+---device:3---:
+STATS: name=start
+---device:1---:
+STATS: name=stop---device:2---:
+STATS: name=stop---device:0---:
+STATS: name=stop
+
+
+---device:3---:
+STATS: name=stop
+Description: test_model
+-------Benchmark results-------
+model name: test_model
+model size: 1.226, dtype: bfloat16
+inference time (s): 301.238
+throughput (token/s): 108.778
+data size: 32, batch size: 16, max len: 256, max new tokens: 1024
+    inference time (s): 301.238
+    throughput (token/s): 108.778
+
+max memory allocated per device (GB):            
+    device 0: 6.113
+    device 1: 6.406
+    device 2: 6.407
+    device 3: 6.114
+[rank2]:[W508 12:25:35.899366923 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[rank1]:[W508 12:25:35.904997480 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[rank0]:[W508 12:25:35.026701714 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[rank3]:[W508 12:25:35.042504682 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())

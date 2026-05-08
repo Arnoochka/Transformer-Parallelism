@@ -48,13 +48,13 @@ class MoeSparseBlockDPModule(MoeSparseBlockModule):
             top_k_index=top_k_index,
             top_k_weights=top_k_weights)
         
-        permutation = self.sort(top_k_index)
-        inverse = self.get_inverse(permutation)
+        # permutation = self.sort(top_k_index)
+        # inverse = self.get_inverse(permutation)
         
-        if local_rank == self.main_rank:
-            hidden_states = hidden_states[inverse]
-        top_k_index = top_k_index[inverse]
-        top_k_weights = top_k_weights[inverse]
+        # if local_rank == self.main_rank:
+        #     hidden_states = hidden_states[inverse]
+        # top_k_index = top_k_index[inverse]
+        # top_k_weights = top_k_weights[inverse]
         splitted = list(torch.split(hidden_states, chunk_size, dim=0))
         local_hidden_states = splitted[local_rank]
         local_top_k_weights = list(torch.split(top_k_weights, chunk_size, dim=0))[local_rank]
@@ -79,8 +79,8 @@ class MoeSparseBlockDPModule(MoeSparseBlockModule):
             dst=dist.get_global_rank(self.moe_group, self.next_main_rank),
             group=self.moe_group)
         
-        if local_rank == self.next_main_rank:
-            hidden_states = hidden_states[permutation]
+        # if local_rank == self.next_main_rank:
+        #     hidden_states = hidden_states[permutation]
         hidden_states = hidden_states.reshape(batch_size, sequence_length, hidden_dim)
         
         return hidden_states
@@ -90,7 +90,6 @@ class MoeSparseBlockDPModule(MoeSparseBlockModule):
         num_tokens, k = top_k_index.size()
         chunk_size = num_tokens // world_size
         permutation = torch.empty(num_tokens, dtype=torch.long, device=top_k_index.device)
-        return torch.arange(0, num_tokens, dtype=torch.long, device=top_k_index.device)
         
         expert_ranks = self.experts.expert_to_rank[top_k_index]
         
@@ -119,9 +118,9 @@ class MoeSparseBlockDPModule(MoeSparseBlockModule):
         permutation[~valid] = -1
         
         # Этап 2: остатки распределяем итеративным аукционом.
-        # permutation = self.assign_residual_tokens(
-        #     permutation, rank_counts, chunk_size, world_size, min(world_size, k)
-        # )
+        permutation = self.assign_residual_tokens(
+            permutation, rank_counts, chunk_size, world_size, min(world_size, k)
+        )
         rest_mask = (permutation == -1)
         if rest_mask.any():
             used = torch.zeros(num_tokens, dtype=torch.bool, device=permutation.device)

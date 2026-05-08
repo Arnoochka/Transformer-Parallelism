@@ -240,37 +240,67 @@ class GenerationFunc:
         def _merge_kv_caches(caches: List[DynamicCache]) -> DynamicCache:
             if len(caches) == 1:
                 return caches[0]
-
+        
             num_layers = len(caches[0].layers)
-
-            seq_lens = [c.layers[0].keys.size(-2) for c in caches]
+        
+            # Находим первый непустой слой для определения seq_lens
+            def _get_first_valid_layer(cache):
+                for layer in cache.layers:
+                    if layer.keys is not None:
+                        return layer
+                return None
+        
+            seq_lens = []
+            for c in caches:
+                valid = _get_first_valid_layer(c)
+                if valid is not None:
+                    seq_lens.append(valid.keys.size(-2))
+                else:
+                    seq_lens.append(0)
+        
             max_seq = max(seq_lens)
-
+        
             merged = DynamicCache()
             for layer_idx in range(num_layers):
+                # Проверяем, есть ли данные в этом слое хотя бы у одного кеша
+                if all(c.layers[layer_idx].keys is None for c in caches):
+                    # FakeLayer на этом ранге — пропускаем,
+                    # но нужно создать пустой слот чтобы индексы не сбились
+                    merged.update(
+                        torch.zeros(0),
+                        torch.zeros(0),
+                        layer_idx,
+                    )
+                    # Затираем обратно в None, чтобы не мешало
+                    merged.layers[layer_idx].keys = None
+                    merged.layers[layer_idx].values = None
+                    continue
+                
                 k_parts, v_parts = [], []
-
                 for c, s in zip(caches, seq_lens):
-                    k = c.layers[layer_idx].keys    # [b, heads, seq, head_dim]
+                    k = c.layers[layer_idx].keys
                     v = c.layers[layer_idx].values
-
+        
+                    if k is None:
+                        continue  # этот microbatch не трогал данный слой
+                    
                     if s < max_seq:
                         pad = max_seq - s
                         k = torch.nn.functional.pad(k, (0, 0, pad, 0))
                         v = torch.nn.functional.pad(v, (0, 0, pad, 0))
-
+        
                     k_parts.append(k)
                     v_parts.append(v)
-
+        
                 merged.update(
                     torch.cat(k_parts, dim=0),
                     torch.cat(v_parts, dim=0),
                     layer_idx,
                 )
-
+        
             for c in caches:
                 del c
-
+        
             return merged
 
         merged_cache = _merge_kv_caches(caches)

@@ -26,10 +26,10 @@ class MoePipeline(Pipeline):
         super().__init__(model_forward, modules, final_strategy, final_comm_group, fake_args)
         self.scheduler = scheduler
         self.compute_cond = MoeCondWorker(scheduler)
-        # for idx, module in enumerate(self):
-        #     if idx in inner_boundary_points:
-        #         module.set_notify(self.compute_cond.notify)
-        #         break
+        for idx, module in enumerate(self):
+            if idx in inner_boundary_points:
+                module.set_notify(self.compute_cond.notify)
+                break
         
     def set_fake_args(self, mbatch: MBatch) -> None:
         fake_args_list: List = self.get_fake_args(mbatch.data)
@@ -65,7 +65,6 @@ class MoePipeline(Pipeline):
         for thread in threads:
             thread.join()
             self.scheduler.register_alive(False)
-            self.compute_cond.notify()
             
         for idx in range(len(mbatches)):
             mbatches[idx].data = self.final_stategy(mbatches[idx].data)
