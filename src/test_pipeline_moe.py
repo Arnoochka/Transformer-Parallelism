@@ -8,7 +8,7 @@ from mytransformers.parallel import pp, moe
 from transformers import AutoTokenizer
 from mytransformers.benchmark import BenchmarkModel, GenerationFunc, moe_test, TokenMetrics, init_global_tracker
 
-PATH = "results/moe/base_test/moe-optimized"
+PATH = "results/experts/expert-48/top_k-4/moe"
 
 def get_pipe_model(model: moe_test.TestModel,
                    stages: List[Tuple[dist.ProcessGroup, List[int]]],
@@ -75,7 +75,7 @@ def start(prompts: List[str],
     benchmark = BenchmarkModel(
     model=model,
     tokenizer=tokenizer,
-    generate_func=GenerationFunc.test_generate,
+    generate_func=GenerationFunc.test_generate_merge,
     batch_func=pipeline_batch_func,
     warm_up=True,
     model_name="test_model",
@@ -120,11 +120,11 @@ if __name__ == "__main__":
     model = get_moe_model(model, stages, inner_comm_groups)
     utils.Logger.log_all_device(model)
     
-    for batch_size in [16, 32]:
+    for batch_size in [32]:
         prompts = ["" for _ in range(batch_size)]
-        for max_prompt_len in [256]:
+        for max_prompt_len in [512]:
             for max_new_tokens in [128, 256, 512, 1024]:
-                for num_microbatches in [1, 2]:
+                for num_microbatches in [4]:
                     if not os.path.exists(f"{PATH}/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-test_model_stats.json"):
                         start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)
                     else:
