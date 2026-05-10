@@ -8,7 +8,7 @@ from mytransformers.parallel import pp, moe
 from transformers import AutoTokenizer
 from mytransformers.benchmark import BenchmarkModel, GenerationFunc, moe_test, TokenMetrics, init_global_tracker
 
-PATH = "results/size/0.75/moe"
+PATH = "results/size/1.5/pipe"
 
 def get_pipe_model(model: moe_test.TestModel,
                    stages: List[Tuple[dist.ProcessGroup, List[int]]],
@@ -75,7 +75,7 @@ def start(prompts: List[str],
     benchmark = BenchmarkModel(
     model=model,
     tokenizer=tokenizer,
-    generate_func=GenerationFunc.test_generate_merge,
+    generate_func=GenerationFunc.test_generate,
     batch_func=pipeline_batch_func,
     warm_up=True,
     model_name="test_model",
@@ -117,7 +117,7 @@ if __name__ == "__main__":
         ]
     torch.set_default_dtype(torch.bfloat16)
     model = moe_test.TestModel(moe_test.Config).eval().to(torch.bfloat16).to(device)
-    model = get_moe_model(model, stages, inner_comm_groups)
+    model = get_pipe_model(model, stages, inner_comm_groups)
     utils.Logger.log_all_device(model)
     
     for batch_size in [32]:

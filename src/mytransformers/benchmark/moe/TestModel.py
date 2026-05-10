@@ -9,7 +9,7 @@ from transformers.modeling_outputs import CausalLMOutputWithPast
 class Config:
     num_layers = 14
     num_experts_per_tok = 2
-    hidden_size = 768
+    hidden_size = 1536
     num_experts = 16
     intermediate_size = int(hidden_size * 3.5)
     head_dim = 64
