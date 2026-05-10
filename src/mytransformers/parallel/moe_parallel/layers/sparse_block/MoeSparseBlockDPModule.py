@@ -8,6 +8,31 @@ from mytransformers.parallel.moe_parallel.pipeline.Scheduler import BaseSchedule
 from .MoESparseBlockModule import MoeSparseBlockModule
 from mytransformers import utils
 
+class DPMoeSparseBlock(MoeSparseBlockModule):
+    def __init__(self,
+                 experts: MoeExperts,
+                 gate: Callable[[Tensor], Tuple[Tensor, Tensor]],
+                 k: int,
+                 moe_group: ProcessGroup,
+                 main_rank: int,
+                 next_main_rank: int,
+                 scheduler: BaseScheduler):
+        super().__init__(experts, gate, k, moe_group, main_rank, next_main_rank, scheduler)
+    
+    def forward(self, hidden_states: Tensor) -> Tensor:
+        world_size = dist.get_world_size(self.moe_group)
+        batch_size, sequence_length, hidden_dim = hidden_states.size()
+        hidden_states = hidden_states.view(-1, hidden_dim)
+        num_tokens = hidden_states.size(0)
+        full_top_k_index = torch.zeros((num_tokens * world_size, self.k),
+                                      device=hidden_states.device,
+                                      dtype=torch.long)
+        top_k_index, top_k_weights = self.gate(hidden_states)
+        dist.all_gather_into_tensor(full_top_k_index, top_k_index, group=self.moe_group)
+        hidden_states = self.experts(hidden_states, full_top_k_index, top_k_weights)
+        hidden_states = hidden_states.reshape(batch_size, sequence_length, hidden_dim)
+        return hidden_states
+
 
 class MoeSparseBlockDPModule(MoeSparseBlockModule):
     def __init__(self,

@@ -124,71 +124,6 @@ class GenerationFunc:
         return batches
     
     @staticmethod
-    def simple_generate_encdec(model: Module,
-                               batches: List,
-                               max_new_tokens: int,
-                               eos_token_id: int,
-                               pad_token_id: int,
-                               use_cache: bool = False):
-
-        for batch_idx, batch in enumerate(batches):
-
-            input_ids = batch['input_ids']
-            attention_mask = batch['attention_mask']
-
-            encoder_outputs = model.encoder(
-                input_ids=input_ids,
-                attention_mask=attention_mask
-            )
-
-            encoder_hidden_states = encoder_outputs.last_hidden_state
-
-            decoder_input_ids = torch.full(
-                (input_ids.shape[0], 1),
-                model.config.decoder_start_token_id,
-                device=input_ids.device
-            )
-
-            unfinished_sequences = decoder_input_ids.new(decoder_input_ids.shape[0]).fill_(1)
-            past_key_values = DynamicCache() if use_cache else None
-
-            for step in range(max_new_tokens):
-
-                if use_cache and step > 0:
-                    decoder_inputs = decoder_input_ids[:, -1:]
-                else:
-                    decoder_inputs = decoder_input_ids
-
-                outputs = model.decoder(
-                    input_ids=decoder_inputs,
-                    encoder_hidden_states=encoder_hidden_states,
-                    encoder_attention_mask=attention_mask,
-                    past_key_values=past_key_values,
-                    use_cache=use_cache
-                )
-
-                hidden_states = outputs.last_hidden_state
-                logits = model.lm_head(hidden_states)
-                past_key_values = outputs.past_key_values
-
-                next_token_logits = logits[:, -1, :]
-                next_token = torch.argmax(next_token_logits, dim=-1)
-
-                eos_in_sents = next_token == eos_token_id
-                unfinished_sequences = unfinished_sequences.mul((~eos_in_sents).long())
-                next_token = next_token * unfinished_sequences + pad_token_id * (1 - unfinished_sequences)
-
-                next_token = next_token.unsqueeze(-1)
-                decoder_input_ids = torch.cat([decoder_input_ids, next_token], dim=-1)
-
-                if unfinished_sequences.max() == 0:
-                    break
-
-            batches[batch_idx] = decoder_input_ids
-
-        return decoder_input_ids
-    
-    @staticmethod
     def test_generate(model: Module,
                       mbatches: List[MBatch],
                       max_new_tokens: int,
@@ -327,5 +262,47 @@ class GenerationFunc:
             out = outputs[0]
             merged_cache = out.data['past_key_values']
             next_ids = out.data['logits'][:, -1:, :].argmax(dim=-1)
+
+        return outputs
+    
+    @staticmethod
+    def test_generate(model: Module,
+                      mbatches: List[MBatch],
+                      max_new_tokens: int,
+                      eos_token_id: int,
+                      pad_token_id: int,
+                      use_cache: bool = False) -> List:
+
+        outputs: List[MBatch] = model(mbatches, use_cache=use_cache)
+        torch.cuda.synchronize() 
+        vocab_size = 10000
+        device = torch.cuda.current_device()
+
+        for _ in range(max_new_tokens):
+            new_mbatches = []
+            for idx, out in enumerate(outputs):
+                prev_ids =  out.data['logits']
+                batch_size = prev_ids.size(0)
+
+                next_ids = torch.randint(
+                    0, vocab_size,
+                    (batch_size, 1),
+                    dtype=torch.long,
+                    device=device,
+                )
+
+                new_mbatches.append(MBatch(
+                    data={
+                        "input_ids": next_ids,
+                        "past_key_values": out.data.get('past_key_values'),
+                    },
+                    idx=idx,
+                    stream=torch.cuda.Stream(),
+                    event=torch.cuda.Event(),
+                ))
+
+            mbatches = new_mbatches
+            outputs = model(mbatches, use_cache=use_cache)
+            torch.cuda.synchronize() 
 
         return outputs

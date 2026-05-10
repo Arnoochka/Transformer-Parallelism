@@ -192,5 +192,76 @@ class TestMoePipeGenerator(TestPipeGenerator):
                 main_rank += 1
                     
         return moe_layer_configs
+    
+    
+class TestMoeDPGenerator(TestPipeGenerator):
+    def __new__(cls,
+                module: TestModel,
+                num_stages: int,
+                groups_info: List[Tuple[ProcessGroup, List[int]]],
+                final_comm_group: ProcessGroup,
+                embed_size: int,
+                vocab_size: int,
+                num_experts: int,
+                k: int,
+                scheduler: BaseScheduler,
+                moe_group: ProcessGroup,
+                device: torch.device) -> nn.Module:
+        
+        orig_modules = cls.get_orig_modules(module)
+        moe_configs = cls.get_moe_layer_configs(orig_modules,
+                                                num_experts,
+                                                moe_group)
+        for idx, (name, module, is_moe) in enumerate(moe_configs):
+            if is_moe:
+                moe_config: MoeLayerConfig = moe_configs[name]
+                moe = MoeSparseBlockDPModuleGenerator(module=moe_config.module,
+                                                      gate=moe_config.gate,
+                                                      k=k,
+                                                      main_rank=moe_config.main_rank,
+                                                      next_main_rank=moe_config.next_main_rank,
+                                                      replace_experts_layer=MoeDPExperts,
+                                                      expert_idxs=moe_config.expert_idxs,
+                                                      moe_group=moe_config.group,
+                                                      scheduler=scheduler,
+                                                      device=device)
+                module.layers[idx].moe = moe
+                
+        def _forward(mbatches: List, **forward_kwargs):
+            original_forward = module.forward
+            mbatch = mbatches[0]
+            mbatch.data.update(forward_kwargs)
+            return original_forward(**mbatch)
+        
+        module.forward = _forward
+            
+        return module.to(device)
+    
+    @staticmethod
+    def get_orig_modules(module: TestModel) -> List[Tuple[str, nn.Module, bool]]:
+        return [("embed_tokens", module.embed_tokens, False)] +\
+            [(f"layers-{idx}", layer, True) for idx, layer in enumerate(module.layers)] +\
+                [('lm_head', module.lm_head, False)]
+                
+                
+    @staticmethod
+    def get_moe_layer_configs(orig_modules: List[nn.Module],
+                              num_experts: int,
+                              moe_group: ProcessGroup) -> Dict[str, MoeLayerConfig]:
+        
+        def _make_gate(gate_module: nn.Module, route_fn: Callable) -> Callable:
+            return lambda hs: route_fn(gate_module(hs))
+        
+        moe_layer_configs = {}
+        for name, module, is_moe in orig_modules:
+            if is_moe:
+                expert_idxs = torch.arange(0, num_experts)
+                expert_idxs = list(torch.split(expert_idxs, expert_idxs.size(0) // dist.get_world_size()))
+                _gate = module.moe.gate.to(device=torch.cuda.current_device())
+                _route = module.moe.route_tokens_to_experts
+                gate = _make_gate(_gate, _route)
+                moe_layer_configs[name] = MoeLayerConfig(module.moe, gate, 0, 0, expert_idxs, moe_group)
+                    
+        return moe_layer_configs
                 
     

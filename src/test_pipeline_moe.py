@@ -8,7 +8,7 @@ from mytransformers.parallel import pp, moe
 from transformers import AutoTokenizer
 from mytransformers.benchmark import BenchmarkModel, GenerationFunc, moe_test, TokenMetrics, init_global_tracker
 
-PATH = "results/experts/expert-48/top_k-4/moe"
+PATH = "results/size/3.0/moe"
 
 def get_pipe_model(model: moe_test.TestModel,
                    stages: List[Tuple[dist.ProcessGroup, List[int]]],
@@ -117,13 +117,13 @@ if __name__ == "__main__":
         ]
     torch.set_default_dtype(torch.bfloat16)
     model = moe_test.TestModel(moe_test.Config).eval().to(torch.bfloat16).to(device)
-    model = get_moe_model(model, stages, inner_comm_groups)
+    model = get_pipe_model(model, stages, inner_comm_groups)
     utils.Logger.log_all_device(model)
     
     for batch_size in [32]:
         prompts = ["" for _ in range(batch_size)]
         for max_prompt_len in [512]:
-            for max_new_tokens in [128, 256, 512, 1024]:
+            for max_new_tokens in [1024]:
                 for num_microbatches in [4]:
                     if not os.path.exists(f"{PATH}/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-test_model_stats.json"):
                         start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)
