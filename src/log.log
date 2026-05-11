@@ -1,25 +1,23 @@
-W0510 20:27:28.077000 297226 site-packages/torch/distributed/run.py:851] 
-W0510 20:27:28.077000 297226 site-packages/torch/distributed/run.py:851] *****************************************
-W0510 20:27:28.077000 297226 site-packages/torch/distributed/run.py:851] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
-W0510 20:27:28.077000 297226 site-packages/torch/distributed/run.py:851] *****************************************
----device:0---:
+nohup: ignoring input
+W0511 00:25:02.377000 42307 site-packages/torch/distributed/run.py:851] 
+W0511 00:25:02.377000 42307 site-packages/torch/distributed/run.py:851] *****************************************
+W0511 00:25:02.377000 42307 site-packages/torch/distributed/run.py:851] Setting OMP_NUM_THREADS environment variable for each process to be 1 in default, to avoid your system being overloaded, please further tune the variable for optimal performance in your application as needed. 
+W0511 00:25:02.377000 42307 site-packages/torch/distributed/run.py:851] *****************************************
+---device:3---:
 TestModel(
-  (embed_tokens): PipeComputeModule(role=PipeRole.compute
-    (module): Embedding(32768, 1024)
-  )
+  (embed_tokens): Embedding(32768, 1024)
   (layers): ModuleList(
-    (0-1): 2 x PipeComputeModule(role=PipeRole.compute
-      (module): TestDecoderLayer(
-        (self_attn): TestAttention(
-          (q_proj): Linear(in_features=1024, out_features=1024, bias=False)
-          (k_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (v_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (o_proj): Linear(in_features=1024, out_features=1024, bias=False)
-        )
-        (moe): TestSparseMoeBlock(
-          (gate): Linear(in_features=1024, out_features=16, bias=False)
-          (experts): TestExperts(
-            (0-15): 16 x TestMLP(
+    (0-13): 14 x TestDecoderLayer(
+      (self_attn): TestAttention(
+        (q_proj): Linear(in_features=1024, out_features=1024, bias=False)
+        (k_proj): Linear(in_features=1024, out_features=256, bias=False)
+        (v_proj): Linear(in_features=1024, out_features=256, bias=False)
+        (o_proj): Linear(in_features=1024, out_features=1024, bias=False)
+      )
+      (moe): MoeSparseBlockDPModule(
+        (experts): DPExperts(
+          (local_experts): ModuleList(
+            (0-3): 4 x TestMLP(
               (w1): Linear(in_features=1024, out_features=3584, bias=False)
               (w2): Linear(in_features=3584, out_features=1024, bias=False)
               (w3): Linear(in_features=1024, out_features=3584, bias=False)
@@ -27,67 +25,28 @@ TestModel(
             )
           )
         )
-        (input_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
-        (post_attention_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
       )
-    )
-    (2): PipeInnerBoundaryPointModule(role=PipeRole.computeAndSend
-      (module): TestDecoderLayer(
-        (self_attn): TestAttention(
-          (q_proj): Linear(in_features=1024, out_features=1024, bias=False)
-          (k_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (v_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (o_proj): Linear(in_features=1024, out_features=1024, bias=False)
-        )
-        (moe): TestSparseMoeBlock(
-          (gate): Linear(in_features=1024, out_features=16, bias=False)
-          (experts): TestExperts(
-            (0-15): 16 x TestMLP(
-              (w1): Linear(in_features=1024, out_features=3584, bias=False)
-              (w2): Linear(in_features=3584, out_features=1024, bias=False)
-              (w3): Linear(in_features=1024, out_features=3584, bias=False)
-              (act_fn): ReLU()
-            )
-          )
-        )
-        (input_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
-        (post_attention_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
-      )
-      (strategy): LeaderStrategyModule()
-    )
-    (3-13): 11 x PipeFakeModule(role=PipeRole.dummy
-      (module): FakeTensorModule(device=0)
+      (input_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
+      (post_attention_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
     )
   )
-  (lm_head): PipeFakeModule(role=PipeRole.dummy
-    (module): FakeTensorModule(device=0)
-  )
+  (lm_head): Linear(in_features=1024, out_features=32768, bias=False)
 )
 ---device:2---:
 TestModel(
-  (embed_tokens): PipeFakeModule(role=PipeRole.dummy
-    (module): FakeTensorModule(device=2)
-  )
+  (embed_tokens): Embedding(32768, 1024)
   (layers): ModuleList(
-    (0-5): 6 x PipeFakeModule(role=PipeRole.dummy
-      (module): FakeTensorModule(device=2)
-    )
-    (6): PipeInnerBoundaryPointModule(role=PipeRole.recv
-      (module): FakeTensorModule(device=2)
-      (strategy): LeaderStrategyModule()
-    )
-    (7-9): 3 x PipeComputeModule(role=PipeRole.compute
-      (module): TestDecoderLayer(
-        (self_attn): TestAttention(
-          (q_proj): Linear(in_features=1024, out_features=1024, bias=False)
-          (k_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (v_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (o_proj): Linear(in_features=1024, out_features=1024, bias=False)
-        )
-        (moe): TestSparseMoeBlock(
-          (gate): Linear(in_features=1024, out_features=16, bias=False)
-          (experts): TestExperts(
-            (0-15): 16 x TestMLP(
+    (0-13): 14 x TestDecoderLayer(
+      (self_attn): TestAttention(
+        (q_proj): Linear(in_features=1024, out_features=1024, bias=False)
+        (k_proj): Linear(in_features=1024, out_features=256, bias=False)
+        (v_proj): Linear(in_features=1024, out_features=256, bias=False)
+        (o_proj): Linear(in_features=1024, out_features=1024, bias=False)
+      )
+      (moe): MoeSparseBlockDPModule(
+        (experts): DPExperts(
+          (local_experts): ModuleList(
+            (0-3): 4 x TestMLP(
               (w1): Linear(in_features=1024, out_features=3584, bias=False)
               (w2): Linear(in_features=3584, out_features=1024, bias=False)
               (w3): Linear(in_features=1024, out_features=3584, bias=False)
@@ -95,67 +54,28 @@ TestModel(
             )
           )
         )
-        (input_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
-        (post_attention_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
       )
-    )
-    (10): PipeInnerBoundaryPointModule(role=PipeRole.computeAndSend
-      (module): TestDecoderLayer(
-        (self_attn): TestAttention(
-          (q_proj): Linear(in_features=1024, out_features=1024, bias=False)
-          (k_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (v_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (o_proj): Linear(in_features=1024, out_features=1024, bias=False)
-        )
-        (moe): TestSparseMoeBlock(
-          (gate): Linear(in_features=1024, out_features=16, bias=False)
-          (experts): TestExperts(
-            (0-15): 16 x TestMLP(
-              (w1): Linear(in_features=1024, out_features=3584, bias=False)
-              (w2): Linear(in_features=3584, out_features=1024, bias=False)
-              (w3): Linear(in_features=1024, out_features=3584, bias=False)
-              (act_fn): ReLU()
-            )
-          )
-        )
-        (input_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
-        (post_attention_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
-      )
-      (strategy): LeaderStrategyModule()
-    )
-    (11-13): 3 x PipeFakeModule(role=PipeRole.dummy
-      (module): FakeTensorModule(device=2)
+      (input_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
+      (post_attention_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
     )
   )
-  (lm_head): PipeFakeModule(role=PipeRole.dummy
-    (module): FakeTensorModule(device=2)
-  )
+  (lm_head): Linear(in_features=1024, out_features=32768, bias=False)
 )
----device:3---:
+---device:0---:
 TestModel(
-  (embed_tokens): PipeFakeModule(role=PipeRole.dummy
-    (module): FakeTensorModule(device=3)
-  )
+  (embed_tokens): Embedding(32768, 1024)
   (layers): ModuleList(
-    (0-9): 10 x PipeFakeModule(role=PipeRole.dummy
-      (module): FakeTensorModule(device=3)
-    )
-    (10): PipeInnerBoundaryPointModule(role=PipeRole.recv
-      (module): FakeTensorModule(device=3)
-      (strategy): LeaderStrategyModule()
-    )
-    (11-13): 3 x PipeComputeModule(role=PipeRole.compute
-      (module): TestDecoderLayer(
-        (self_attn): TestAttention(
-          (q_proj): Linear(in_features=1024, out_features=1024, bias=False)
-          (k_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (v_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (o_proj): Linear(in_features=1024, out_features=1024, bias=False)
-        )
-        (moe): TestSparseMoeBlock(
-          (gate): Linear(in_features=1024, out_features=16, bias=False)
-          (experts): TestExperts(
-            (0-15): 16 x TestMLP(
+    (0-13): 14 x TestDecoderLayer(
+      (self_attn): TestAttention(
+        (q_proj): Linear(in_features=1024, out_features=1024, bias=False)
+        (k_proj): Linear(in_features=1024, out_features=256, bias=False)
+        (v_proj): Linear(in_features=1024, out_features=256, bias=False)
+        (o_proj): Linear(in_features=1024, out_features=1024, bias=False)
+      )
+      (moe): MoeSparseBlockDPModule(
+        (experts): DPExperts(
+          (local_experts): ModuleList(
+            (0-3): 4 x TestMLP(
               (w1): Linear(in_features=1024, out_features=3584, bias=False)
               (w2): Linear(in_features=3584, out_features=1024, bias=False)
               (w3): Linear(in_features=1024, out_features=3584, bias=False)
@@ -163,42 +83,28 @@ TestModel(
             )
           )
         )
-        (input_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
-        (post_attention_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
       )
+      (input_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
+      (post_attention_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
     )
   )
-  (lm_head): PipeComputeModule(role=PipeRole.compute
-    (module): Linear(in_features=1024, out_features=32768, bias=False)
-  )
+  (lm_head): Linear(in_features=1024, out_features=32768, bias=False)
 )
-[rank2]:[W510 20:28:03.669341694 ProcessGroupNCCL.cpp:4094] Warning: An unbatched P2P op (send/recv) was called on this ProcessGroup with size 2.  In lazy initialization mode, this will result in a new 2-rank NCCL communicator to be created. (function operator())
-[rank3]:[W510 20:28:03.787406783 ProcessGroupNCCL.cpp:4094] Warning: An unbatched P2P op (send/recv) was called on this ProcessGroup with size 2.  In lazy initialization mode, this will result in a new 2-rank NCCL communicator to be created. (function operator())
 ---device:1---:
 TestModel(
-  (embed_tokens): PipeFakeModule(role=PipeRole.dummy
-    (module): FakeTensorModule(device=1)
-  )
+  (embed_tokens): Embedding(32768, 1024)
   (layers): ModuleList(
-    (0-1): 2 x PipeFakeModule(role=PipeRole.dummy
-      (module): FakeTensorModule(device=1)
-    )
-    (2): PipeInnerBoundaryPointModule(role=PipeRole.recv
-      (module): FakeTensorModule(device=1)
-      (strategy): LeaderStrategyModule()
-    )
-    (3-5): 3 x PipeComputeModule(role=PipeRole.compute
-      (module): TestDecoderLayer(
-        (self_attn): TestAttention(
-          (q_proj): Linear(in_features=1024, out_features=1024, bias=False)
-          (k_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (v_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (o_proj): Linear(in_features=1024, out_features=1024, bias=False)
-        )
-        (moe): TestSparseMoeBlock(
-          (gate): Linear(in_features=1024, out_features=16, bias=False)
-          (experts): TestExperts(
-            (0-15): 16 x TestMLP(
+    (0-13): 14 x TestDecoderLayer(
+      (self_attn): TestAttention(
+        (q_proj): Linear(in_features=1024, out_features=1024, bias=False)
+        (k_proj): Linear(in_features=1024, out_features=256, bias=False)
+        (v_proj): Linear(in_features=1024, out_features=256, bias=False)
+        (o_proj): Linear(in_features=1024, out_features=1024, bias=False)
+      )
+      (moe): MoeSparseBlockDPModule(
+        (experts): DPExperts(
+          (local_experts): ModuleList(
+            (0-3): 4 x TestMLP(
               (w1): Linear(in_features=1024, out_features=3584, bias=False)
               (w2): Linear(in_features=3584, out_features=1024, bias=False)
               (w3): Linear(in_features=1024, out_features=3584, bias=False)
@@ -206,46 +112,13 @@ TestModel(
             )
           )
         )
-        (input_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
-        (post_attention_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
       )
-    )
-    (6): PipeInnerBoundaryPointModule(role=PipeRole.computeAndSend
-      (module): TestDecoderLayer(
-        (self_attn): TestAttention(
-          (q_proj): Linear(in_features=1024, out_features=1024, bias=False)
-          (k_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (v_proj): Linear(in_features=1024, out_features=256, bias=False)
-          (o_proj): Linear(in_features=1024, out_features=1024, bias=False)
-        )
-        (moe): TestSparseMoeBlock(
-          (gate): Linear(in_features=1024, out_features=16, bias=False)
-          (experts): TestExperts(
-            (0-15): 16 x TestMLP(
-              (w1): Linear(in_features=1024, out_features=3584, bias=False)
-              (w2): Linear(in_features=3584, out_features=1024, bias=False)
-              (w3): Linear(in_features=1024, out_features=3584, bias=False)
-              (act_fn): ReLU()
-            )
-          )
-        )
-        (input_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
-        (post_attention_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
-      )
-      (strategy): LeaderStrategyModule()
-    )
-    (7-13): 7 x PipeFakeModule(role=PipeRole.dummy
-      (module): FakeTensorModule(device=1)
+      (input_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
+      (post_attention_layernorm): RMSNorm((1024,), eps=1e-05, elementwise_affine=True)
     )
   )
-  (lm_head): PipeFakeModule(role=PipeRole.dummy
-    (module): FakeTensorModule(device=1)
-  )
+  (lm_head): Linear(in_features=1024, out_features=32768, bias=False)
 )
-[rank1]:[W510 20:28:04.003230433 ProcessGroupNCCL.cpp:4094] Warning: An unbatched P2P op (send/recv) was called on this ProcessGroup with size 2.  In lazy initialization mode, this will result in a new 2-rank NCCL communicator to be created. (function operator())
-[rank0]:[W510 20:28:06.220240526 ProcessGroupNCCL.cpp:4094] Warning: An unbatched P2P op (send/recv) was called on this ProcessGroup with size 2.  In lazy initialization mode, this will result in a new 2-rank NCCL communicator to be created. (function operator())
-[rank1]:[W510 20:28:10.924236913 ProcessGroupNCCL.cpp:4094] Warning: An unbatched P2P op (send/recv) was called on this ProcessGroup with size 2.  In lazy initialization mode, this will result in a new 2-rank NCCL communicator to be created. (function operator())
-[rank2]:[W510 20:28:14.051523114 ProcessGroupNCCL.cpp:4094] Warning: An unbatched P2P op (send/recv) was called on this ProcessGroup with size 2.  In lazy initialization mode, this will result in a new 2-rank NCCL communicator to be created. (function operator())
 /root/miniconda3/envs/nir/lib/python3.11/site-packages/torch/distributed/c10d_logger.py:83: UserWarning: barrier(): using the device under current context. You can specify `device_id` in `init_process_group` to mute this warning.
   return func(*args, **kwargs)
 /root/Transformer-Parallelism/src/mytransformers/benchmark/Tracker.py:38: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
@@ -254,71 +127,103 @@ TestModel(
 STATS: name=start
 /root/Transformer-Parallelism/src/mytransformers/benchmark/Tracker.py:38: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
   cuda.reset_max_memory_allocated(cuda.current_device())
+/root/Transformer-Parallelism/src/mytransformers/benchmark/Tracker.py:38: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
+  cuda.reset_max_memory_allocated(cuda.current_device())
+---device:1---:
+STATS: name=start
 ---device:2---:
 STATS: name=start
 /root/Transformer-Parallelism/src/mytransformers/benchmark/Tracker.py:38: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
   cuda.reset_max_memory_allocated(cuda.current_device())
 ---device:3---:
 STATS: name=start
-/root/Transformer-Parallelism/src/mytransformers/benchmark/Tracker.py:38: FutureWarning: torch.cuda.reset_max_memory_allocated now calls torch.cuda.reset_peak_memory_stats, which resets /all/ peak memory stats.
-  cuda.reset_max_memory_allocated(cuda.current_device())
+---device:0---:
+STATS: name=stop
 ---device:1---:
+STATS: name=stop---device:2---:
+STATS: name=stop
+
+---device:3---:
+STATS: name=stop
+Description: test_model
+-------Benchmark results-------
+model name: test_model
+model size: 1.342, dtype: bfloat16
+inference time (s): 2.033
+throughput (token/s): 2015.149
+data size: 32, batch size: 16, max len: 128, max new tokens: 0
+    inference time (s): 2.033
+    throughput (token/s): 2015.149
+
+max memory allocated per device (GB):            
+    device 0: 1.507
+    device 1: 1.507
+    device 2: 1.507
+    device 3: 1.507
+---device:1---:
+STATS: name=start---device:0---:
+STATS: name=start---device:2---:
 STATS: name=start
+
+
+---device:3---:
+STATS: name=start
+---device:0---:
+STATS: name=stop
+---device:1---:
+STATS: name=stop---device:2---:
+STATS: name=stop
+
+---device:3---:
+STATS: name=stop
+Description: test_model
+-------Benchmark results-------
+model name: test_model
+model size: 1.342, dtype: bfloat16
+inference time (s): 4.178
+throughput (token/s): 1960.537
+data size: 32, batch size: 16, max len: 256, max new tokens: 0
+    inference time (s): 4.178
+    throughput (token/s): 1960.537
+
+max memory allocated per device (GB):            
+    device 0: 1.663
+    device 1: 1.663
+    device 2: 1.663
+    device 3: 1.663
+---device:0---:
+STATS: name=start
+---device:2---:
+STATS: name=start---device:1---:
+STATS: name=start
+
+---device:3---:
+STATS: name=start
+---device:0---:
+STATS: name=stop
 ---device:2---:
 STATS: name=stop---device:1---:
-STATS: name=stop---device:3---:
-STATS: name=stop---device:0---:
 STATS: name=stop
 
-
-
-Description: test_model
--------Benchmark results-------
-model name: test_model
-model size: 1.062, dtype: bfloat16
-inference time (s): 714.903
-throughput (token/s): 91.671
-data size: 32, batch size: 8, max len: 1024, max new tokens: 2048
-    inference time (s): 714.903
-    throughput (token/s): 91.671
-
-max memory allocated per device (GB):            
-    device 0: 4.495
-    device 1: 4.543
-    device 2: 4.595
-    device 3: 4.495
----device:0---:
-STATS: name=start---device:1---:
-STATS: name=start---device:3---:
-STATS: name=start
-
-
----device:2---:
-STATS: name=start
----device:1---:
-STATS: name=stop---device:0---:
-STATS: name=stop---device:3---:
-STATS: name=stop
-
-
----device:2---:
+---device:3---:
 STATS: name=stop
 Description: test_model
 -------Benchmark results-------
 model name: test_model
-model size: 1.062, dtype: bfloat16
-inference time (s): 1656.800
-throughput (token/s): 79.112
-data size: 32, batch size: 8, max len: 1024, max new tokens: 4096
-    inference time (s): 1656.800
-    throughput (token/s): 79.112
+model size: 1.342, dtype: bfloat16
+inference time (s): 8.534
+throughput (token/s): 1919.867
+data size: 32, batch size: 16, max len: 512, max new tokens: 0
+    inference time (s): 8.534
+    throughput (token/s): 1919.867
 
 max memory allocated per device (GB):            
-    device 0: 4.669
-    device 1: 5.096
-    device 2: 5.096
-    device 3: 4.669
-[rank0]:[W510 21:47:13.285516494 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
-[rank1]:[W510 21:47:13.285792862 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
-[rank3]:[W510 21:47:13.289279970 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
-[rank2]:[W510 21:47:13.294454833 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+    device 0: 2.226
+    device 1: 2.226
+    device 2: 2.226
+    device 3: 2.226
+Эксперимент batch_size=32-prompt_len=1024-new_tokens=0-num_microbatch=2-test_model_stats.json уже проведен
+[rank0]:[W511 00:26:08.476111934 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[rank2]:[W511 00:26:08.491780385 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[rank1]:[W511 00:26:08.494482877 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+[rank3]:[W511 00:26:08.549582313 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())

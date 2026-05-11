@@ -18,7 +18,8 @@ class DPMoeSparseBlock(MoeSparseBlockModule):
                  next_main_rank: int,
                  scheduler: BaseScheduler):
         super().__init__(experts, gate, k, moe_group, main_rank, next_main_rank, scheduler)
-    
+        
+    @torch.no_grad()
     def forward(self, hidden_states: Tensor) -> Tensor:
         world_size = dist.get_world_size(self.moe_group)
         batch_size, sequence_length, hidden_dim = hidden_states.size()

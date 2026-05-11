@@ -11,7 +11,7 @@ from mytransformers.parallel.pipeline_parallel.layers import (
 from torch.distributed import ProcessGroup
 from mytransformers.parallel.moe_parallel.pipeline import BaseScheduler
 from mytransformers.parallel.moe_parallel.generators import MoePipelineGenerator, MoeLayerConfig, MoeSparseBlockDPModuleGenerator
-from mytransformers.parallel.moe_parallel.layers import MoeExperts, MoeDPExperts, MoeComputeLayer, MoeFakeLayer
+from mytransformers.parallel.moe_parallel.layers import MoeExperts, MoeDPExperts, MoeComputeLayer, MoeFakeLayer, DPExperts
 
 class TestPipeGenerator(ParallelModuleGenerator):
     def __new__(cls,
@@ -212,26 +212,25 @@ class TestMoeDPGenerator(TestPipeGenerator):
         moe_configs = cls.get_moe_layer_configs(orig_modules,
                                                 num_experts,
                                                 moe_group)
-        for idx, (name, module, is_moe) in enumerate(moe_configs):
-            if is_moe:
-                moe_config: MoeLayerConfig = moe_configs[name]
-                moe = MoeSparseBlockDPModuleGenerator(module=moe_config.module,
-                                                      gate=moe_config.gate,
-                                                      k=k,
-                                                      main_rank=moe_config.main_rank,
-                                                      next_main_rank=moe_config.next_main_rank,
-                                                      replace_experts_layer=MoeDPExperts,
-                                                      expert_idxs=moe_config.expert_idxs,
-                                                      moe_group=moe_config.group,
-                                                      scheduler=scheduler,
-                                                      device=device)
-                module.layers[idx].moe = moe
-                
+        for idx, moe_config in enumerate(moe_configs.values()):
+            moe = MoeSparseBlockDPModuleGenerator(module=moe_config.module,
+                                                  gate=moe_config.gate,
+                                                  k=k,
+                                                  main_rank=moe_config.main_rank,
+                                                  next_main_rank=moe_config.next_main_rank,
+                                                  replace_experts_layer=DPExperts,
+                                                  expert_idxs=moe_config.expert_idxs,
+                                                  moe_group=moe_config.group,
+                                                  scheduler=scheduler,
+                                                  device=device)
+            module.layers[idx].moe = moe
+            
+        original_forward = module.forward        
         def _forward(mbatches: List, **forward_kwargs):
-            original_forward = module.forward
             mbatch = mbatches[0]
             mbatch.data.update(forward_kwargs)
-            return original_forward(**mbatch)
+            mbatch.data = original_forward(**mbatch.data)
+            return [mbatch]
         
         module.forward = _forward
             

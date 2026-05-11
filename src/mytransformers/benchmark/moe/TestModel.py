@@ -32,7 +32,8 @@ class TestMLP(nn.Module):
         self.w3 = nn.Linear(self.hidden_dim, self.ffn_dim, bias=False)
 
         self.act_fn = nn.ReLU()
-
+        
+    @torch.no_grad()
     def forward(self, hidden_states):
         current_hidden_states = self.act_fn(self.w1(hidden_states)) * self.w3(hidden_states)
         current_hidden_states = self.w2(current_hidden_states)
@@ -45,7 +46,8 @@ class TestExperts(nn.ModuleList):
         self.num_experts = config.num_experts
         for _ in range(self.num_experts):
             self.append(TestMLP(config))
-
+    
+    @torch.no_grad()
     def forward(
         self, hidden_states: torch.Tensor, top_k_index: torch.Tensor, top_k_weights: torch.Tensor
     ) -> Tensor:
@@ -80,6 +82,7 @@ class TestSparseMoeBlock(nn.Module):
         top_k_index, top_k_weights = self.token_router(router_logits, self.top_k)
         return top_k_index, top_k_weights.to(router_logits.dtype)
     
+    @torch.no_grad()
     def forward(self, hidden_states: Tensor) -> Tensor:
         batch_size, sequence_length, hidden_dim = hidden_states.shape
         hidden_states = hidden_states.view(-1, hidden_states.shape[-1])
@@ -106,6 +109,7 @@ class TestAttention(nn.Module):
         self.v_proj = nn.Linear(self.hidden_size, self.num_kv_heads * self.head_dim, bias=False)
         self.o_proj = nn.Linear(self.num_heads * self.head_dim, self.hidden_size, bias=False)
 
+    @torch.no_grad()
     def forward(
         self,
         hidden_states: torch.Tensor,
@@ -141,6 +145,7 @@ class TestDecoderLayer(nn.Module):
         self.input_layernorm = nn.RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.post_attention_layernorm = nn.RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
+    @torch.no_grad()
     def forward(
         self,
         hidden_states: torch.Tensor,
@@ -167,6 +172,7 @@ class TestModel(nn.Module):
         )
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
+    @torch.no_grad()
     def forward(
         self,
         input_ids: torch.Tensor,

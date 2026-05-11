@@ -8,7 +8,7 @@ from mytransformers.parallel import pp, moe
 from transformers import AutoTokenizer
 from mytransformers.benchmark import BenchmarkModel, GenerationFunc, moe_test, TokenMetrics, init_global_tracker
 
-PATH = "results/base_test/pipe"
+PATH = "results/base_test/dp"
 
 def get_pipe_model(model: moe_test.TestModel,
                    stages: List[Tuple[dist.ProcessGroup, List[int]]],
@@ -40,6 +40,24 @@ def get_moe_model(model: moe_test.TestModel,
                                          scheduler=moe.pp.RoundRobinScheduler(),
                                          moe_group=dist.group.WORLD,
                                          device=device)
+    
+    
+def get_dp_model(model: moe_test.TestModel,
+                  stages: List[Tuple[dist.ProcessGroup, List[int]]],
+                  inner_comm_groups: List[dist.ProcessGroup],
+                  ) -> moe_test.TestModel:
+    
+    return moe_test.TestMoeDPGenerator(module=model,
+                                       num_stages=len(stages),
+                                       groups_info=stages,
+                                       final_comm_group=None,
+                                       embed_size=moe_test.Config.hidden_size,
+                                       vocab_size=moe_test.Config.vocab_size,
+                                       num_experts=moe_test.Config.num_experts,
+                                       k=moe_test.Config.num_experts_per_tok,
+                                       scheduler=moe.pp.RoundRobinScheduler(),
+                                       moe_group=dist.group.WORLD,
+                                       device=device)
     
     
 
@@ -89,7 +107,7 @@ def start(prompts: List[str],
     stats = benchmark(
     prompts=prompts,
     batch_size=batch_size // num_microbatches,
-    token_metric=TokenMetrics.output_tokens,
+    token_metric=TokenMetrics.input_tokens,
     eos_token_id=0,
     pad_token_id=0,
     use_cache=True)
@@ -116,15 +134,15 @@ if __name__ == "__main__":
         utils.create_group([2, 3])
         ]
     torch.set_default_dtype(torch.bfloat16)
-    model = moe_test.TestModel(moe_test.Config).eval().to(torch.bfloat16).to(device)
-    model = get_pipe_model(model, stages, inner_comm_groups)
+    model = moe_test.TestModel(moe_test.Config).eval().to(torch.bfloat16)
+    model = get_dp_model(model, stages, inner_comm_groups)
     utils.Logger.log_all_device(model)
     
     for batch_size in [32]:
         prompts = ["" for _ in range(batch_size)]
-        for max_prompt_len in [1024]:
-            for max_new_tokens in [2048, 4096]:
-                for num_microbatches in [4]:
+        for max_prompt_len in [128, 256, 512, 1024]:
+            for max_new_tokens in [0]:
+                for num_microbatches in [2]:
                     if not os.path.exists(f"{PATH}/batch_size={batch_size}-prompt_len={max_prompt_len}-new_tokens={max_new_tokens}-num_microbatch={num_microbatches}-test_model_stats.json"):
                         start(prompts, batch_size, num_microbatches, max_prompt_len, max_new_tokens)
                     else:
